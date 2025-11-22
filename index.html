@@ -3,26 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飞行日志 - 专业明细版</title>
+    <title>飞行日志 - 2025 完美修复版</title>
     <style>
         /* === 基础样式 === */
-        :root { --primary: #2563eb; --primary-dark: #1e40af; --bg: #f1f5f9; --accent: #db2777; }
+        :root { --primary: #2563eb; --bg: #f1f5f9; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: var(--bg); color: #334155;
             padding: 20px; min-height: 100vh;
         }
-        
-        .container {
-            max-width: 1100px; margin: 0 auto;
-            display: flex; flex-direction: column; gap: 20px;
-        }
+        .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 
-        /* 通用卡片 */
+        /* 卡片通用 */
         .card {
             background: white; border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
             overflow: hidden; border: 1px solid #e2e8f0;
         }
         .card-header {
@@ -39,14 +35,13 @@
             border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
         }
 
-        /* === 模块 1: 统计报表 (保持简洁) === */
+        /* 表单与报表 */
         .table-scroll { overflow-x: auto; border-radius: 8px; border: 1px solid #cbd5e1; }
         .excel-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 900px; }
         .excel-table th, .excel-table td { border: 1px solid #cbd5e1; padding: 8px 6px; text-align: center; }
-        .excel-table th { background: #f1f5f9; font-weight: 600; color: #475569; }
-        .bg-sub { background-color: #fdf4ff; color: #86198f; font-weight: bold; } 
+        .excel-table th { background: #f1f5f9; font-weight: 600; }
+        .bg-sub { background-color: #fdf4ff; color: #86198f; font-weight: bold; }
 
-        /* === 模块 2: 录入 (增强) === */
         .ai-input-area { position: relative; }
         .key-input { 
             position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9);
@@ -54,70 +49,63 @@
         }
         textarea {
             width: 100%; height: 100px; padding: 15px; border: 2px dashed #cbd5e1;
-            border-radius: 12px; resize: vertical; font-family: monospace; transition: 0.3s;
-            background: #f8fafc;
+            border-radius: 12px; resize: vertical; font-family: monospace; background: #f8fafc;
         }
-        textarea:focus { border-color: var(--primary); outline: none; background: white; }
         
         .edit-form { background: #f8fafc; padding: 20px; border-radius: 12px; margin-top: 15px; border: 1px solid #e2e8f0; }
-        
-        /* 表单布局优化 */
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-        .form-full-width { grid-column: 1 / -1; } /* 占据整行 */
+        .form-full-width { grid-column: 1 / -1; }
+        .form-group label { display: block; font-size: 0.75rem; margin-bottom: 4px; font-weight: 600; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
         
-        .form-group label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 4px; font-weight: 600; }
-        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; }
-        
-        /* 时间输入组样式 */
-        .time-group { 
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; 
-            background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;
-        }
-        .time-group div { text-align: center; }
-        .time-group label { font-size: 0.7rem; color: #94a3b8; margin-bottom: 2px; }
-        .time-group input { border: none; background: #f1f5f9; text-align: center; font-family: monospace; padding: 4px; }
+        .time-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .time-group input { border: none; background: #f1f5f9; text-align: center; padding: 4px; width: 100%; }
+        .time-group label { font-size: 0.7rem; color: #94a3b8; text-align: center; display: block;}
 
-        /* === 模块 3: 历史记录 (详细版) === */
+        /* === 历史记录 (修复版) === */
         .log-list { max-height: 600px; overflow-y: auto; }
         .log-item {
             background: white; border: 1px solid #e2e8f0; border-radius: 10px;
             margin-bottom: 12px; padding: 15px; transition: 0.2s;
-            position: relative;
         }
-        .log-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); transform: translateY(-1px); }
+        .log-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 
-        /* 历史卡片内部布局 */
-        .log-header { display: flex; justify-content: space-between; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px; margin-bottom: 8px; }
+        /* 头部改为 Flex 布局，确保按钮不被遮挡 */
+        .log-header { 
+            display: flex; justify-content: space-between; align-items: flex-start; 
+            border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px; margin-bottom: 8px; gap: 10px;
+        }
+        .log-header-left { flex: 1; }
+        .log-date { font-family: monospace; color: #64748b; margin-right: 10px; }
         .log-route { font-weight: 700; color: #1e293b; font-size: 1rem; }
-        .log-date { font-family: monospace; color: #64748b; }
-        
-        .log-crew { font-size: 0.85rem; color: #475569; margin-bottom: 8px; display: flex; gap: 5px; align-items: center; }
-        
-        /* 时间轴样式 */
+
+        /* 修复后的删除按钮样式 */
+        .btn-del {
+            background: #fee2e2; color: #dc2626; border: 1px solid #fecaca;
+            padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+            font-weight: bold; white-space: nowrap; flex-shrink: 0;
+            transition: 0.2s; z-index: 10; /* 提高层级 */
+        }
+        .btn-del:hover { background: #ef4444; color: white; border-color: #ef4444; }
+
+        .log-crew { font-size: 0.85rem; color: #475569; margin-bottom: 8px; }
         .log-times { 
             display: flex; background: #f8fafc; padding: 8px; border-radius: 6px; 
-            font-family: monospace; font-size: 0.85rem; justify-content: space-between; color: #334155;
-            margin-bottom: 8px;
+            font-family: monospace; font-size: 0.85rem; justify-content: space-between; color: #334155; margin-bottom: 8px;
         }
         .time-point { text-align: center; }
         .time-label { font-size: 0.7rem; color: #94a3b8; display: block; }
         
-        .log-stats { display: flex; gap: 15px; font-size: 0.85rem; color: #1e293b; font-weight: 500; align-items: center; }
-        .stat-box { background: #eff6ff; padding: 4px 8px; border-radius: 4px; color: #1d4ed8; }
-        
+        .log-stats { display: flex; gap: 15px; font-size: 0.85rem; color: #1e293b; align-items: center; flex-wrap: wrap; }
+        .stat-box { background: #eff6ff; padding: 4px 8px; border-radius: 4px; color: #1d4ed8; font-weight: 500; }
         .tags { display: flex; gap: 5px; margin-left: auto; }
         .tag { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; background: #e2e8f0; }
         .tag-special { background: #fce7f3; color: #be185d; }
         .tag-holiday { background: #fee2e2; color: #b91c1c; }
 
-        .btn-del { position: absolute; top: 15px; right: 15px; background: none; border: none; cursor: pointer; opacity: 0.3; }
-        .btn-del:hover { opacity: 1; color: red; }
-
-        /* 按钮 */
-        .btn { padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        /* 按钮与登录 */
+        .btn { padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
         .btn-primary { background: var(--primary); color: white; }
-        
-        /* 登录层 */
         .login-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
@@ -141,10 +129,10 @@
             <button class="btn" style="background: rgba(255,255,255,0.2); color: white;" onclick="doLogout()">退出</button>
         </div>
 
-        <!-- 1. 报表 (保持原样) -->
+        <!-- 1. 报表 -->
         <section class="card">
             <div class="card-header">
-                <h2>📊 薪酬统计报表</h2>
+                <h2>📊 薪酬统计</h2>
                 <input type="month" id="reportMonth" onchange="renderReport()" style="border: 1px solid #cbd5e1; padding: 4px; border-radius: 4px;">
             </div>
             <div class="card-body">
@@ -154,85 +142,70 @@
             </div>
         </section>
 
-        <!-- 2. 录入 (大幅增强) -->
+        <!-- 2. 录入 -->
         <section class="card">
             <div class="card-header">
                 <h2>📝 智能录入</h2>
-                <span style="font-size: 0.8rem; color: #64748b;">AI 自动提取时间节点与机组</span>
+                <span style="font-size: 0.8rem; color: #64748b;">含明细数据提取</span>
             </div>
             <div class="card-body">
                 <div class="ai-input-area">
                     <input type="password" id="innerApiKey" class="key-input" placeholder="DeepSeek Key">
-                    <textarea id="ocrInput" placeholder="例：5月20日 PEK-SHA 机长张三 副驾驶李四&#10;开车10:00 起飞10:20 落地12:20 关车12:30&#10;空中2.0h 特殊机场 过夜2天"></textarea>
+                    <textarea id="ocrInput" placeholder="示例：5月1日 CA1234 PEK-SHA 机长张三&#10;开车10:00 起飞10:20 落地12:20 关车12:30&#10;空中2.0 特殊机场 过夜1天"></textarea>
                 </div>
                 <div style="text-align: right; margin-top: 10px;">
-                    <button id="aiBtn" class="btn btn-primary" onclick="processAI()">✨ AI 详细识别</button>
+                    <button id="aiBtn" class="btn btn-primary" onclick="processAI()">✨ AI 识别</button>
                 </div>
 
                 <div id="editForm" class="edit-form" style="display: none;">
                     <div class="form-grid">
-                        <!-- 基本信息 -->
                         <div class="form-group"><label>日期</label><input type="date" id="f_date"></div>
                         <div class="form-group"><label>起飞</label><input type="text" id="f_dep"></div>
                         <div class="form-group"><label>落地</label><input type="text" id="f_arr"></div>
                         <div class="form-group"><label>区域</label>
                             <select id="f_cat">
-                                <option value="国内">国内</option>
-                                <option value="港澳台">港澳台</option>
-                                <option value="亚洲国际">亚洲国际</option>
-                                <option value="洲际">洲际</option>
+                                <option value="国内">国内</option><option value="港澳台">港澳台</option>
+                                <option value="亚洲国际">亚洲国际</option><option value="洲际">洲际</option>
                             </select>
                         </div>
+                        <div class="form-group form-full-width"><label>机组名单</label><input type="text" id="f_crew"></div>
                         
-                        <!-- 机组人员 (新) -->
                         <div class="form-group form-full-width">
-                            <label>👨‍✈️ 飞行人员 (机组名单)</label>
-                            <input type="text" id="f_crew" placeholder="例如：张三(PIC), 李四(FO)">
-                        </div>
-
-                        <!-- 详细时间节点 (新) -->
-                        <div class="form-group form-full-width">
-                            <label>⏱️ 运行时间节点 (HH:MM)</label>
+                            <label>运行时刻 (HH:MM)</label>
                             <div class="time-group">
-                                <div><label>开车(Off)</label><input type="time" id="f_block_off"></div>
-                                <div><label>起飞(Takeoff)</label><input type="time" id="f_takeoff"></div>
-                                <div><label>落地(Landing)</label><input type="time" id="f_landing"></div>
-                                <div><label>关车(On)</label><input type="time" id="f_block_on"></div>
+                                <div><label>开车</label><input type="time" id="f_block_off"></div>
+                                <div><label>起飞</label><input type="time" id="f_takeoff"></div>
+                                <div><label>落地</label><input type="time" id="f_landing"></div>
+                                <div><label>关车</label><input type="time" id="f_block_on"></div>
                             </div>
                         </div>
 
-                        <!-- 时长数据 (新) -->
-                        <div class="form-group"><label>☁️ 空中时间(h)</label><input type="number" step="0.1" id="f_air"></div>
-                        <div class="form-group"><label>⌚ 总时间(h)</label><input type="number" step="0.1" id="f_total_time" placeholder="Block Time"></div>
-                        <div class="form-group"><label>🚜 地面时间(h)</label><input type="number" step="0.1" id="f_ground_time"></div>
+                        <div class="form-group"><label>空中时间</label><input type="number" step="0.1" id="f_air"></div>
+                        <div class="form-group"><label>总时间</label><input type="number" step="0.1" id="f_total_time"></div>
+                        <div class="form-group"><label>地面时间</label><input type="number" step="0.1" id="f_ground_time"></div>
+                        <div class="form-group"><label>滑行次/天</label><input type="number" id="f_block_days" value="1"></div>
                         
-                        <!-- 统计辅助数据 -->
-                        <div class="form-group"><label>滑行(次/天)</label><input type="number" id="f_block_days" value="1"></div>
-                        <div class="form-group"><label>夜航(18:30+)</label><input type="number" step="0.1" id="f_night1"></div>
-                        <div class="form-group"><label>夜航(00:00+)</label><input type="number" step="0.1" id="f_night2"></div>
-                        
+                        <div class="form-group"><label>夜航18:30+</label><input type="number" step="0.1" id="f_night1"></div>
+                        <div class="form-group"><label>夜航00:00+</label><input type="number" step="0.1" id="f_night2"></div>
                         <div class="form-group"><label>驻外类型</label>
                             <select id="f_overnight">
-                                <option value="国内无过夜">国内无过夜</option>
-                                <option value="国内有过夜">国内有过夜</option>
-                                <option value="国际无过夜">国际无过夜</option>
-                                <option value="国际有过夜">国际有过夜</option>
+                                <option value="国内无过夜">国内无过夜</option><option value="国内有过夜">国内有过夜</option>
+                                <option value="国际无过夜">国际无过夜</option><option value="国际有过夜">国际有过夜</option>
                             </select>
                         </div>
                         <div class="form-group"><label>驻外天数</label><input type="number" id="f_overnight_days" value="0"></div>
-                        
-                        <div class="form-group"><label>特殊机场(次)</label><input type="number" id="f_special" value="0"></div>
-                        <div class="form-group"><label>法定假日(天)</label><input type="number" id="f_holiday" value="0"></div>
+                        <div class="form-group"><label>特殊机场</label><input type="number" id="f_special" value="0"></div>
+                        <div class="form-group"><label>节假日</label><input type="number" id="f_holiday" value="0"></div>
                     </div>
                     <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
                         <button class="btn" style="background: #e2e8f0;" onclick="document.getElementById('editForm').style.display='none'">取消</button>
-                        <button class="btn btn-primary" style="background: #10b981;" onclick="saveRecord()">💾 保存记录</button>
+                        <button class="btn btn-primary" onclick="saveRecord()">💾 保存</button>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- 3. 历史记录 (详细卡片版) -->
+        <!-- 3. 历史 -->
         <section class="card">
             <div class="card-header"><h2>📋 历史记录明细</h2></div>
             <div class="card-body">
@@ -283,27 +256,36 @@
             }
         });
 
-        // AI 处理 (增强 Prompt)
+        // 修复后的删除函数：增加 try/catch 和 alert
+        window.deleteItem = async (id) => {
+            if(!currentUser) return alert("未登录");
+            if(confirm("⚠️ 确定要永久删除这条记录吗？")) {
+                try {
+                    await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id));
+                    // 删除成功后不需要手动刷新，onSnapshot 会自动处理
+                } catch(e) {
+                    console.error("删除失败:", e);
+                    alert("❌ 删除失败: " + e.message + "\n请检查 Firebase 后台 Rules 权限设置。");
+                }
+            }
+        };
+
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value;
             const apiKey = document.getElementById('innerApiKey').value;
-            if (!apiKey) return alert("请输入 API Key");
+            if (!apiKey) return alert("请输入 Key");
             localStorage.setItem("openai_key", apiKey);
 
             const btn = document.getElementById('aiBtn');
-            btn.textContent = "⏳ 分析详细数据..."; btn.disabled = true;
+            btn.textContent = "⏳ 分析中..."; btn.disabled = true;
 
-            // 提示词：增加机组、时间点、总时间、地面时间
             const prompt = `
-            分析飞行任务，返回JSON。
-            字段: 
-            date, dep, arr, category("国内"|"港澳台"|"亚洲国际"|"洲际"),
-            crew(string, 所有机组人员名单),
-            time_off(HH:MM, 开车), time_takeoff(HH:MM, 起飞), time_landing(HH:MM, 落地), time_on(HH:MM, 关车),
-            air_time(float, 空中时间), total_time(float, 总时间/BlockTime), ground_time(float, 地面/滑行时间),
-            block_days(int, 滑行天数/次数), night1(18:30-24:00), night2(00:00-06:30),
-            overnight, overnight_days(int),
-            special_airport(int, 1/0), holiday(int, 天数)
+            分析飞行文本返回JSON。
+            字段: date, dep, arr, category("国内"|"港澳台"|"亚洲国际"|"洲际"), crew(string),
+            time_off, time_takeoff, time_landing, time_on (HH:MM),
+            air_time, total_time, ground_time (float),
+            block_days(int), night1, night2 (float),
+            overnight, overnight_days(int), special_airport(int), holiday(int)
             文本: ${text}
             `;
 
@@ -314,44 +296,33 @@
                     body: JSON.stringify({ model: "deepseek-chat", messages: [{role: "user", content: prompt}], temperature: 0.1 })
                 });
                 const data = await res.json();
-                let content = data.choices[0].message.content;
-                const jsonMatch = content.match(/\{[\s\S]*\}/);
-                const r = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+                const content = data.choices[0].message.content;
+                const r = JSON.parse(content.match(/\{[\s\S]*\}/)[0]);
 
-                // 填充表单
                 const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
                 setVal('f_date', r.date); setVal('f_dep', r.dep); setVal('f_arr', r.arr);
-                setVal('f_cat', r.category || '国内'); 
-                // 新字段
-                setVal('f_crew', r.crew);
+                setVal('f_cat', r.category || '国内'); setVal('f_crew', r.crew);
                 setVal('f_block_off', r.time_off); setVal('f_takeoff', r.time_takeoff);
                 setVal('f_landing', r.time_landing); setVal('f_block_on', r.time_on);
                 setVal('f_air', r.air_time); setVal('f_total_time', r.total_time); setVal('f_ground_time', r.ground_time);
-                
                 setVal('f_block_days', r.block_days || 1); 
-                setVal('f_night1', r.night1 || 0); setVal('f_night2', r.night2 || 0);
-                setVal('f_overnight', r.overnight || '国内无过夜'); setVal('f_overnight_days', r.overnight_days || 0);
-                setVal('f_special', r.special_airport || 0); setVal('f_holiday', r.holiday || 0);
+                setVal('f_night1', r.night1); setVal('f_night2', r.night2);
+                setVal('f_overnight', r.overnight); setVal('f_overnight_days', r.overnight_days);
+                setVal('f_special', r.special_airport); setVal('f_holiday', r.holiday);
 
                 document.getElementById('editForm').style.display = 'block';
-            } catch (e) { alert("AI Error: " + e.message); } 
-            finally { btn.textContent = "✨ AI 详细识别"; btn.disabled = false; }
+            } catch (e) { alert("识别失败: " + e.message); } 
+            finally { btn.textContent = "✨ AI 识别"; btn.disabled = false; }
         };
 
-        // 保存 (保存所有字段)
         window.saveRecord = async () => {
             const getNum = (id) => parseFloat(document.getElementById(id).value) || 0;
             const getStr = (id) => document.getElementById(id).value;
             const record = {
-                date: getStr('f_date'), dep: getStr('f_dep'), arr: getStr('f_arr'), category: getStr('f_cat'),
-                // 详情字段
-                crew: getStr('f_crew'),
-                block_off: getStr('f_block_off'), takeoff: getStr('f_takeoff'), 
-                landing: getStr('f_landing'), block_on: getStr('f_block_on'),
+                date: getStr('f_date'), dep: getStr('f_dep'), arr: getStr('f_arr'), category: getStr('f_cat'), crew: getStr('f_crew'),
+                block_off: getStr('f_block_off'), takeoff: getStr('f_takeoff'), landing: getStr('f_landing'), block_on: getStr('f_block_on'),
                 air_time: getNum('f_air'), total_time: getNum('f_total_time'), ground_time: getNum('f_ground_time'),
-                // 统计字段
-                block_days: getNum('f_block_days'),
-                night1: getNum('f_night1'), night2: getNum('f_night2'),
+                block_days: getNum('f_block_days'), night1: getNum('f_night1'), night2: getNum('f_night2'),
                 overnight: getStr('f_overnight'), overnight_days: getNum('f_overnight_days'),
                 special_airport: getNum('f_special'), holiday: getNum('f_holiday'),
                 timestamp: new Date()
@@ -361,33 +332,31 @@
             document.getElementById('ocrInput').value = '';
         };
 
-        window.deleteItem = async (id) => { if(confirm("删除此记录？")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
-
-        // 渲染列表 (全新详细卡片设计)
         window.renderList = () => {
             const el = document.getElementById('logList');
             el.innerHTML = allRecords.length ? allRecords.map(r => `
                 <div class="log-item">
                     <div class="log-header">
-                        <span class="log-date">${r.date}</span>
-                        <span class="log-route">${r.dep} ➔ ${r.arr}</span>
-                        <button class="btn-del" onclick="deleteItem('${r.id}')">🗑️</button>
+                        <div class="log-header-left">
+                            <span class="log-date">${r.date}</span>
+                            <span class="log-route">${r.dep} ➔ ${r.arr}</span>
+                        </div>
+                        <button class="btn-del" onclick="deleteItem('${r.id}')">删除</button>
                     </div>
                     
-                    <div class="log-crew">👨‍✈️ ${r.crew || '未记录机组'}</div>
+                    <div class="log-crew">👨‍✈️ ${r.crew || '-'}</div>
                     
                     <div class="log-times">
-                        <div class="time-point"><span class="time-label">开车</span>${r.block_off || '--:--'}</div>
-                        <div class="time-point"><span class="time-label">起飞</span>${r.takeoff || '--:--'}</div>
-                        <div class="time-point"><span class="time-label">落地</span>${r.landing || '--:--'}</div>
-                        <div class="time-point"><span class="time-label">关车</span>${r.block_on || '--:--'}</div>
+                        <div class="time-point"><span class="time-label">开车</span>${r.block_off||'-'}</div>
+                        <div class="time-point"><span class="time-label">起飞</span>${r.takeoff||'-'}</div>
+                        <div class="time-point"><span class="time-label">落地</span>${r.landing||'-'}</div>
+                        <div class="time-point"><span class="time-label">关车</span>${r.block_on||'-'}</div>
                     </div>
 
                     <div class="log-stats">
-                        <span class="stat-box" title="空中时间">☁️ ${r.air_time}h</span>
-                        <span class="stat-box" style="background:#f0fdf4; color:#15803d" title="总时间">⌚ ${r.total_time || 0}h</span>
-                        <span style="color:#64748b; font-size:0.8rem;" title="地面时间">🚜 ${r.ground_time || 0}h</span>
-                        
+                        <span class="stat-box" title="空中">☁️ ${r.air_time}h</span>
+                        <span class="stat-box" style="background:#f0fdf4;color:#15803d" title="总时间">⌚ ${r.total_time||0}h</span>
+                        <span style="color:#64748b">🚜 ${r.ground_time||0}h</span>
                         <div class="tags">
                             <span class="tag">${r.category}</span>
                             ${r.special_airport > 0 ? `<span class="tag tag-special">特</span>` : ''}
@@ -398,22 +367,16 @@
             `).join('') : '<div style="text-align:center;color:#ccc;padding:20px">无记录</div>';
         };
 
-        // 渲染报表 (保持不变，仅统计薪酬相关)
         window.renderReport = () => {
             const mStr = document.getElementById('reportMonth').value;
             const data = allRecords.filter(r => r.date.startsWith(mStr));
-            const s = { 
-                d_air:0, d_bk:0, h_air:0, h_bk:0, a_air:0, a_bk:0, i_air:0, i_bk:0, 
-                n1:0, n2:0, o_d0:0, o_d1:0, o_i0:0, o_i1:0, spec:0, hol:0 
-            };
+            const s = { d_air:0, d_bk:0, h_air:0, h_bk:0, a_air:0, a_bk:0, i_air:0, i_bk:0, n1:0, n2:0, o_d0:0, o_d1:0, o_i0:0, o_i1:0, spec:0, hol:0 };
             
             data.forEach(r => {
-                // 注意：统计报表依然使用 block_days (滑行次数/天数) 而不是 total_time
                 if(r.category==='国内') { s.d_air+=r.air_time; s.d_bk+=r.block_days; }
                 else if(r.category==='港澳台') { s.h_air+=r.air_time; s.h_bk+=r.block_days; }
                 else if(r.category==='亚洲国际') { s.a_air+=r.air_time; s.a_bk+=r.block_days; }
                 else { s.i_air+=r.air_time; s.i_bk+=r.block_days; }
-
                 s.n1 += r.night1; s.n2 += r.night2;
                 const days = r.overnight_days || 0;
                 if(r.overnight==='国内无过夜') s.o_d0+=days; else if(r.overnight==='国内有过夜') s.o_d1+=days;
