@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飞行日志 - 2025 旗舰进化版</title>
+    <title>飞行日志 - 2025 稳定修复版</title>
     <style>
         /* === 基础样式 === */
         :root { --primary: #2563eb; --bg: #f1f5f9; --text: #334155; }
@@ -60,7 +60,6 @@
         .form-group label { display: block; font-size: 0.75rem; margin-bottom: 4px; font-weight: 600; }
         .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
         
-        /* 时间显示辅助文字 (小时:分钟) */
         .time-hint { font-size: 0.7rem; color: #2563eb; font-weight: bold; margin-left: 5px; }
 
         /* 日历 */
@@ -261,19 +260,16 @@
 
         window.refreshAll = () => { renderList(); renderReport(); renderCalendar(); };
 
-        // === 核心时间计算函数 ===
-        // 将 HH:MM 转换为 小时小数，并处理跨天逻辑
         function calculateDuration(start, end) {
             if(!start || !end) return 0;
             let [h1, m1] = start.split(':').map(Number);
             let [h2, m2] = end.split(':').map(Number);
             let min1 = h1 * 60 + m1;
             let min2 = h2 * 60 + m2;
-            if (min2 < min1) min2 += 24 * 60; // 跨天处理
+            if (min2 < min1) min2 += 24 * 60;
             return Number(((min2 - min1) / 60).toFixed(2));
         }
 
-        // 将小数小时转换为显示文字 (2.5 -> 2h 30m)
         function formatDuration(hours) {
             if(!hours) return "(0h 0m)";
             let h = Math.floor(hours);
@@ -281,25 +277,22 @@
             return `(${h}小时 ${m}分)`;
         }
 
-        // 页面上手动修改时间触发重算
         window.recalcTimes = () => {
             const t_off = document.getElementById('f_block_off').value;
             const t_to = document.getElementById('f_takeoff').value;
             const t_ldg = document.getElementById('f_landing').value;
             const t_on = document.getElementById('f_block_on').value;
 
-            // 计算空中：落地 - 起飞
             const air = calculateDuration(t_to, t_ldg);
             document.getElementById('f_air').value = air;
             document.getElementById('air_hint').textContent = formatDuration(air);
 
-            // 计算总时间：关车 - 开车
             const total = calculateDuration(t_off, t_on);
             document.getElementById('f_total_time').value = total;
             document.getElementById('total_hint').textContent = formatDuration(total);
         };
 
-        // === AI 识别 ===
+        // === 修复后的 AI 处理逻辑 ===
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value;
             const apiKey = document.getElementById('innerApiKey').value;
@@ -312,7 +305,7 @@
             const prompt = `
             识别文本。若是排班指令(7,8 沈阳)返回type="calendar"。
             若是飞行:
-            1. 机场 dep/arr 格式为"代码 中文名" (如 "ZBAA 北京首都")。若只提供一个，请补全另一个。
+            1. 机场 dep/arr 格式为"代码 中文名" (如 "ZBAA 北京首都")。
             2. category 自动判断: 国内/港澳台/亚洲国际/洲际。
             3. crew 提取所有机组人员。
             4. time_off/takeoff/landing/on 提取 HH:MM。
@@ -328,8 +321,23 @@
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
                     body: JSON.stringify({ model: "deepseek-chat", messages: [{role: "user", content: prompt}], temperature: 0.1 })
                 });
+                
                 const data = await res.json();
-                const r = JSON.parse(data.choices[0].message.content.match(/\{[\s\S]*\}/)[0]);
+                if (data.error) throw new Error(data.error.message);
+
+                // === 修复：更健壮的 JSON 提取逻辑 ===
+                let content = data.choices[0].message.content;
+                content = content.replace(/```json|```/g, '').trim(); // 去除 markdown
+                const jsonStart = content.indexOf('{');
+                const jsonEnd = content.lastIndexOf('}');
+                
+                if (jsonStart === -1 || jsonEnd === -1) {
+                    throw new Error("AI 未返回有效 JSON，请尝试修改输入文本。");
+                }
+
+                const jsonStr = content.substring(jsonStart, jsonEnd + 1);
+                const r = JSON.parse(jsonStr);
+                // ====================================
 
                 if (r.type === 'calendar') {
                     await Promise.all(r.dates.map(d => setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, d), { status: r.status })));
@@ -338,13 +346,10 @@
                     const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
                     setVal('f_date', r.date); setVal('f_dep', r.dep); setVal('f_arr', r.arr);
                     setVal('f_cat', r.category); setVal('f_crew', r.crew);
-                    
-                    // 填入时间
                     setVal('f_block_off', r.time_off); setVal('f_takeoff', r.time_takeoff);
                     setVal('f_landing', r.time_landing); setVal('f_block_on', r.time_on);
                     
-                    // ★★★ 核心：调用 JS 重算逻辑，保证数学精准 ★★★
-                    recalcTimes(); 
+                    recalcTimes(); // 调用前端重算
 
                     setVal('f_night1', r.night1); setVal('f_night2', r.night2);
                     setVal('f_overnight', r.overnight || '无');
@@ -361,7 +366,7 @@
             const getNum = (id) => parseFloat(document.getElementById(id).value) || 0;
             const getStr = (id) => document.getElementById(id).value;
             let ovCity = getStr('f_overnight_city');
-            if(!ovCity && getStr('f_overnight') !== '无') ovCity = getStr('f_dep'); // 智能默认
+            if(!ovCity && getStr('f_overnight') !== '无') ovCity = getStr('f_dep');
 
             const record = {
                 date: getStr('f_date'), dep: getStr('f_dep'), arr: getStr('f_arr'), category: getStr('f_cat'), crew: getStr('f_crew'),
@@ -378,7 +383,6 @@
 
         window.deleteItem = async (id) => { if(confirm("删除?")) try{ await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); }catch(e){alert(e.message)} };
 
-        // 日历逻辑
         window.renderCalendar = () => {
             const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
             const [y, m] = document.getElementById('reportMonth').value.split('-').map(Number);
