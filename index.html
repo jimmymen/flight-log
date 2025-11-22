@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飞行日志 Pro - 2025 餐食精算版</title>
+    <title>飞行日志 Pro - 2025 全场景执勤版</title>
     <style>
         /* === 基础变量 === */
         :root {
@@ -98,7 +98,8 @@
         }
         .tag-dom { background: #3b82f6; } 
         .tag-int { background: #8b5cf6; } 
-        
+        .tag-dh { background: #64748b; } /* 死乘/无飞 */
+
         .cal-status { font-size: 0.65rem; padding: 2px 4px; border-radius: 4px; text-align: center; margin-top: auto; font-weight: 600; color: #64748b; background: #f1f5f9; }
         .status-stay { background: var(--stay-bg); color: var(--stay); border: 1px solid var(--stay-border); }
         .status-return { background: var(--success-bg); color: var(--success-text); border: 1px solid #a7f3d0; }
@@ -169,7 +170,7 @@
             <div class="card-body">
                 <div class="ai-box">
                     <input type="password" id="innerApiKey" class="key-input" placeholder="输入 DeepSeek Key 自动保存">
-                    <textarea id="ocrInput" placeholder="在此粘贴飞行任务...&#10;例：11.13 成都回沈阳 (自动标成都驻外)&#10;例：北京-东京-北京 1份国内餐 1份国际餐 驻外无过夜"></textarea>
+                    <textarea id="ocrInput" placeholder="在此粘贴飞行任务...&#10;例：11.9 沈阳去上海 (无飞，但9号住上海)&#10;例：11.13 成都回沈阳 (自动标前一天成都驻外)&#10;例：1份国内餐 2份国际餐"></textarea>
                 </div>
 
                 <div id="editForm" class="edit-form" style="display: none;">
@@ -313,7 +314,7 @@
             document.getElementById('f_air').value = air || ''; document.getElementById('f_total_time').value = total || '';
         };
 
-        // === AI 逻辑 ===
+        // === AI 逻辑 (支持死乘/无飞场景) ===
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value.trim();
             const apiKey = document.getElementById('innerApiKey').value.trim();
@@ -326,11 +327,10 @@
             const systemPrompt = `你是一个飞行日志助手。请返回纯 JSON。
             
             1. 回程结束驻外：{"type":"return_base", "date":"2025-11-13", "base":"沈阳", "dep":"成都(如果提到)"}。
-            2. 修改日历：{"type":"calendar", "dates":["2025-XX-XX"], "status":"状态"}。
+            2. 去往某地驻外(无飞/死乘)：如“11.9 沈阳去上海”，返回飞行记录，但 times 设为 0，overnight="国内有过夜"，overnight_city="上海"(目的地)。
             3. 飞行记录：{"type":"flight", "date", "dep", "arr", "category", "crew", 
                "crew_meal_dom"(int), "crew_meal_int"(int),
                "time_off", "time_takeoff", "time_landing", "time_on", "night1", "night2", "overnight", "overnight_city", "overnight_days", "special_airport", "holiday"}。
-            注意：请区分国内餐(crew_meal_dom)和国际餐(crew_meal_int)，如果未指定类型则根据航线判断。
             
             只输出JSON。`;
 
@@ -386,7 +386,6 @@
             setVal('overnight_days', data.overnight_days);
             setVal('special', data.special_airport); setVal('holiday', data.holiday);
             setVal('block_days', data.block_days);
-            // 分开设置餐食
             setVal('meal_dom', data.crew_meal_dom || 0);
             setVal('meal_int', data.crew_meal_int || 0);
         }
@@ -415,7 +414,10 @@
             const getNum = (id) => parseFloat(document.getElementById('f_'+id).value) || 0;
 
             let ovCity = getStr('overnight_city');
-            if(!ovCity && getStr('overnight') !== '无') ovCity = getStr('dep');
+            // 如果是“去往某地驻外”的场景（无飞），通常没有驻外城市填入，默认为落地机场
+            if(!ovCity && getStr('overnight') !== '无') ovCity = getStr('arr');
+            // 只有当落地不是驻外地时（比如回程），才默认起飞地
+            if(getStr('overnight').includes('无过夜')) ovCity = getStr('dep');
 
             const record = {
                 date: getStr('date'), dep: getStr('dep'), arr: getStr('arr'), category: getStr('cat'), crew: getStr('crew'),
@@ -424,15 +426,14 @@
                 night1: getNum('night1'), night2: getNum('night2'),
                 overnight: getStr('overnight'), overnight_city: ovCity, overnight_days: getNum('overnight_days'),
                 special_airport: getNum('special'), holiday: getNum('holiday'), 
-                // 保存分开的餐食数据
-                crew_meal_dom: getNum('meal_dom'), 
-                crew_meal_int: getNum('meal_int'),
+                crew_meal_dom: getNum('meal_dom'), crew_meal_int: getNum('meal_int'),
                 timestamp: new Date()
             };
 
             if(!record.date) return alert("日期必填");
 
             try {
+                // 修正回程驻外逻辑
                 if (record.overnight.includes('无过夜') && (record.arr.includes('沈阳') || record.arr.includes('基地'))) {
                     const today = new Date(record.date);
                     const prevDay = new Date(today); prevDay.setDate(today.getDate() - 1);
@@ -450,7 +451,7 @@
 
         window.deleteItem = async (id) => { if(confirm("确定删除?")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
 
-        // === 渲染 ===
+        // === 渲染逻辑更新：优先显示当天的驻外城市 ===
         window.renderCalendar = () => {
             const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
             const [y, m] = document.getElementById('reportMonth').value.split('-').map(Number);
@@ -480,10 +481,22 @@
                 let statusText = calendarData[dateStr];
                 let statusClass = "";
                 if (!statusText) {
+                    // 1. 优先检查当天是否有飞行记录标记了“有过夜”且不是“无”
+                    // 这里的逻辑是：如果是"出发去驻外"，当天记录的 overnight_city 就是驻外地
+                    const startStayFlight = flights.find(f => f.overnight && !f.overnight.includes('无') && f.overnight !== '无');
+                    
                     const returnFlight = flights.find(f => f.overnight && f.overnight.includes('无过夜'));
-                    if (returnFlight) { statusText = "驻外无过夜"; statusClass = "status-return"; } 
-                    else { statusText = autoCalendar[dateStr] || "沈阳"; }
+
+                    if (returnFlight) { 
+                        statusText = "驻外无过夜"; statusClass = "status-return"; 
+                    } else if (startStayFlight && startStayFlight.overnight_city) {
+                        // 新增：如果当天是驻外起始日，直接显示驻外城市
+                        statusText = startStayFlight.overnight_city + "驻外";
+                    } else { 
+                        statusText = autoCalendar[dateStr] || "沈阳"; 
+                    }
                 }
+                
                 if(statusText === '沈阳' || statusText === 'SHE') statusText = '沈阳';
                 else if (!statusClass) statusClass = "status-stay";
 
@@ -496,8 +509,10 @@
                 };
 
                 let flightHtml = flights.length ? `<div class="cal-flights">` + flights.map(f => {
-                    const cls = (f.category.includes('国际')||f.category.includes('洲际')) ? 'tag-int' : 'tag-dom';
-                    return `<div class="flight-tag ${cls}"><span>${f.dep.split(' ')[0]}-${f.arr.split(' ')[0]}</span><span>${f.total_time}h</span></div>`
+                    let cls = (f.category.includes('国际')||f.category.includes('洲际')) ? 'tag-int' : 'tag-dom';
+                    if (f.total_time === 0) cls = 'tag-dh'; // 死乘/无飞样式
+                    const timeDisplay = f.total_time === 0 ? 'DH' : f.total_time + 'h';
+                    return `<div class="flight-tag ${cls}"><span>${f.dep.split(' ')[0]}-${f.arr.split(' ')[0]}</span><span>${timeDisplay}</span></div>`
                 }).join('') + `</div>` : '';
                 cell.innerHTML = `<div class="cal-num">${d}${isToday?'<span style="color:var(--primary)">今</span>':''}</div>${flightHtml}<div class="cal-status ${statusClass}">${statusText}</div>`;
                 grid.appendChild(cell);
@@ -554,11 +569,9 @@
                 else { s.i_a+=r.air_time; s.i_b+=r.block_days; }
                 s.n1+=r.night1||0; s.n2+=r.night2||0; s.spec+=r.special_airport||0; s.hol+=r.holiday||0;
                 
-                // 直接累加分开的餐食
                 s.meal_d += r.crew_meal_dom || 0; 
                 s.meal_i += r.crew_meal_int || 0;
                 
-                // 细分驻外统计
                 if(r.overnight==='国内有过夜') s.lay_d_stay += r.overnight_days;
                 if(r.overnight==='国内无过夜') s.lay_d_no += 1;
                 if(r.overnight==='国际有过夜') s.lay_i_stay += r.overnight_days;
