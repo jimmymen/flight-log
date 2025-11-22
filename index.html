@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飞行日志 - 2025 稳定修复版 (v3.2)</title>
+    <title>飞行日志 - 2025 智能排班版</title>
     <style>
         /* === 基础样式 === */
         :root { --primary: #2563eb; --bg: #f1f5f9; --text: #334155; }
@@ -140,16 +140,16 @@
 
                 <div id="editForm" class="edit-form" style="display: none;">
                     <div class="form-grid">
-                        <div class="form-group"><label>日期</label><input type="date" id="f_date"></div>
-                        <div class="form-group"><label>起飞机场 (代码+中文)</label><input type="text" id="f_dep"></div>
-                        <div class="form-group"><label>落地机场 (代码+中文)</label><input type="text" id="f_arr"></div>
-                        <div class="form-group"><label>区域 (AI自动判断)</label>
+                        <div class="form-group"><label>日期 (落地日期)</label><input type="date" id="f_date"></div>
+                        <div class="form-group"><label>起飞机场</label><input type="text" id="f_dep"></div>
+                        <div class="form-group"><label>落地机场</label><input type="text" id="f_arr"></div>
+                        <div class="form-group"><label>区域</label>
                             <select id="f_cat"><option value="国内">国内</option><option value="港澳台">港澳台</option><option value="亚洲国际">亚洲国际</option><option value="洲际">洲际</option></select>
                         </div>
                         <div class="form-group form-full-width"><label>机组全员</label><input type="text" id="f_crew"></div>
                         
                         <div class="form-group form-full-width" style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-                            <label style="text-align:center; margin-bottom:8px;">⏱️ 运行时刻 (更改后自动重算时长)</label>
+                            <label style="text-align:center; margin-bottom:8px;">⏱️ 运行时刻</label>
                             <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:5px;">
                                 <div><label style="text-align:center">开车</label><input type="time" id="f_block_off" onchange="recalcTimes()"></div>
                                 <div><label style="text-align:center">起飞</label><input type="time" id="f_takeoff" onchange="recalcTimes()"></div>
@@ -158,14 +158,8 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label>空中时间 <span id="air_hint" class="time-hint">(0h 0m)</span></label>
-                            <input type="number" step="0.01" id="f_air">
-                        </div>
-                        <div class="form-group">
-                            <label>总时间 <span id="total_hint" class="time-hint">(0h 0m)</span></label>
-                            <input type="number" step="0.01" id="f_total_time">
-                        </div>
+                        <div class="form-group"><label>空中时间 <span id="air_hint" class="time-hint"></span></label><input type="number" step="0.01" id="f_air"></div>
+                        <div class="form-group"><label>总时间 <span id="total_hint" class="time-hint"></span></label><input type="number" step="0.01" id="f_total_time"></div>
                         
                         <div class="form-group"><label>夜航18:30+</label><input type="number" step="0.1" id="f_night1"></div>
                         <div class="form-group"><label>夜航00:00+</label><input type="number" step="0.1" id="f_night2"></div>
@@ -178,7 +172,7 @@
                             </select>
                         </div>
                         <div class="form-group"><label>驻外城市</label><input type="text" id="f_overnight_city"></div>
-                        <div class="form-group"><label>驻外天数</label><input type="number" id="f_overnight_days" value="0"></div>
+                        <div class="form-group"><label>驻外天数 (前推日期)</label><input type="number" id="f_overnight_days" value="0"></div>
                         
                         <div class="form-group"><label>特殊机场</label><input type="number" id="f_special" value="0"></div>
                         <div class="form-group"><label>节假日</label><input type="number" id="f_holiday" value="0"></div>
@@ -196,7 +190,7 @@
         <section class="card">
             <div class="card-header">
                 <h2>📅 执勤日历</h2>
-                <span style="font-size:0.8rem; color:#64748b">点击日期可手动修改</span>
+                <span style="font-size:0.8rem; color:#64748b">驻外日期自动倒推，点击可修正</span>
             </div>
             <div class="card-body">
                 <div class="calendar-grid" id="calendarGrid"></div>
@@ -274,7 +268,7 @@
             if(!hours) return "(0h 0m)";
             let h = Math.floor(hours);
             let m = Math.round((hours - h) * 60);
-            return `(${h}小时 ${m}分)`;
+            return `(${h}h ${m}m)`;
         }
 
         window.recalcTimes = () => {
@@ -282,17 +276,15 @@
             const t_to = document.getElementById('f_takeoff').value;
             const t_ldg = document.getElementById('f_landing').value;
             const t_on = document.getElementById('f_block_on').value;
-
             const air = calculateDuration(t_to, t_ldg);
             document.getElementById('f_air').value = air;
             document.getElementById('air_hint').textContent = formatDuration(air);
-
             const total = calculateDuration(t_off, t_on);
             document.getElementById('f_total_time').value = total;
             document.getElementById('total_hint').textContent = formatDuration(total);
         };
 
-        // === 修复版 AI 逻辑 ===
+        // AI处理
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value;
             const apiKey = document.getElementById('innerApiKey').value;
@@ -303,18 +295,16 @@
             btn.textContent = "⏳ 运算中..."; btn.disabled = true;
 
             const prompt = `
-            You are a data extraction tool. Output ONLY valid JSON. No markdown blocks. No explanation.
+            Output ONLY valid JSON. No markdown.
             Input: "${text}"
-            
-            Tasks:
-            1. If input is like "7,8 沈阳", return {"type":"calendar", "dates":["2025-05-07","2025-05-08"], "status":"沈阳"}.
-            2. If input is flight data:
-               - dep/arr: "Code Name" (e.g. "ZBAA 北京").
-               - category: "国内"|"港澳台"|"亚洲国际"|"洲际".
-               - crew: string of names.
-               - time_off/takeoff/landing/on: HH:MM.
-               - overnight_days: int.
-               return JSON fields: type="flight", date, dep, arr, category, crew, time_off, time_takeoff, time_landing, time_on, night1, night2, overnight, overnight_city, overnight_days, special_airport, holiday.
+            If "7,8 沈阳", return {"type":"calendar", "dates":["2025-05-07","2025-05-08"], "status":"沈阳"}.
+            If flight:
+            - dep/arr: "Code Name" (e.g. ZBAA 北京).
+            - category: "国内"|"港澳台"|"亚洲国际"|"洲际".
+            - crew: string.
+            - time: HH:MM.
+            - overnight_days: int.
+            JSON fields: type="flight", date, dep, arr, category, crew, time_off, time_takeoff, time_landing, time_on, night1, night2, overnight, overnight_city, overnight_days, special_airport, holiday.
             `;
 
             try {
@@ -327,23 +317,10 @@
                 const data = await res.json();
                 if (data.error) throw new Error(data.error.message);
 
-                // === 暴力清洗 JSON ===
-                let content = data.choices[0].message.content;
-                console.log("AI Raw:", content); // 调试用
-                
-                // 移除 Markdown 代码块符号
-                content = content.replace(/```json/g, '').replace(/```/g, '');
-                
-                // 提取第一个 { 到 最后一个 } 之间的内容
-                const jsonStart = content.indexOf('{');
-                const jsonEnd = content.lastIndexOf('}');
-                
-                if (jsonStart === -1 || jsonEnd === -1) {
-                    throw new Error("AI 未返回 JSON，请尝试简化输入或重试。");
-                }
-
-                const cleanJson = content.substring(jsonStart, jsonEnd + 1);
-                const r = JSON.parse(cleanJson);
+                let content = data.choices[0].message.content.replace(/```json|```/g, '').trim();
+                const jsonStart = content.indexOf('{'); const jsonEnd = content.lastIndexOf('}');
+                if (jsonStart === -1) throw new Error("AI未返回JSON");
+                const r = JSON.parse(content.substring(jsonStart, jsonEnd + 1));
 
                 if (r.type === 'calendar') {
                     await Promise.all(r.dates.map(d => setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, d), { status: r.status })));
@@ -354,9 +331,7 @@
                     setVal('f_cat', r.category); setVal('f_crew', r.crew);
                     setVal('f_block_off', r.time_off); setVal('f_takeoff', r.time_takeoff);
                     setVal('f_landing', r.time_landing); setVal('f_block_on', r.time_on);
-                    
-                    recalcTimes(); // 重算时间
-
+                    recalcTimes();
                     setVal('f_night1', r.night1); setVal('f_night2', r.night2);
                     setVal('f_overnight', r.overnight || '无');
                     setVal('f_overnight_city', r.overnight_city || (r.overnight!=='无'?r.dep:''));
@@ -364,10 +339,7 @@
                     setVal('f_special', r.special_airport); setVal('f_holiday', r.holiday);
                     document.getElementById('editForm').style.display = 'block';
                 }
-            } catch (e) { 
-                console.error(e);
-                alert("处理失败: " + e.message); 
-            } 
+            } catch (e) { alert("处理失败: " + e.message); console.error(e); } 
             finally { btn.textContent = "✨ AI 识别 & 计算"; btn.disabled = false; }
         };
 
@@ -392,22 +364,49 @@
 
         window.deleteItem = async (id) => { if(confirm("删除?")) try{ await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); }catch(e){alert(e.message)} };
 
+        // === 核心修改：日历渲染逻辑 (日期倒推) ===
         window.renderCalendar = () => {
             const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
             const [y, m] = document.getElementById('reportMonth').value.split('-').map(Number);
             const daysInMonth = new Date(y, m, 0).getDate();
             const firstDay = new Date(y, m - 1, 1).getDay();
             
+            // 1. 预计算自动排班 (倒推日期)
+            let autoCalendar = {};
+            allRecords.forEach(r => {
+                // 只有当有驻外天数且不是"无"时，才倒推日期
+                if (r.overnight !== '无' && r.overnight_days > 0) {
+                    // 安全解析日期，避免时区问题
+                    const parts = r.date.split('-');
+                    const flightDate = new Date(parts[0], parts[1]-1, parts[2]);
+                    
+                    for(let i=1; i<=r.overnight_days; i++) {
+                        const prevDate = new Date(flightDate);
+                        prevDate.setDate(flightDate.getDate() - i);
+                        // 转回 YYYY-MM-DD
+                        const isoDate = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}-${String(prevDate.getDate()).padStart(2,'0')}`;
+                        // 如果同一天有多个，这里简单覆盖，或可按需逻辑处理
+                        autoCalendar[isoDate] = r.overnight_city;
+                    }
+                }
+            });
+
             for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
+            
             for(let d=1; d<=daysInMonth; d++) {
                 const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const flights = allRecords.filter(r => r.date === dateStr);
-                let statusText = calendarData[dateStr] || (flights.find(r=>r.overnight!=='无')?.overnight_city) || "沈阳";
+                
+                // 优先级：手动修改 > 自动倒推 > 当天飞行落地的驻外(一般不显示当天) > 基地
+                let statusText = calendarData[dateStr]; 
+                if(!statusText) statusText = autoCalendar[dateStr]; // 检查倒推
+                if(!statusText) statusText = "沈阳"; // 默认
+
                 if(['沈阳','SHE','无','基地'].includes(statusText)) statusText = "沈阳";
 
                 const cell = document.createElement('div'); cell.className = 'cal-day';
                 cell.onclick = async () => {
-                    const n = prompt("修改驻外:", statusText);
+                    const n = prompt(`修改 ${dateStr} 状态:`, statusText);
                     if(n && n!==statusText) await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, dateStr), {status:n});
                 };
                 cell.innerHTML = `<div class="cal-num">${d}</div>
@@ -440,18 +439,15 @@
             const mStr = document.getElementById('reportMonth').value;
             const data = allRecords.filter(r => r.date.startsWith(mStr));
             const s = { d_a:0, d_b:0, h_a:0, h_b:0, a_a:0, a_b:0, i_a:0, i_b:0, n1:0, n2:0, spec:0, hol:0, o_d:0, o_i:0 };
-            
             data.forEach(r => {
                 if(r.category==='国内') { s.d_a+=r.air_time; s.d_b+=r.block_days; }
                 else if(r.category==='港澳台') { s.h_a+=r.air_time; s.h_b+=r.block_days; }
                 else if(r.category==='亚洲国际') { s.a_a+=r.air_time; s.a_b+=r.block_days; }
                 else { s.i_a+=r.air_time; s.i_b+=r.block_days; }
-                
                 s.n1+=r.night1; s.n2+=r.night2; s.spec+=r.special_airport; s.hol+=r.holiday;
                 if(r.overnight.includes('国内有过夜')) s.o_d += r.overnight_days;
                 if(r.overnight.includes('国际有过夜')) s.o_i += r.overnight_days;
             });
-
             document.getElementById('reportTable').innerHTML = `
                 <thead>
                     <tr><th rowspan="2">类型</th><th colspan="2">国内</th><th colspan="2">港澳台</th><th colspan="2">亚洲</th><th colspan="2">洲际</th></tr>
