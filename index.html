@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飞行日志 - 2025 智能排班版</title>
+    <title>飞行日志 - 2025 日历增强版</title>
     <style>
         /* === 基础样式 === */
         :root { --primary: #2563eb; --bg: #f1f5f9; --text: #334155; }
@@ -59,23 +59,38 @@
         .form-full-width { grid-column: 1 / -1; }
         .form-group label { display: block; font-size: 0.75rem; margin-bottom: 4px; font-weight: 600; }
         .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
-        
         .time-hint { font-size: 0.7rem; color: #2563eb; font-weight: bold; margin-left: 5px; }
 
-        /* 日历 */
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
-        .cal-header { text-align: center; font-size: 0.8rem; color: #64748b; }
+        /* === 日历核心样式 (升级) === */
+        .calendar-grid { 
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; 
+            align-items: start; /* 顶部对齐，允许高度不同 */
+        }
+        .cal-header { text-align: center; font-size: 0.8rem; color: #64748b; font-weight: 600; padding-bottom: 5px; }
         .cal-day {
-            border: 1px solid #e2e8f0; border-radius: 6px; min-height: 60px; background: white;
+            border: 1px solid #e2e8f0; border-radius: 6px; min-height: 80px; background: white;
             padding: 4px; cursor: pointer; display: flex; flex-direction: column;
+            transition: 0.2s;
         }
-        .cal-day:hover { border-color: var(--primary); }
-        .cal-num { font-size: 0.75rem; font-weight: bold; color: #94a3b8; }
+        .cal-day:hover { border-color: var(--primary); box-shadow: 0 4px 10px rgba(0,0,0,0.05); transform: translateY(-2px); }
+        .cal-num { font-size: 0.75rem; font-weight: bold; color: #94a3b8; margin-bottom: 4px; }
+        
+        /* 飞行条目样式 */
+        .cal-flights { flex: 1; display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
+        .cal-flight-item {
+            background: #eff6ff; border-left: 3px solid #2563eb;
+            padding: 2px 4px; border-radius: 2px;
+            font-size: 0.65rem; color: #1e3a8a;
+            display: flex; justify-content: space-between; align-items: center;
+            white-space: nowrap; overflow: hidden;
+        }
+        
+        /* 驻外状态样式 */
         .cal-status { 
-            font-size: 0.7rem; padding: 2px; border-radius: 3px; text-align: center; margin-top: auto; 
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-size: 0.7rem; padding: 2px; border-radius: 3px; text-align: center; 
+            margin-top: auto; white-space: nowrap; font-weight: 600;
         }
-        .status-base { background: #f1f5f9; color: #94a3b8; }
+        .status-base { background: #f8fafc; color: #cbd5e1; font-weight: normal; }
         .status-stay { background: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
 
         /* 历史列表 */
@@ -172,7 +187,7 @@
                             </select>
                         </div>
                         <div class="form-group"><label>驻外城市</label><input type="text" id="f_overnight_city"></div>
-                        <div class="form-group"><label>驻外天数 (前推日期)</label><input type="number" id="f_overnight_days" value="0"></div>
+                        <div class="form-group"><label>驻外天数 (前推)</label><input type="number" id="f_overnight_days" value="0"></div>
                         
                         <div class="form-group"><label>特殊机场</label><input type="number" id="f_special" value="0"></div>
                         <div class="form-group"><label>节假日</label><input type="number" id="f_holiday" value="0"></div>
@@ -190,9 +205,13 @@
         <section class="card">
             <div class="card-header">
                 <h2>📅 执勤日历</h2>
-                <span style="font-size:0.8rem; color:#64748b">驻外日期自动倒推，点击可修正</span>
+                <span style="font-size:0.8rem; color:#64748b">自动拉伸显示当日所有航班</span>
             </div>
             <div class="card-body">
+                <div class="calendar-grid">
+                    <div class="cal-header">周日</div><div class="cal-header">周一</div><div class="cal-header">周二</div>
+                    <div class="cal-header">周三</div><div class="cal-header">周四</div><div class="cal-header">周五</div><div class="cal-header">周六</div>
+                </div>
                 <div class="calendar-grid" id="calendarGrid"></div>
             </div>
         </section>
@@ -284,7 +303,6 @@
             document.getElementById('total_hint').textContent = formatDuration(total);
         };
 
-        // AI处理
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value;
             const apiKey = document.getElementById('innerApiKey').value;
@@ -364,28 +382,22 @@
 
         window.deleteItem = async (id) => { if(confirm("删除?")) try{ await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); }catch(e){alert(e.message)} };
 
-        // === 核心修改：日历渲染逻辑 (日期倒推) ===
+        // === 增强版日历渲染 ===
         window.renderCalendar = () => {
             const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
             const [y, m] = document.getElementById('reportMonth').value.split('-').map(Number);
             const daysInMonth = new Date(y, m, 0).getDate();
             const firstDay = new Date(y, m - 1, 1).getDay();
             
-            // 1. 预计算自动排班 (倒推日期)
             let autoCalendar = {};
             allRecords.forEach(r => {
-                // 只有当有驻外天数且不是"无"时，才倒推日期
                 if (r.overnight !== '无' && r.overnight_days > 0) {
-                    // 安全解析日期，避免时区问题
                     const parts = r.date.split('-');
                     const flightDate = new Date(parts[0], parts[1]-1, parts[2]);
-                    
                     for(let i=1; i<=r.overnight_days; i++) {
                         const prevDate = new Date(flightDate);
                         prevDate.setDate(flightDate.getDate() - i);
-                        // 转回 YYYY-MM-DD
                         const isoDate = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}-${String(prevDate.getDate()).padStart(2,'0')}`;
-                        // 如果同一天有多个，这里简单覆盖，或可按需逻辑处理
                         autoCalendar[isoDate] = r.overnight_city;
                     }
                 }
@@ -395,25 +407,39 @@
             
             for(let d=1; d<=daysInMonth; d++) {
                 const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const flights = allRecords.filter(r => r.date === dateStr);
+                // 按时间/录入顺序排序，早班在前
+                const flights = allRecords.filter(r => r.date === dateStr).sort((a,b) => (a.block_off || '').localeCompare(b.block_off || ''));
                 
-                // 优先级：手动修改 > 自动倒推 > 当天飞行落地的驻外(一般不显示当天) > 基地
-                let statusText = calendarData[dateStr]; 
-                if(!statusText) statusText = autoCalendar[dateStr]; // 检查倒推
-                if(!statusText) statusText = "沈阳"; // 默认
-
+                let statusText = calendarData[dateStr] || autoCalendar[dateStr] || "沈阳";
                 if(['沈阳','SHE','无','基地'].includes(statusText)) statusText = "沈阳";
 
                 const cell = document.createElement('div'); cell.className = 'cal-day';
-                cell.onclick = async () => {
-                    const n = prompt(`修改 ${dateStr} 状态:`, statusText);
+                cell.onclick = async (e) => {
+                    // 避免点击飞行条目时触发状态修改
+                    if(e.target.closest('.cal-flight-item')) return;
+                    const n = prompt(`修改 ${dateStr} 驻外地:`, statusText);
                     if(n && n!==statusText) await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, dateStr), {status:n});
                 };
-                cell.innerHTML = `<div class="cal-num">${d}</div>
-                    <div style="flex:1;display:flex;flex-direction:column;gap:2px">
-                        ${flights.length?'<div style="background:#2563eb;height:4px;width:4px;border-radius:50%;align-self:center"></div>':''}
-                        <div class="cal-status ${statusText==='沈阳'?'status-base':'status-stay'}">${statusText}</div>
-                    </div>`;
+                
+                let flightsHtml = '';
+                if(flights.length > 0) {
+                    flightsHtml = `<div class="cal-flights">` + 
+                    flights.map(f => {
+                        // 优先显示中文名部分，去除代码
+                        const dep = f.dep.split(' ')[1] || f.dep;
+                        const arr = f.arr.split(' ')[1] || f.arr;
+                        return `<div class="cal-flight-item" title="${f.dep}-${f.arr}">
+                            <span>${dep}-${arr}</span>
+                            <span style="font-weight:bold">${f.air_time}h</span>
+                        </div>`;
+                    }).join('') + `</div>`;
+                }
+
+                cell.innerHTML = `
+                    <div class="cal-num">${d}</div>
+                    ${flightsHtml}
+                    <div class="cal-status ${statusText==='沈阳'?'status-base':'status-stay'}">${statusText}</div>
+                `;
                 grid.appendChild(cell);
             }
         };
