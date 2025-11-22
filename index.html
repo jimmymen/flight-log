@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飞行日志 Pro - 2025 全场景执勤版</title>
+    <title>飞行日志 Pro - 2025 逻辑修正版</title>
     <style>
         /* === 基础变量 === */
         :root {
@@ -150,7 +150,6 @@
             <button class="btn btn-ghost" style="color: rgba(255,255,255,0.9); border: 1px solid rgba(255,255,255,0.3);" onclick="doLogout()">退出</button>
         </div>
 
-        <!-- 1. 统计报表 -->
         <section class="card">
             <div class="card-header">
                 <h2>📊 月度统计</h2>
@@ -161,7 +160,6 @@
             </div>
         </section>
 
-        <!-- 2. 智能录入 -->
         <section class="card">
             <div class="card-header">
                 <h2>📝 智能录入</h2>
@@ -170,7 +168,7 @@
             <div class="card-body">
                 <div class="ai-box">
                     <input type="password" id="innerApiKey" class="key-input" placeholder="输入 DeepSeek Key 自动保存">
-                    <textarea id="ocrInput" placeholder="在此粘贴飞行任务...&#10;例：11.9 沈阳去上海 (无飞，但9号住上海)&#10;例：11.13 成都回沈阳 (自动标前一天成都驻外)&#10;例：1份国内餐 2份国际餐"></textarea>
+                    <textarea id="ocrInput" placeholder="在此粘贴飞行任务...&#10;例：11.9 沈阳去上海 (系统将自动识别为驻外第1天，不前推)&#10;例：11.13 成都回沈阳&#10;例：1份国内餐 2份国际餐"></textarea>
                 </div>
 
                 <div id="editForm" class="edit-form" style="display: none;">
@@ -210,9 +208,8 @@
                             </select>
                         </div>
                         <div class="form-group"><label>驻外城市</label><input type="text" id="f_overnight_city"></div>
-                        <div class="form-group"><label>驻外天数 (前推)</label><input type="number" id="f_overnight_days" value="0"></div>
+                        <div class="form-group"><label>驻外天数 (前推！)</label><input type="number" id="f_overnight_days" value="0" placeholder="从沈阳出发填0"></div>
                         
-                        <!-- 分开统计机组餐 -->
                         <div class="form-full" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; background:var(--meal-bg); padding:10px; border-radius:8px; border:1px solid var(--meal-border);">
                             <div class="form-group"><label style="color:#c2410c">国内餐 (份)</label><input type="number" id="f_meal_dom" value="0"></div>
                             <div class="form-group"><label style="color:#c2410c">国际餐 (份)</label><input type="number" id="f_meal_int" value="0"></div>
@@ -230,7 +227,6 @@
             </div>
         </section>
 
-        <!-- 3. 日历 -->
         <section class="card">
             <div class="card-header">
                 <h2>📅 执勤日历</h2>
@@ -242,7 +238,6 @@
             </div>
         </section>
 
-        <!-- 4. 列表 -->
         <section class="card">
             <div class="card-header"><h2>📋 飞行记录</h2></div>
             <div class="card-body"><div id="logList" class="log-list"></div></div>
@@ -314,7 +309,7 @@
             document.getElementById('f_air').value = air || ''; document.getElementById('f_total_time').value = total || '';
         };
 
-        // === AI 逻辑 (支持死乘/无飞场景) ===
+        // === AI 逻辑修正 ===
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value.trim();
             const apiKey = document.getElementById('innerApiKey').value.trim();
@@ -325,13 +320,13 @@
             const oldTxt = btn.innerHTML; btn.innerHTML = "⏳ 推演中..."; btn.disabled = true;
 
             const systemPrompt = `你是一个飞行日志助手。请返回纯 JSON。
-            
             1. 回程结束驻外：{"type":"return_base", "date":"2025-11-13", "base":"沈阳", "dep":"成都(如果提到)"}。
-            2. 去往某地驻外(无飞/死乘)：如“11.9 沈阳去上海”，返回飞行记录，但 times 设为 0，overnight="国内有过夜"，overnight_city="上海"(目的地)。
+            2. 去往某地驻外(无飞/死乘)：如“11.9 沈阳去上海”，返回飞行记录，times=0，overnight="国内有过夜"，overnight_city="上海"，overnight_days=0 (因为是从沈阳出发)。
             3. 飞行记录：{"type":"flight", "date", "dep", "arr", "category", "crew", 
                "crew_meal_dom"(int), "crew_meal_int"(int),
                "time_off", "time_takeoff", "time_landing", "time_on", "night1", "night2", "overnight", "overnight_city", "overnight_days", "special_airport", "holiday"}。
             
+            注意：如果出发地是沈阳或基地，overnight_days 必须为 0。
             只输出JSON。`;
 
             try {
@@ -372,7 +367,6 @@
             finally { btn.innerHTML = oldTxt; btn.disabled = false; }
         };
 
-        // === 表单操作 ===
         function setFormValues(data) {
             const setVal = (id, val) => { const el = document.getElementById('f_'+id); if(el) el.value = val !== undefined ? val : ''; };
             setVal('date', data.date); setVal('dep', data.dep); setVal('arr', data.arr);
@@ -414,9 +408,7 @@
             const getNum = (id) => parseFloat(document.getElementById('f_'+id).value) || 0;
 
             let ovCity = getStr('overnight_city');
-            // 如果是“去往某地驻外”的场景（无飞），通常没有驻外城市填入，默认为落地机场
-            if(!ovCity && getStr('overnight') !== '无') ovCity = getStr('arr');
-            // 只有当落地不是驻外地时（比如回程），才默认起飞地
+            if(!ovCity && getStr('overnight') !== '无') ovCity = getStr('arr'); // 默认目的地为驻外地
             if(getStr('overnight').includes('无过夜')) ovCity = getStr('dep');
 
             const record = {
@@ -432,8 +424,12 @@
 
             if(!record.date) return alert("日期必填");
 
+            // === 核心修正逻辑：防止第一天出发导致前一天变成驻外 ===
+            if (record.dep.includes('沈阳') || record.dep.includes('SHE')) {
+                record.overnight_days = 0; // 只要从沈阳出发，前推天数归零
+            }
+
             try {
-                // 修正回程驻外逻辑
                 if (record.overnight.includes('无过夜') && (record.arr.includes('沈阳') || record.arr.includes('基地'))) {
                     const today = new Date(record.date);
                     const prevDay = new Date(today); prevDay.setDate(today.getDate() - 1);
@@ -451,7 +447,6 @@
 
         window.deleteItem = async (id) => { if(confirm("确定删除?")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
 
-        // === 渲染逻辑更新：优先显示当天的驻外城市 ===
         window.renderCalendar = () => {
             const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
             const [y, m] = document.getElementById('reportMonth').value.split('-').map(Number);
@@ -481,16 +476,12 @@
                 let statusText = calendarData[dateStr];
                 let statusClass = "";
                 if (!statusText) {
-                    // 1. 优先检查当天是否有飞行记录标记了“有过夜”且不是“无”
-                    // 这里的逻辑是：如果是"出发去驻外"，当天记录的 overnight_city 就是驻外地
                     const startStayFlight = flights.find(f => f.overnight && !f.overnight.includes('无') && f.overnight !== '无');
-                    
                     const returnFlight = flights.find(f => f.overnight && f.overnight.includes('无过夜'));
 
                     if (returnFlight) { 
                         statusText = "驻外无过夜"; statusClass = "status-return"; 
                     } else if (startStayFlight && startStayFlight.overnight_city) {
-                        // 新增：如果当天是驻外起始日，直接显示驻外城市
                         statusText = startStayFlight.overnight_city + "驻外";
                     } else { 
                         statusText = autoCalendar[dateStr] || "沈阳"; 
@@ -510,7 +501,7 @@
 
                 let flightHtml = flights.length ? `<div class="cal-flights">` + flights.map(f => {
                     let cls = (f.category.includes('国际')||f.category.includes('洲际')) ? 'tag-int' : 'tag-dom';
-                    if (f.total_time === 0) cls = 'tag-dh'; // 死乘/无飞样式
+                    if (f.total_time === 0) cls = 'tag-dh'; 
                     const timeDisplay = f.total_time === 0 ? 'DH' : f.total_time + 'h';
                     return `<div class="flight-tag ${cls}"><span>${f.dep.split(' ')[0]}-${f.arr.split(' ')[0]}</span><span>${timeDisplay}</span></div>`
                 }).join('') + `</div>` : '';
