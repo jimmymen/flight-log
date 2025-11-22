@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飞行日志 Pro - 2025 完美日历版</title>
+    <title>飞行日志 Pro - 2025 实时统计版</title>
     <style>
         /* === 基础变量 === */
         :root {
@@ -92,14 +92,9 @@
         }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .modal-title { font-size: 1.1rem; font-weight: bold; text-align: center; }
-        
         .modal-input-group { text-align: center; }
-        .city-input { 
-            width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; 
-            font-size: 1rem; text-align: center; outline: none; transition:0.2s;
-        }
+        .city-input { width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; font-size: 1rem; text-align: center; outline: none; transition:0.2s; }
         .city-input:focus { border-color: var(--primary); background: #eff6ff; }
-
         .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .status-btn { padding: 15px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
         .status-btn:active { transform: scale(0.98); }
@@ -124,16 +119,13 @@
 </head>
 <body>
 
-    <!-- 升级后的状态选择模态框 -->
     <div id="statusModal" class="modal-overlay" onclick="if(event.target===this) closeStatusModal()">
         <div class="modal-content">
             <div class="modal-title">修改 <span id="modalDateStr" style="color:var(--primary)"></span> 驻外状态</div>
-            
             <div class="modal-input-group">
                 <input type="text" id="modalCityInput" class="city-input" placeholder="输入城市名 (可选，如：上海)">
-                <div style="font-size:0.75rem; color:#64748b; margin-top:5px;">不填则显示状态名称，填了显示城市名</div>
+                <div style="font-size:0.75rem; color:#64748b; margin-top:5px;">统计依据下方按钮选择，城市名仅供显示</div>
             </div>
-
             <div class="status-grid">
                 <button class="status-btn" style="background:#dbeafe; color:#1e40af;" onclick="saveCalendarStatus('国内有过夜')">🔵 国内有过夜</button>
                 <button class="status-btn" style="background:#d1fae5; color:#065f46;" onclick="saveCalendarStatus('国内无过夜')">🟢 国内无过夜</button>
@@ -195,33 +187,26 @@
                         <div class="form-group"><label>飞机号</label><input type="text" id="f_tail_no"></div>
                         <div class="form-group"><label>机型</label><input type="text" id="f_ac_type" list="ac_list"></div>
                         <datalist id="ac_list"><option value="G650ER"><option value="CL850"><option value="G550"></datalist>
-                        
                         <div class="form-group"><label>日期</label><input type="date" id="f_date"></div>
                         <div class="form-group"><label>起飞</label><input type="text" id="f_dep"></div>
                         <div class="form-group"><label>落地</label><input type="text" id="f_arr"></div>
                         <div class="form-group"><label>属性</label><select id="f_cat"><option value="国内">国内</option><option value="港澳台">港澳台</option><option value="亚洲国际">亚洲国际</option><option value="洲际">洲际</option></select></div>
                         <div class="form-group form-full"><label>机组</label><input type="text" id="f_crew"></div>
-                        
                         <div class="form-full" style="background:#f8fafc; padding:10px; border-radius:8px; border:1px dashed #e2e8f0; display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
                             <input type="time" id="f_block_off" onchange="recalcTimes()"><input type="time" id="f_takeoff" onchange="recalcTimes()">
                             <input type="time" id="f_landing" onchange="recalcTimes()"><input type="time" id="f_block_on" onchange="recalcTimes()">
                         </div>
-
                         <div class="form-group"><label>空时</label><input type="number" step="0.01" id="f_air"></div>
                         <div class="form-group"><label>总时</label><input type="number" step="0.01" id="f_total_time"></div>
                         <div class="form-group"><label>夜18:30</label><input type="number" step="0.1" id="f_night1"></div>
                         <div class="form-group"><label>夜00:00</label><input type="number" step="0.1" id="f_night2"></div>
-                        
-                        <!-- 仅作记录，统计以日历为准 -->
                         <div class="form-group"><label>驻外参考</label><select id="f_overnight"><option value="无">无</option><option value="国内有过夜">国内有过夜</option><option value="国内无过夜">国内无过夜</option><option value="国际有过夜">国际有过夜</option><option value="国际无过夜">国际无过夜</option></select></div>
                         <div class="form-group"><label>城市</label><input type="text" id="f_overnight_city"></div>
                         <div class="form-group"><label>天数(前推)</label><input type="number" id="f_overnight_days" value="0"></div>
-                        
                         <div class="form-full" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; background:var(--meal-bg); padding:10px; border-radius:8px;">
                             <div class="form-group"><label style="color:#c2410c">国内餐</label><input type="number" id="f_meal_dom" value="0"></div>
                             <div class="form-group"><label style="color:#c2410c">国际餐</label><input type="number" id="f_meal_int" value="0"></div>
                         </div>
-                        
                         <div class="form-group"><label>特殊</label><input type="number" id="f_special" value="0"></div>
                         <div class="form-group"><label>节假</label><input type="number" id="f_holiday" value="0"></div>
                         <div class="form-group"><label>滑行</label><input type="number" id="f_block_days" value="1"></div>
@@ -258,83 +243,67 @@
                 document.getElementById('loginScreen').style.display = 'none'; document.getElementById('app').style.display = 'flex';
                 document.getElementById('reportMonth').value = new Date().toISOString().slice(0, 7);
                 if(localStorage.getItem("openai_key")) document.getElementById("innerApiKey").value = localStorage.getItem("openai_key");
-                onSnapshot(query(collection(db, `users/${user.uid}/logs`), orderBy("date", "desc")), (snap) => { allRecords = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshAll(); });
-                onSnapshot(collection(db, `users/${user.uid}/calendar_status`), (snap) => { calendarData = {}; snap.docs.forEach(d => calendarData[d.id] = d.data()); renderCalendar(); });
+                
+                // 关键修改：两个监听器都调用 refreshAll 以保证实时更新
+                onSnapshot(query(collection(db, `users/${user.uid}/logs`), orderBy("date", "desc")), (snap) => { 
+                    allRecords = snap.docs.map(d => ({id: d.id, ...d.data()})); 
+                    refreshAll(); 
+                });
+                onSnapshot(collection(db, `users/${user.uid}/calendar_status`), (snap) => { 
+                    calendarData = {}; 
+                    snap.docs.forEach(d => calendarData[d.id] = d.data()); 
+                    refreshAll(); 
+                });
             }
         });
 
         window.refreshAll = () => { renderList(); renderReport(); renderCalendar(); };
 
-        // === 升级后的模态框逻辑 ===
         window.openStatusModal = (dateStr) => { 
             currentModalDate = dateStr; 
             document.getElementById('modalDateStr').innerText = dateStr; 
-            
-            // 预填充当前城市（如果有）
             const currentData = calendarData[dateStr];
             document.getElementById('modalCityInput').value = (currentData && currentData.city) ? currentData.city : '';
-            
             document.getElementById('statusModal').style.display = 'flex'; 
         };
         window.closeStatusModal = () => { document.getElementById('statusModal').style.display = 'none'; };
-        
         window.saveCalendarStatus = async (type) => {
             if(currentUser && currentModalDate) {
                 const city = document.getElementById('modalCityInput').value.trim();
-                // 如果类型是null（回沈阳/清除），直接删除或设为默认
                 if (!type) {
-                    await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, currentModalDate), { type: null, city: null }); // 清空
+                    await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, currentModalDate), { type: null, city: null });
                 } else {
-                    // 保存结构：{ type: '国内有过夜', city: '上海' }
                     await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, currentModalDate), { type: type, city: city });
                 }
                 closeStatusModal();
             }
         };
 
-        // === AI & Form ===
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value.trim();
             const apiKey = document.getElementById('innerApiKey').value.trim();
             if (!text || !apiKey) return alert("请输入Key");
             localStorage.setItem("openai_key", apiKey);
             const btn = document.getElementById('aiBtn'); btn.innerHTML = "⏳..."; btn.disabled = true;
-
-            const prompt = `返回JSON。
-            1.回程结束: {"type":"return_base","date","base","dep"}
-            2.无飞驻外: overnight_days=0, time=0, dep=arr
-            3.飞行: {"type":"flight", "date", "dep", "arr", "category", "crew", "flight_no", "tail_no", "ac_type", "crew_meal_dom", "crew_meal_int", "time_off", "time_takeoff", "time_landing", "time_on", "night1", "night2", "overnight", "overnight_city", "overnight_days", "special_airport", "holiday"}
-            注意:沈阳/基地出发overnight_days=0`;
-
+            const prompt = `返回JSON。1.回程:{"type":"return_base","date","base","dep"} 2.无飞驻外:time=0 3.飞行:{"type":"flight", "date", "dep", "arr", "category", "crew", "flight_no", "tail_no", "ac_type", "crew_meal_dom", "crew_meal_int", "time_off", "time_takeoff", "time_landing", "time_on", "night1", "night2", "overnight", "overnight_city", "overnight_days", "special_airport", "holiday"} 沈阳/基地出发overnight_days=0`;
             try {
                 const res = await fetch("https://api.deepseek.com/chat/completions", { method: "POST", headers: {"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`}, body: JSON.stringify({ model: "deepseek-chat", messages: [{role: "system", content: prompt}, {role: "user", content: text}], temperature: 0.1 }) });
                 const data = await res.json();
                 const r = JSON.parse(data.choices[0].message.content.replace(/```json|```/g, '').trim());
                 resetForm();
-                
                 if (r.type === 'return_base') {
-                    const d = new Date(r.date); d.setDate(d.getDate()-1);
-                    const prev = d.toISOString().split('T')[0];
-                    // AI自动更新前一天状态，带上城市名
+                    const d = new Date(r.date); d.setDate(d.getDate()-1); const prev = d.toISOString().split('T')[0];
                     const city = r.dep ? r.dep.replace('驻外地','') : '';
                     await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, prev), { type: "国内有过夜", city: city }); 
-                    setFormValues({date: r.date, arr: r.base, dep: r.dep||'驻外', overnight: '国内无过夜', overnight_days: 0, category: '国内'});
-                    showForm();
-                } else if(r.type==='calendar') {
-                    // 兼容旧逻辑，暂不处理复杂对象，建议手动日历修改
-                    alert("请使用日历点击修改状态");
-                } else {
-                    setFormValues(r); recalcTimes(); showForm();
-                }
+                    setFormValues({date: r.date, arr: r.base, dep: r.dep||'驻外', overnight: '国内无过夜', overnight_days: 0, category: '国内'}); showForm();
+                } else if(r.type==='calendar') { alert("请点击日历修改"); } else { setFormValues(r); recalcTimes(); showForm(); }
             } catch (e) { alert(e.message); } finally { btn.innerHTML = "✨ AI 识别"; btn.disabled = false; }
         };
 
         function calculateDuration(start, end) {
             if(!start || !end) return 0;
-            let [h1, m1] = start.split(':').map(Number);
-            let [h2, m2] = end.split(':').map(Number);
-            let min1 = h1 * 60 + m1; let min2 = h2 * 60 + m2;
-            if (min2 < min1) min2 += 24 * 60;
+            let [h1, m1] = start.split(':').map(Number); let [h2, m2] = end.split(':').map(Number);
+            let min1 = h1 * 60 + m1; let min2 = h2 * 60 + m2; if (min2 < min1) min2 += 24 * 60;
             return Number(((min2 - min1) / 60).toFixed(2));
         }
         window.recalcTimes = () => {
@@ -362,7 +331,6 @@
         window.closeForm = () => document.getElementById('editForm').style.display = 'none';
         function showForm() { document.getElementById('editForm').style.display = 'block'; document.getElementById('editForm').scrollIntoView({behavior: "smooth"}); }
         window.editRecord = (id) => { const rec = allRecords.find(r => r.id === id); if(!rec) return; resetForm(); document.getElementById('edit_doc_id').value = id; setFormValues(rec); showForm(); };
-        
         window.saveRecord = async () => {
             const docId = document.getElementById('edit_doc_id').value;
             const getStr = (id) => document.getElementById('f_'+id).value; const getNum = (id) => parseFloat(document.getElementById('f_'+id).value) || 0;
@@ -381,7 +349,6 @@
             try {
                 if(record.overnight.includes('无过夜') && (record.arr.includes('沈阳')||record.arr.includes('基地'))) {
                     const prev = new Date(record.date); prev.setDate(prev.getDate()-1);
-                    // 自动设前一天为国内有过夜，地点为起飞地
                     const city = record.dep !== '驻外地' ? record.dep : '';
                     await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, prev.toISOString().split('T')[0]), { type: "国内有过夜", city: city });
                 }
@@ -391,176 +358,77 @@
         };
         window.deleteItem = async (id) => { if(confirm("删除?")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
 
-        // === 核心日历渲染 (显示城市名+颜色分类) ===
         window.renderCalendar = () => {
             const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
             const [y, m] = document.getElementById('reportMonth').value.split('-').map(Number);
-            const daysInMonth = new Date(y, m, 0).getDate();
-            const firstDay = new Date(y, m - 1, 1).getDay();
-            const todayStr = new Date().toISOString().split('T')[0];
-
-            // 自动推断逻辑（生成 {type, city} 结构）
+            const daysInMonth = new Date(y, m, 0).getDate(); const firstDay = new Date(y, m - 1, 1).getDay(); const todayStr = new Date().toISOString().split('T')[0];
             let autoStatus = {};
             allRecords.forEach(r => {
                 if(r.overnight && !r.overnight.includes('无') && r.overnight_days > 0) {
                     const d = new Date(r.date);
                     for(let i=1; i<=r.overnight_days; i++) {
-                        const p = new Date(d); p.setDate(d.getDate()-i);
-                        const iso = p.toISOString().split('T')[0];
-                        autoStatus[iso] = { 
-                            type: r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜',
-                            city: r.overnight_city 
-                        };
+                        const p = new Date(d); p.setDate(d.getDate()-i); const iso = p.toISOString().split('T')[0];
+                        autoStatus[iso] = { type: r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜', city: r.overnight_city };
                     }
                 }
             });
-
             for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="cal-day" style="border:none;background:transparent"></div>`;
-
             let totalHours = 0;
             for(let d=1; d<=daysInMonth; d++) {
                 const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const flights = allRecords.filter(r => r.date === dateStr).sort((a,b)=>(a.block_off||'').localeCompare(b.block_off||''));
                 flights.forEach(f => totalHours += f.total_time||0);
-
-                // 获取状态数据 (可能是对象{type, city} 或旧的字符串)
-                let rawStatus = calendarData[dateStr];
-                let finalStatus = { type: null, city: null };
-
-                // 1. 处理数据库里的数据
-                if (rawStatus) {
-                    // 兼容旧数据(字符串)和新数据(对象)
-                    if (typeof rawStatus === 'string') { finalStatus.type = rawStatus; }
-                    else { finalStatus = rawStatus; }
-                } 
-                // 2. 如果没数据，使用自动推断
+                let raw = calendarData[dateStr], finalStatus = { type: null, city: null };
+                if (raw) { finalStatus = (typeof raw === 'string') ? {type:raw} : raw; } 
                 else {
                     const hasReturn = flights.find(f => f.overnight && f.overnight.includes('无过夜'));
-                    if (hasReturn) {
-                        finalStatus.type = hasReturn.overnight.includes('国际') ? '国际无过夜' : '国内无过夜';
-                    } else if (autoStatus[dateStr]) {
-                        finalStatus = autoStatus[dateStr];
-                    } else {
-                        finalStatus.type = '沈阳';
-                    }
+                    if (hasReturn) finalStatus.type = hasReturn.overnight.includes('国际') ? '国际无过夜' : '国内无过夜';
+                    else if (autoStatus[dateStr]) finalStatus = autoStatus[dateStr];
+                    else finalStatus.type = '沈阳';
                 }
-
-                // 3. 决定显示文本和样式
                 let displayText = finalStatus.city ? finalStatus.city : finalStatus.type;
                 if (!displayText) displayText = '沈阳';
-                
                 let stClass = 'st-base';
-                if(finalStatus.type === '国内有过夜') stClass = 'st-dom-stay';
-                else if(finalStatus.type === '国内无过夜') stClass = 'st-dom-no';
-                else if(finalStatus.type === '国际有过夜') stClass = 'st-int-stay';
-                else if(finalStatus.type === '国际无过夜') stClass = 'st-int-no';
-                
+                if(finalStatus.type === '国内有过夜') stClass = 'st-dom-stay'; else if(finalStatus.type === '国内无过夜') stClass = 'st-dom-no';
+                else if(finalStatus.type === '国际有过夜') stClass = 'st-int-stay'; else if(finalStatus.type === '国际无过夜') stClass = 'st-int-no';
                 if (displayText === '沈阳' || displayText === 'SHE') stClass = 'st-base';
-
-                // 夜航显示
                 const nightF = flights.find(f => (f.night1>0 || f.night2>0) && f.ac_type);
-                const nightHtml = nightF ? `<div class="night-tag">🌙 ${nightF.ac_type}</div>` : '';
-
-                const isToday = dateStr === todayStr;
-                const cell = document.createElement('div'); cell.className = `cal-day ${isToday ? 'today' : ''}`;
-                cell.onclick = (e) => {
-                    if(e.target.closest('.flight-tag')) return;
-                    openStatusModal(dateStr);
-                };
-
+                const isToday = dateStr === todayStr; const cell = document.createElement('div'); cell.className = `cal-day ${isToday ? 'today' : ''}`;
+                cell.onclick = (e) => { if(e.target.closest('.flight-tag')) return; openStatusModal(dateStr); };
                 let fHtml = flights.map(f => {
-                    let c = (f.category.includes('国际')||f.category.includes('洲际'))?'tag-int':'tag-dom';
-                    if(f.total_time===0) c='tag-dh';
+                    let c = (f.category.includes('国际')||f.category.includes('洲际'))?'tag-int':'tag-dom'; if(f.total_time===0) c='tag-dh';
                     return `<div class="flight-tag ${c}"><span>${f.dep.split(' ')[0]}-${f.arr.split(' ')[0]}</span><span>${f.total_time===0?'DH':f.total_time+'h'}</span></div>`;
                 }).join('');
-
-                cell.innerHTML = `<div class="cal-num">${d}${isToday?'<span style="color:var(--primary)">今</span>':''}</div>
-                                  <div class="cal-flights">${fHtml}</div>${nightHtml}
-                                  <div class="cal-status ${stClass}">${displayText}</div>`;
+                cell.innerHTML = `<div class="cal-num">${d}${isToday?'<span style="color:var(--primary)">今</span>':''}</div><div class="cal-flights">${fHtml}</div>${nightF?`<div class="night-tag">🌙 ${nightF.ac_type}</div>`:''}<div class="cal-status ${stClass}">${displayText}</div>`;
                 grid.appendChild(cell);
             }
             document.getElementById('calTotal').textContent = `本月: ${totalHours.toFixed(1)}h`;
         };
 
-        // === 统计重构：基于日历Type字段 ===
         window.renderReport = () => {
-            const mStr = document.getElementById('reportMonth').value;
-            const [y, m] = mStr.split('-').map(Number);
-            const daysInMonth = new Date(y, m, 0).getDate();
+            const mStr = document.getElementById('reportMonth').value; const [y, m] = mStr.split('-').map(Number); const daysInMonth = new Date(y, m, 0).getDate();
             const data = allRecords.filter(r => r.date.startsWith(mStr));
-            
-            const s = { 
-                d_a:0, d_b:0, h_a:0, h_b:0, a_a:0, a_b:0, i_a:0, i_b:0, 
-                n1:0, n2:0, spec:0, hol:0, meal_d:0, meal_i:0,
-                cal_dom_stay:0, cal_dom_no:0, cal_int_stay:0, cal_int_no:0 
-            };
-            
+            const s = { d_a:0, d_b:0, h_a:0, h_b:0, a_a:0, a_b:0, i_a:0, i_b:0, n1:0, n2:0, spec:0, hol:0, meal_d:0, meal_i:0, cal_dom_stay:0, cal_dom_no:0, cal_int_stay:0, cal_int_no:0 };
             data.forEach(r => {
-                if(r.category==='国内') { s.d_a+=r.air_time; s.d_b+=r.block_days; }
-                else if(r.category==='港澳台') { s.h_a+=r.air_time; s.h_b+=r.block_days; }
-                else if(r.category==='亚洲国际') { s.a_a+=r.air_time; s.a_b+=r.block_days; }
-                else { s.i_a+=r.air_time; s.i_b+=r.block_days; }
-                s.n1+=r.night1||0; s.n2+=r.night2||0; s.spec+=r.special_airport||0; s.hol+=r.holiday||0;
-                s.meal_d+=r.crew_meal_dom||0; s.meal_i+=r.crew_meal_int||0;
+                if(r.category==='国内') { s.d_a+=r.air_time; s.d_b+=r.block_days; } else if(r.category==='港澳台') { s.h_a+=r.air_time; s.h_b+=r.block_days; } else if(r.category==='亚洲国际') { s.a_a+=r.air_time; s.a_b+=r.block_days; } else { s.i_a+=r.air_time; s.i_b+=r.block_days; }
+                s.n1+=r.night1||0; s.n2+=r.night2||0; s.spec+=r.special_airport||0; s.hol+=r.holiday||0; s.meal_d+=r.crew_meal_dom||0; s.meal_i+=r.crew_meal_int||0;
             });
-
-            // 自动推断逻辑 (需与Calendar一致以保证统计准确)
             let autoStatus = {};
             allRecords.forEach(r => {
                 if(r.overnight && !r.overnight.includes('无') && r.overnight_days > 0) {
                     const d = new Date(r.date);
-                    for(let i=1; i<=r.overnight_days; i++) {
-                        const p = new Date(d); p.setDate(d.getDate()-i);
-                        const iso = p.toISOString().split('T')[0];
-                        autoStatus[iso] = r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜';
-                    }
+                    for(let i=1; i<=r.overnight_days; i++) { const p = new Date(d); p.setDate(d.getDate()-i); autoStatus[p.toISOString().split('T')[0]] = r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜'; }
                 }
             });
-
             for(let d=1; d<=daysInMonth; d++) {
-                const dStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                
-                // 获取最终Type
-                let type = null;
-                let raw = calendarData[dStr];
-                
-                if (raw) {
-                    type = (typeof raw === 'string') ? raw : raw.type; // 兼容
-                } else {
-                    // 自动
-                    const flights = allRecords.filter(r => r.date === dStr);
-                    const hasReturn = flights.find(f => f.overnight && f.overnight.includes('无过夜'));
-                    if (hasReturn) type = hasReturn.overnight.includes('国际') ? '国际无过夜' : '国内无过夜';
-                    else type = autoStatus[dStr] || '沈阳';
+                const dStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let type = null; let raw = calendarData[dStr];
+                if (raw) { type = (typeof raw === 'string') ? raw : raw.type; } else {
+                    const flights = allRecords.filter(r => r.date === dStr); const hasReturn = flights.find(f => f.overnight && f.overnight.includes('无过夜'));
+                    if (hasReturn) type = hasReturn.overnight.includes('国际') ? '国际无过夜' : '国内无过夜'; else type = autoStatus[dStr] || '沈阳';
                 }
-
-                if (type === '国内有过夜') s.cal_dom_stay++;
-                else if (type === '国内无过夜') s.cal_dom_no++;
-                else if (type === '国际有过夜') s.cal_int_stay++;
-                else if (type === '国际无过夜') s.cal_int_no++;
+                if (type === '国内有过夜') s.cal_dom_stay++; else if (type === '国内无过夜') s.cal_dom_no++; else if (type === '国际有过夜') s.cal_int_stay++; else if (type === '国际无过夜') s.cal_int_no++;
             }
-
-            document.getElementById('reportTable').innerHTML = `
-                <thead>
-                    <tr><th rowspan="2">类别</th><th colspan="2">国内</th><th colspan="2">港澳台</th><th colspan="2">亚洲</th><th colspan="2">洲际</th></tr>
-                    <tr><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th></tr>
-                </thead>
-                <tbody>
-                    <tr><td style="font-weight:bold">合计</td><td>${s.d_a.toFixed(1)}</td><td>${s.d_b}</td><td>${s.h_a.toFixed(1)}</td><td>${s.h_b}</td><td>${s.a_a.toFixed(1)}</td><td>${s.a_b}</td><td>${s.i_a.toFixed(1)}</td><td>${s.i_b}</td></tr>
-                    <tr><td colspan="9" style="height:8px;border:none;background:white"></td></tr>
-                    <tr><th rowspan="2">补贴</th><th colspan="2">机组餐(份)</th><th colspan="2">驻外-国内</th><th colspan="2">驻外-国际</th><th colspan="2">其他</th></tr>
-                    <tr><th class="bg-meal">国内</th><th class="bg-meal">国际</th><th class="bg-cal-stat">国有(天)</th><th class="bg-cal-stat">国无(次)</th><th class="bg-cal-stat">外有(天)</th><th class="bg-cal-stat">外无(次)</th><th class="bg-sub">特殊</th><th class="bg-sub">节日</th></tr>
-                    <tr>
-                        <td style="font-weight:bold">统计</td>
-                        <td class="bg-meal">${s.meal_d}</td><td class="bg-meal">${s.meal_i}</td>
-                        <td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_stay}</td>
-                        <td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_no}</td>
-                        <td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_stay}</td>
-                        <td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_no}</td>
-                        <td class="bg-sub">${s.spec}</td><td class="bg-sub">${s.hol}</td>
-                    </tr>
-                    <tr><td colspan="9" style="font-size:0.7rem;color:#94a3b8;text-align:right;padding:4px;border:none">夜航: 18:30(${s.n1.toFixed(1)}) / 00:00(${s.n2.toFixed(1)})</td></tr>
-                </tbody>`;
+            document.getElementById('reportTable').innerHTML = `<thead><tr><th rowspan="2">类别</th><th colspan="2">国内</th><th colspan="2">港澳台</th><th colspan="2">亚洲</th><th colspan="2">洲际</th></tr><tr><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th></tr></thead><tbody><tr><td style="font-weight:bold">合计</td><td>${s.d_a.toFixed(1)}</td><td>${s.d_b}</td><td>${s.h_a.toFixed(1)}</td><td>${s.h_b}</td><td>${s.a_a.toFixed(1)}</td><td>${s.a_b}</td><td>${s.i_a.toFixed(1)}</td><td>${s.i_b}</td></tr><tr><td colspan="9" style="height:8px;border:none;background:white"></td></tr><tr><th rowspan="2">补贴</th><th colspan="2">机组餐(份)</th><th colspan="2">驻外-国内</th><th colspan="2">驻外-国际</th><th colspan="2">其他</th></tr><tr><th class="bg-meal">国内</th><th class="bg-meal">国际</th><th class="bg-cal-stat">国有(天)</th><th class="bg-cal-stat">国无(次)</th><th class="bg-cal-stat">外有(天)</th><th class="bg-cal-stat">外无(次)</th><th class="bg-sub">特殊</th><th class="bg-sub">节日</th></tr><tr><td style="font-weight:bold">统计</td><td class="bg-meal">${s.meal_d}</td><td class="bg-meal">${s.meal_i}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_no}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_no}</td><td class="bg-sub">${s.spec}</td><td class="bg-sub">${s.hol}</td></tr><tr><td colspan="9" style="font-size:0.7rem;color:#94a3b8;text-align:right;padding:4px;border:none">夜航: 18:30(${s.n1.toFixed(1)}) / 00:00(${s.n2.toFixed(1)})</td></tr></tbody>`;
         };
         window.renderList = () => {
             const listEl = document.getElementById('logList'); const mStr = document.getElementById('reportMonth').value; const displayData = allRecords.filter(r => r.date.startsWith(mStr));
