@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飞行日志 Pro - 2025 薪酬精算版</title>
+    <title>飞行日志 Pro - 2025 餐食精算版</title>
     <style>
         /* === 基础变量 === */
         :root {
@@ -12,6 +12,7 @@
             --success: #10b981; --success-bg: #d1fae5; --success-text: #065f46;
             --danger: #ef4444; --warning: #f59e0b;
             --stay: #d97706; --stay-bg: #fffbeb; --stay-border: #fcd34d;
+            --meal-bg: #fff7ed; --meal-text: #c2410c; --meal-border: #ffedd5;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
@@ -43,13 +44,13 @@
         }
         .user-pill { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; backdrop-filter: blur(4px); }
 
-        /* 报表表格 (优化版) */
+        /* 报表表格 */
         .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
         .excel-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 900px; }
         .excel-table th, .excel-table td { border: 1px solid var(--border); padding: 8px 6px; text-align: center; }
         .excel-table th { background: #f8fafc; font-weight: 600; color: #475569; }
         .bg-sub { background-color: #fdf4ff; color: #86198f; font-weight: bold; }
-        .bg-meal { background-color: #fff7ed; color: #c2410c; font-weight: bold; }
+        .bg-meal { background-color: var(--meal-bg); color: var(--meal-text); font-weight: bold; }
 
         /* AI 输入区 */
         .ai-box { position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; background: #f8fafc; transition: 0.2s; }
@@ -113,7 +114,7 @@
         .log-header { display: flex; justify-content: space-between; align-items: center; }
         .log-actions { display: flex; gap: 8px; min-width: 80px; justify-content: flex-end; }
         .crew-badge { font-size: 0.75rem; background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; }
-        .meal-badge { font-size: 0.75rem; background: #fff7ed; color: #c2410c; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffedd5; font-weight: bold; }
+        .meal-badge { font-size: 0.75rem; background: var(--meal-bg); color: var(--meal-text); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--meal-border); font-weight: bold; }
 
         .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
         .btn-primary { background: var(--primary); color: white; }
@@ -168,7 +169,7 @@
             <div class="card-body">
                 <div class="ai-box">
                     <input type="password" id="innerApiKey" class="key-input" placeholder="输入 DeepSeek Key 自动保存">
-                    <textarea id="ocrInput" placeholder="在此粘贴飞行任务...&#10;例：11.13 成都回沈阳 (自动标成都驻外)&#10;例：CA1234 北京-上海 张三李四 10:00撤轮挡 2份餐"></textarea>
+                    <textarea id="ocrInput" placeholder="在此粘贴飞行任务...&#10;例：11.13 成都回沈阳 (自动标成都驻外)&#10;例：北京-东京-北京 1份国内餐 1份国际餐 驻外无过夜"></textarea>
                 </div>
 
                 <div id="editForm" class="edit-form" style="display: none;">
@@ -210,7 +211,12 @@
                         <div class="form-group"><label>驻外城市</label><input type="text" id="f_overnight_city"></div>
                         <div class="form-group"><label>驻外天数 (前推)</label><input type="number" id="f_overnight_days" value="0"></div>
                         
-                        <div class="form-group"><label>机组餐 (份)</label><input type="number" id="f_meal" value="0"></div>
+                        <!-- 分开统计机组餐 -->
+                        <div class="form-full" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; background:var(--meal-bg); padding:10px; border-radius:8px; border:1px solid var(--meal-border);">
+                            <div class="form-group"><label style="color:#c2410c">国内餐 (份)</label><input type="number" id="f_meal_dom" value="0"></div>
+                            <div class="form-group"><label style="color:#c2410c">国际餐 (份)</label><input type="number" id="f_meal_int" value="0"></div>
+                        </div>
+
                         <div class="form-group"><label>特殊机场</label><input type="number" id="f_special" value="0"></div>
                         <div class="form-group"><label>节假日</label><input type="number" id="f_holiday" value="0"></div>
                         <div class="form-group"><label>滑行(次)</label><input type="number" id="f_block_days" value="1"></div>
@@ -321,7 +327,10 @@
             
             1. 回程结束驻外：{"type":"return_base", "date":"2025-11-13", "base":"沈阳", "dep":"成都(如果提到)"}。
             2. 修改日历：{"type":"calendar", "dates":["2025-XX-XX"], "status":"状态"}。
-            3. 飞行记录：{"type":"flight", "date", "dep", "arr", "category", "crew", "crew_meal"(int), "time_off", "time_takeoff", "time_landing", "time_on", "night1", "night2", "overnight", "overnight_city", "overnight_days", "special_airport", "holiday"}。
+            3. 飞行记录：{"type":"flight", "date", "dep", "arr", "category", "crew", 
+               "crew_meal_dom"(int), "crew_meal_int"(int),
+               "time_off", "time_takeoff", "time_landing", "time_on", "night1", "night2", "overnight", "overnight_city", "overnight_days", "special_airport", "holiday"}。
+            注意：请区分国内餐(crew_meal_dom)和国际餐(crew_meal_int)，如果未指定类型则根据航线判断。
             
             只输出JSON。`;
 
@@ -377,7 +386,9 @@
             setVal('overnight_days', data.overnight_days);
             setVal('special', data.special_airport); setVal('holiday', data.holiday);
             setVal('block_days', data.block_days);
-            setVal('meal', data.crew_meal);
+            // 分开设置餐食
+            setVal('meal_dom', data.crew_meal_dom || 0);
+            setVal('meal_int', data.crew_meal_int || 0);
         }
         function resetForm() {
             document.getElementById('edit_doc_id').value = '';
@@ -385,7 +396,7 @@
             document.getElementById('saveBtn').textContent = '💾 确认保存';
             document.querySelectorAll('.edit-form input, .edit-form select').forEach(i => { if(i.type!=='hidden') i.value = ''; });
             document.getElementById('f_block_days').value = 1; document.getElementById('f_overnight_days').value = 0;
-            document.getElementById('f_meal').value = 0;
+            document.getElementById('f_meal_dom').value = 0; document.getElementById('f_meal_int').value = 0;
         }
         window.closeForm = () => document.getElementById('editForm').style.display = 'none';
         function showForm() { document.getElementById('editForm').style.display = 'block'; document.getElementById('editForm').scrollIntoView({behavior: "smooth"}); }
@@ -413,7 +424,9 @@
                 night1: getNum('night1'), night2: getNum('night2'),
                 overnight: getStr('overnight'), overnight_city: ovCity, overnight_days: getNum('overnight_days'),
                 special_airport: getNum('special'), holiday: getNum('holiday'), 
-                crew_meal: getNum('meal'),
+                // 保存分开的餐食数据
+                crew_meal_dom: getNum('meal_dom'), 
+                crew_meal_int: getNum('meal_int'),
                 timestamp: new Date()
             };
 
@@ -437,6 +450,7 @@
 
         window.deleteItem = async (id) => { if(confirm("确定删除?")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
 
+        // === 渲染 ===
         window.renderCalendar = () => {
             const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
             const [y, m] = document.getElementById('reportMonth').value.split('-').map(Number);
@@ -496,7 +510,13 @@
             const mStr = document.getElementById('reportMonth').value;
             const displayData = allRecords.filter(r => r.date.startsWith(mStr));
             if (!displayData.length) { listEl.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px">本月暂无记录</div>'; return; }
-            listEl.innerHTML = displayData.map(r => `
+            listEl.innerHTML = displayData.map(r => {
+                const meals = [];
+                if(r.crew_meal_dom > 0) meals.push(`${r.crew_meal_dom}份(国)`);
+                if(r.crew_meal_int > 0) meals.push(`${r.crew_meal_int}份(外)`);
+                const mealBadge = meals.length ? `<span class="meal-badge">🍱 ${meals.join('+')}</span>` : '';
+                
+                return `
                 <div class="log-item">
                     <div class="log-info">
                         <div class="log-header">
@@ -504,7 +524,7 @@
                                 <span style="font-family:monospace;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.8rem">${r.date.substring(5)}</span>
                                 ${r.dep} <span style="color:#cbd5e1">➜</span> ${r.arr}
                             </div>
-                            ${r.crew_meal > 0 ? `<span class="meal-badge">🍱 ${r.crew_meal}份</span>` : ''}
+                            ${mealBadge}
                         </div>
                         <div style="font-size:0.8rem;color:#64748b;margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
                             <span style="color:var(--primary);font-weight:bold">${r.total_time}h</span> · ${r.category} 
@@ -513,44 +533,36 @@
                         </div>
                     </div>
                     <div class="log-actions"><button class="btn btn-edit" onclick="editRecord('${r.id}')">✏️</button><button class="btn btn-danger" onclick="deleteItem('${r.id}')">🗑️</button></div>
-                </div>`).join('');
+                </div>`;
+            }).join('');
         };
 
         window.renderReport = () => {
             const mStr = document.getElementById('reportMonth').value;
             const data = allRecords.filter(r => r.date.startsWith(mStr));
-            
-            // 初始化统计对象
             const s = { 
                 d_a:0, d_b:0, h_a:0, h_b:0, a_a:0, a_b:0, i_a:0, i_b:0, 
                 n1:0, n2:0, spec:0, hol:0, 
-                meal_d:0, meal_i:0, // 餐食：国内/国际
-                lay_d_stay:0, lay_d_no:0, // 驻外国内：过夜天数/无过夜次数
-                lay_i_stay:0, lay_i_no:0  // 驻外国际：过夜天数/无过夜次数
+                meal_d:0, meal_i:0, 
+                lay_d_stay:0, lay_d_no:0, lay_i_stay:0, lay_i_no:0 
             };
-
+            
             data.forEach(r => {
-                // 飞行时长与滑行
                 if(r.category==='国内') { s.d_a+=r.air_time; s.d_b+=r.block_days; }
                 else if(r.category==='港澳台') { s.h_a+=r.air_time; s.h_b+=r.block_days; }
                 else if(r.category==='亚洲国际') { s.a_a+=r.air_time; s.a_b+=r.block_days; }
                 else { s.i_a+=r.air_time; s.i_b+=r.block_days; }
-                
-                // 补贴计数
                 s.n1+=r.night1||0; s.n2+=r.night2||0; s.spec+=r.special_airport||0; s.hol+=r.holiday||0;
                 
-                // === 核心修改：机组餐区分 ===
-                if(r.category === '国内') {
-                    s.meal_d += r.crew_meal || 0;
-                } else {
-                    s.meal_i += r.crew_meal || 0;
-                }
-
-                // === 核心修改：驻外细分 ===
-                if (r.overnight === '国内有过夜') s.lay_d_stay += r.overnight_days;
-                if (r.overnight === '国内无过夜') s.lay_d_no += 1;
-                if (r.overnight === '国际有过夜') s.lay_i_stay += r.overnight_days;
-                if (r.overnight === '国际无过夜') s.lay_i_no += 1;
+                // 直接累加分开的餐食
+                s.meal_d += r.crew_meal_dom || 0; 
+                s.meal_i += r.crew_meal_int || 0;
+                
+                // 细分驻外统计
+                if(r.overnight==='国内有过夜') s.lay_d_stay += r.overnight_days;
+                if(r.overnight==='国内无过夜') s.lay_d_no += 1;
+                if(r.overnight==='国际有过夜') s.lay_i_stay += r.overnight_days;
+                if(r.overnight==='国际无过夜') s.lay_i_no += 1;
             });
 
             document.getElementById('reportTable').innerHTML = `
@@ -561,8 +573,8 @@
                 <tbody>
                     <tr><td style="font-weight:bold">合计</td><td>${s.d_a.toFixed(1)}</td><td>${s.d_b}</td><td>${s.h_a.toFixed(1)}</td><td>${s.h_b}</td><td>${s.a_a.toFixed(1)}</td><td>${s.a_b}</td><td>${s.i_a.toFixed(1)}</td><td>${s.i_b}</td></tr>
                     <tr><td colspan="9" style="height:8px;border:none;background:white"></td></tr>
-                    <tr><th rowspan="2">补贴</th><th colspan="2">机组餐</th><th colspan="2">驻外-国内</th><th colspan="2">驻外-国际</th><th colspan="2">其他</th></tr>
-                    <tr><th class="bg-meal">国内</th><th class="bg-meal">国际</th><th>国有(天)</th><th>国无(次)</th><th>外有(天)</th><th>外无(次)</th><th class="bg-sub">特殊</th><th class="bg-sub">节日</th></tr>
+                    <tr><th rowspan="2">补贴</th><th colspan="2">机组餐(份)</th><th colspan="2">驻外-国内</th><th colspan="2">驻外-国际</th><th colspan="2">其他</th></tr>
+                    <tr><th class="bg-meal">国内</th><th class="bg-meal">国际</th><th>过夜(天)</th><th>无过夜(次)</th><th>过夜(天)</th><th>无过夜(次)</th><th class="bg-sub">特殊</th><th class="bg-sub">节日</th></tr>
                     <tr>
                         <td style="font-weight:bold">统计</td>
                         <td class="bg-meal">${s.meal_d}</td><td class="bg-meal">${s.meal_i}</td>
