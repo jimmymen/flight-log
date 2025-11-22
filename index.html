@@ -3,185 +3,225 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飞行日志 - 2025 日历增强版</title>
+    <title>飞行日志 Pro - 2025 增强版</title>
     <style>
-        /* === 基础样式 === */
-        :root { --primary: #2563eb; --bg: #f1f5f9; --text: #334155; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* === 基础变量 === */
+        :root {
+            --primary: #2563eb; --primary-dark: #1e40af;
+            --bg: #f8fafc; --text: #334155; --border: #e2e8f0;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: var(--bg); color: var(--text);
-            padding: 20px; min-height: 100vh;
+            padding: 10px; min-height: 100vh;
         }
-        .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 40px; }
 
-        /* 卡片 */
+        /* 通用组件 */
         .card {
-            background: white; border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-            overflow: hidden; border: 1px solid #e2e8f0;
+            background: white; border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid var(--border); overflow: hidden;
         }
         .card-header {
-            padding: 15px 20px; background: linear-gradient(to right, #f8fafc, #fff);
-            border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px; background: #fff; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
         }
-        .card-header h2 { font-size: 1.1rem; color: #1e293b; font-weight: 700; }
+        .card-header h2 { font-size: 1.1rem; color: #0f172a; font-weight: 700; display: flex; align-items: center; gap: 8px; }
         .card-body { padding: 20px; }
-
+        
         /* 顶部栏 */
         .top-bar {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white; padding: 16px 24px; border-radius: 12px;
             display: flex; justify-content: space-between; align-items: center;
-            background: var(--primary); color: white; padding: 15px 25px;
-            border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
         }
+        .user-pill { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
 
         /* 报表表格 */
-        .table-scroll { overflow-x: auto; border-radius: 8px; border: 1px solid #cbd5e1; }
-        .excel-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 900px; }
-        .excel-table th, .excel-table td { border: 1px solid #cbd5e1; padding: 8px 6px; text-align: center; }
-        .excel-table th { background: #f1f5f9; font-weight: 600; }
+        .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+        .excel-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 800px; }
+        .excel-table th, .excel-table td { border: 1px solid var(--border); padding: 10px 8px; text-align: center; }
+        .excel-table th { background: #f1f5f9; font-weight: 600; color: #475569; }
         .bg-sub { background-color: #fdf4ff; color: #86198f; font-weight: bold; }
 
         /* AI 输入区 */
-        .ai-input-area { position: relative; }
+        .ai-box { position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; background: #f8fafc; transition: 0.2s; }
+        .ai-box:focus-within { border-color: var(--primary); background: #eff6ff; }
         .key-input { 
-            position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9);
-            padding: 5px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.8rem; width: 200px;
+            position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.95);
+            padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.75rem; width: 180px;
         }
         textarea {
-            width: 100%; height: 100px; padding: 15px; border: 2px dashed #cbd5e1;
-            border-radius: 12px; resize: vertical; font-family: monospace; background: #f8fafc;
+            width: 100%; height: 100px; padding: 15px; border: none; background: transparent;
+            font-family: monospace; font-size: 0.95rem; resize: none; outline: none;
         }
-        
+
         /* 表单 */
-        .edit-form { background: #f8fafc; padding: 20px; border-radius: 12px; margin-top: 15px; border: 1px solid #e2e8f0; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-        .form-full-width { grid-column: 1 / -1; }
-        .form-group label { display: block; font-size: 0.75rem; margin-bottom: 4px; font-weight: 600; }
-        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
-        .time-hint { font-size: 0.7rem; color: #2563eb; font-weight: bold; margin-left: 5px; }
-
-        /* === 日历核心样式 (升级) === */
-        .calendar-grid { 
-            display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; 
-            align-items: start; /* 顶部对齐，允许高度不同 */
+        .edit-form { background: #fff; padding: 20px; border-radius: 12px; margin-top: 20px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
+        .form-full { grid-column: 1 / -1; }
+        .form-group label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 5px; font-weight: 600; }
+        .form-group input, .form-group select { 
+            width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; 
+            font-size: 0.9rem; outline: none; transition: 0.2s;
         }
-        .cal-header { text-align: center; font-size: 0.8rem; color: #64748b; font-weight: 600; padding-bottom: 5px; }
+        .form-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
+        
+        /* === 增强日历 === */
+        .calendar-wrapper { user-select: none; }
+        .calendar-header { 
+            display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; 
+            font-size: 0.8rem; color: #94a3b8; font-weight: 600; padding: 10px 0;
+        }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
         .cal-day {
-            border: 1px solid #e2e8f0; border-radius: 6px; min-height: 80px; background: white;
-            padding: 4px; cursor: pointer; display: flex; flex-direction: column;
-            transition: 0.2s;
+            background: #fff; border: 1px solid var(--border); border-radius: 8px; min-height: 90px;
+            padding: 4px; display: flex; flex-direction: column; position: relative; cursor: pointer;
+            transition: all 0.2s ease;
         }
-        .cal-day:hover { border-color: var(--primary); box-shadow: 0 4px 10px rgba(0,0,0,0.05); transform: translateY(-2px); }
-        .cal-num { font-size: 0.75rem; font-weight: bold; color: #94a3b8; margin-bottom: 4px; }
+        .cal-day:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10; }
+        .cal-day.today { border: 2px solid var(--primary); background: #eff6ff; }
         
-        /* 飞行条目样式 */
-        .cal-flights { flex: 1; display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
-        .cal-flight-item {
-            background: #eff6ff; border-left: 3px solid #2563eb;
-            padding: 2px 4px; border-radius: 2px;
-            font-size: 0.65rem; color: #1e3a8a;
+        .cal-num { 
+            font-size: 0.85rem; font-weight: 700; color: #cbd5e1; margin-left: 4px; 
+            display: flex; justify-content: space-between; 
+        }
+        .cal-day.today .cal-num { color: var(--primary); }
+        
+        /* 飞行条目 */
+        .cal-flights { flex: 1; display: flex; flex-direction: column; gap: 3px; margin: 4px 0; overflow: hidden; }
+        .flight-tag {
+            padding: 2px 5px; border-radius: 4px; font-size: 0.65rem; color: #fff;
             display: flex; justify-content: space-between; align-items: center;
-            white-space: nowrap; overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); white-space: nowrap;
         }
+        .tag-dom { background: #3b82f6; } /* 国内蓝 */
+        .tag-int { background: #8b5cf6; } /* 国际紫 */
         
-        /* 驻外状态样式 */
         .cal-status { 
-            font-size: 0.7rem; padding: 2px; border-radius: 3px; text-align: center; 
-            margin-top: auto; white-space: nowrap; font-weight: 600;
+            font-size: 0.7rem; padding: 2px; border-radius: 4px; text-align: center; 
+            margin-top: auto; font-weight: 600; color: #64748b; background: #f1f5f9;
         }
-        .status-base { background: #f8fafc; color: #cbd5e1; font-weight: normal; }
-        .status-stay { background: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
+        .status-stay { background: #fffbeb; color: #d97706; border: 1px solid #fcd34d; }
 
-        /* 历史列表 */
-        .log-list { max-height: 500px; overflow-y: auto; }
-        .log-item { background: white; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 10px; padding: 15px; }
-        .log-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .log-route { font-weight: 700; color: #1e293b; }
-        .btn-del { background: #fee2e2; color: #dc2626; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
-        
-        /* 按钮 */
-        .btn { padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
+        /* 列表与按钮 */
+        .log-list { max-height: 400px; overflow-y: auto; padding-right: 5px; }
+        .log-item { 
+            background: #fff; border: 1px solid var(--border); border-radius: 8px; 
+            padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .btn { 
+            padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; 
+            font-weight: 600; font-size: 0.9rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px;
+        }
         .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-danger { background: #fee2e2; color: #ef4444; padding: 6px 10px; font-size: 0.8rem; }
+        .btn-ghost { background: transparent; color: #64748b; }
         
+        /* 登录遮罩 */
         .login-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
-            display: flex; justify-content: center; align-items: center; z-index: 999;
+            background: radial-gradient(circle at center, #3b82f6 0%, #1e3a8a 100%);
+            display: flex; justify-content: center; align-items: center; z-index: 9999;
         }
-        .login-box { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 320px; }
+        .login-card { background: white; padding: 40px; border-radius: 24px; width: 90%; max-width: 360px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); }
+
+        @media (max-width: 600px) {
+            .calendar-grid { gap: 3px; }
+            .cal-day { min-height: 70px; font-size: 0.7rem; }
+            .flight-tag span:last-child { display: none; } /* 手机端隐藏小时数 */
+        }
     </style>
 </head>
 <body>
 
+    <!-- 登录界面 -->
     <div id="loginScreen" class="login-screen">
-        <div class="login-box">
-            <h2 style="color: var(--primary); margin-bottom: 20px;">✈️ 飞行日志</h2>
-            <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="loginWithGoogle()">Google 账号登录</button>
+        <div class="login-card">
+            <div style="font-size: 3rem; margin-bottom: 10px;">✈️</div>
+            <h2 style="color: #1e40af; margin-bottom: 10px;">飞行员日志 Pro</h2>
+            <p style="color: #64748b; margin-bottom: 30px; font-size: 0.9rem;">智能识别 · 薪酬统计 · 执勤管理</p>
+            <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px;" onclick="loginWithGoogle()">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27c3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10c5.35 0 9.25-3.67 9.25-9.09c0-1.15-.15-1.81-.15-1.81Z"/></svg>
+                Google 账号登录
+            </button>
         </div>
     </div>
 
+    <!-- 主应用 -->
     <div id="app" class="container" style="display: none;">
         <div class="top-bar">
-            <div><h1 style="font-size: 1.25rem;">飞行员控制台</h1><span id="userInfo" style="font-size: 0.8rem; opacity: 0.9;">未登录</span></div>
-            <button class="btn" style="background: rgba(255,255,255,0.2); color: white;" onclick="doLogout()">退出</button>
+            <div>
+                <h1 style="font-size: 1.2rem; font-weight: 700;">控制台</h1>
+                <div id="userInfo" class="user-pill">未登录</div>
+            </div>
+            <button class="btn btn-ghost" style="color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.3);" onclick="doLogout()">退出</button>
         </div>
 
-        <!-- 1. 统计 -->
+        <!-- 1. 统计报表 -->
         <section class="card">
             <div class="card-header">
-                <h2>📊 薪酬统计</h2>
-                <input type="month" id="reportMonth" onchange="refreshAll()" style="border: 1px solid #cbd5e1; padding: 4px; border-radius: 4px;">
+                <h2>📊 月度统计</h2>
+                <input type="month" id="reportMonth" onchange="refreshAll()" style="border: 1px solid var(--border); padding: 6px; border-radius: 6px; outline:none;">
             </div>
             <div class="card-body">
-                <div class="table-scroll"><table class="excel-table" id="reportTable"></table></div>
+                <div class="table-wrapper">
+                    <table class="excel-table" id="reportTable">
+                        <!-- JS 填充 -->
+                    </table>
+                </div>
             </div>
         </section>
 
-        <!-- 2. 录入 -->
+        <!-- 2. 智能录入 -->
         <section class="card">
             <div class="card-header">
                 <h2>📝 智能录入</h2>
-                <span style="font-size: 0.8rem; color: #64748b;">AI 自动计算时间与识别区域</span>
+                <button class="btn btn-primary" id="aiBtn" onclick="processAI()">✨ AI 识别 & 计算</button>
             </div>
             <div class="card-body">
-                <div class="ai-input-area">
-                    <input type="password" id="innerApiKey" class="key-input" placeholder="DeepSeek Key">
-                    <textarea id="ocrInput" placeholder="示例：5月20日 CA1234 北京-上海 机长王军 副驾李明&#10;10:00撤轮挡 10:20起飞 12:20落地 12:30挡轮挡&#10;驻外上海2天 特殊机场"></textarea>
-                </div>
-                <div style="text-align: right; margin-top: 10px;">
-                    <button id="aiBtn" class="btn btn-primary" onclick="processAI()">✨ AI 识别 & 计算</button>
+                <div class="ai-box">
+                    <input type="password" id="innerApiKey" class="key-input" placeholder="输入 DeepSeek Key 自动保存">
+                    <textarea id="ocrInput" placeholder="在此粘贴飞行任务...&#10;例：5月20日 CA1234 北京-上海 10:00撤轮挡 12:00挡轮挡 驻外2天&#10;例：7,8,9号 休假"></textarea>
                 </div>
 
+                <!-- 编辑表单 (默认隐藏) -->
                 <div id="editForm" class="edit-form" style="display: none;">
+                    <h3 style="margin-bottom: 15px; color: var(--primary);">✏️ 编辑/确认数据</h3>
                     <div class="form-grid">
-                        <div class="form-group"><label>日期 (落地日期)</label><input type="date" id="f_date"></div>
-                        <div class="form-group"><label>起飞机场</label><input type="text" id="f_dep"></div>
-                        <div class="form-group"><label>落地机场</label><input type="text" id="f_arr"></div>
-                        <div class="form-group"><label>区域</label>
+                        <div class="form-group"><label>日期 (落地)</label><input type="date" id="f_date"></div>
+                        <div class="form-group"><label>起飞地</label><input type="text" id="f_dep"></div>
+                        <div class="form-group"><label>落地地</label><input type="text" id="f_arr"></div>
+                        <div class="form-group"><label>区域属性</label>
                             <select id="f_cat"><option value="国内">国内</option><option value="港澳台">港澳台</option><option value="亚洲国际">亚洲国际</option><option value="洲际">洲际</option></select>
                         </div>
-                        <div class="form-group form-full-width"><label>机组全员</label><input type="text" id="f_crew"></div>
-                        
-                        <div class="form-group form-full-width" style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-                            <label style="text-align:center; margin-bottom:8px;">⏱️ 运行时刻</label>
-                            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:5px;">
-                                <div><label style="text-align:center">开车</label><input type="time" id="f_block_off" onchange="recalcTimes()"></div>
-                                <div><label style="text-align:center">起飞</label><input type="time" id="f_takeoff" onchange="recalcTimes()"></div>
-                                <div><label style="text-align:center">落地</label><input type="time" id="f_landing" onchange="recalcTimes()"></div>
-                                <div><label style="text-align:center">关车</label><input type="time" id="f_block_on" onchange="recalcTimes()"></div>
+                        <div class="form-group form-full"><label>机组名单</label><input type="text" id="f_crew" placeholder="机长/副驾/学员"></div>
+
+                        <!-- 时刻计算区 -->
+                        <div class="form-full" style="background: #f1f5f9; padding: 15px; border-radius: 8px;">
+                            <label style="margin-bottom: 10px; display:block; text-align:center; color:#475569">⏱️ 运行时刻 (自动计算时长)</label>
+                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap:10px;">
+                                <div class="form-group"><label>撤轮挡</label><input type="time" id="f_block_off" onchange="recalcTimes()"></div>
+                                <div class="form-group"><label>起飞</label><input type="time" id="f_takeoff" onchange="recalcTimes()"></div>
+                                <div class="form-group"><label>落地</label><input type="time" id="f_landing" onchange="recalcTimes()"></div>
+                                <div class="form-group"><label>挡轮挡</label><input type="time" id="f_block_on" onchange="recalcTimes()"></div>
                             </div>
                         </div>
 
-                        <div class="form-group"><label>空中时间 <span id="air_hint" class="time-hint"></span></label><input type="number" step="0.01" id="f_air"></div>
-                        <div class="form-group"><label>总时间 <span id="total_hint" class="time-hint"></span></label><input type="number" step="0.01" id="f_total_time"></div>
+                        <div class="form-group"><label>空中时间 (h)</label><input type="number" step="0.01" id="f_air"></div>
+                        <div class="form-group"><label>总时间 (h)</label><input type="number" step="0.01" id="f_total_time"></div>
                         
-                        <div class="form-group"><label>夜航18:30+</label><input type="number" step="0.1" id="f_night1"></div>
-                        <div class="form-group"><label>夜航00:00+</label><input type="number" step="0.1" id="f_night2"></div>
+                        <div class="form-group"><label>夜航 18:30+</label><input type="number" step="0.1" id="f_night1"></div>
+                        <div class="form-group"><label>夜航 00:00+</label><input type="number" step="0.1" id="f_night2"></div>
                         
                         <div class="form-group"><label>驻外类型</label>
                             <select id="f_overnight">
-                                <option value="无">无 (本条不计)</option>
+                                <option value="无">无</option>
                                 <option value="国内无过夜">国内无过夜</option><option value="国内有过夜">国内有过夜</option>
                                 <option value="国际无过夜">国际无过夜</option><option value="国际有过夜">国际有过夜</option>
                             </select>
@@ -189,37 +229,38 @@
                         <div class="form-group"><label>驻外城市</label><input type="text" id="f_overnight_city"></div>
                         <div class="form-group"><label>驻外天数 (前推)</label><input type="number" id="f_overnight_days" value="0"></div>
                         
-                        <div class="form-group"><label>特殊机场</label><input type="number" id="f_special" value="0"></div>
-                        <div class="form-group"><label>节假日</label><input type="number" id="f_holiday" value="0"></div>
+                        <div class="form-group"><label>特殊机场(个)</label><input type="number" id="f_special" value="0"></div>
+                        <div class="form-group"><label>节假日(个)</label><input type="number" id="f_holiday" value="0"></div>
                         <div class="form-group"><label>滑行(次)</label><input type="number" id="f_block_days" value="1"></div>
                     </div>
-                    <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
-                        <button class="btn" style="background: #e2e8f0;" onclick="document.getElementById('editForm').style.display='none'">取消</button>
-                        <button class="btn btn-primary" onclick="saveRecord()">💾 保存</button>
+                    <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                        <button class="btn btn-ghost" onclick="document.getElementById('editForm').style.display='none'">取消</button>
+                        <button class="btn btn-primary" onclick="saveRecord()">💾 确认保存</button>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- 3. 日历 -->
+        <!-- 3. 执勤日历 -->
         <section class="card">
             <div class="card-header">
                 <h2>📅 执勤日历</h2>
-                <span style="font-size:0.8rem; color:#64748b">自动拉伸显示当日所有航班</span>
+                <span id="calTotal" style="font-size: 0.8rem; color: #64748b; font-weight: normal;"></span>
             </div>
-            <div class="card-body">
-                <div class="calendar-grid">
-                    <div class="cal-header">周日</div><div class="cal-header">周一</div><div class="cal-header">周二</div>
-                    <div class="cal-header">周三</div><div class="cal-header">周四</div><div class="cal-header">周五</div><div class="cal-header">周六</div>
+            <div class="card-body calendar-wrapper">
+                <div class="calendar-header">
+                    <div>周日</div><div>周一</div><div>周二</div><div>周三</div><div>周四</div><div>周五</div><div>周六</div>
                 </div>
                 <div class="calendar-grid" id="calendarGrid"></div>
             </div>
         </section>
 
-        <!-- 4. 历史 -->
+        <!-- 4. 历史记录 -->
         <section class="card">
-            <div class="card-header"><h2>📋 历史记录</h2></div>
-            <div class="card-body"><div id="logList" class="log-list"></div></div>
+            <div class="card-header"><h2>📋 历史明细</h2></div>
+            <div class="card-body">
+                <div id="logList" class="log-list"></div>
+            </div>
         </section>
     </div>
 
@@ -228,6 +269,7 @@
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
+        // 配置保持不变
         const firebaseConfig = {
             apiKey: "AIzaSyCFk4f7bKUHlb3d1Cg1jyS1EM-SPC4pr40",
             authDomain: "myflightlog-1f4cb.firebaseapp.com",
@@ -242,9 +284,15 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
         
-        let currentUser = null, allRecords = [], calendarData = {};
+        let currentUser = null;
+        let allRecords = [];
+        let calendarData = {};
 
-        window.loginWithGoogle = async () => { try { await signInWithPopup(auth, provider); } catch (e) { alert(e.message); } };
+        // === 认证逻辑 ===
+        window.loginWithGoogle = async () => { 
+            try { await signInWithPopup(auth, provider); } 
+            catch (e) { alert("登录失败: " + e.message); } 
+        };
         window.doLogout = async () => { await signOut(auth); };
 
         onAuthStateChanged(auth, (user) => {
@@ -253,13 +301,21 @@
                 document.getElementById('userInfo').textContent = `👨‍✈️ ${user.displayName}`;
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('app').style.display = 'flex';
-                document.getElementById('reportMonth').value = new Date().toISOString().slice(0, 7);
+                
+                // 默认选中本月
+                const now = new Date();
+                document.getElementById('reportMonth').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+                
+                // 恢复 API Key
                 if(localStorage.getItem("openai_key")) document.getElementById("innerApiKey").value = localStorage.getItem("openai_key");
 
+                // 监听日志数据
                 onSnapshot(query(collection(db, `users/${user.uid}/logs`), orderBy("date", "desc")), (snap) => {
                     allRecords = snap.docs.map(d => ({id: d.id, ...d.data()}));
                     refreshAll();
                 });
+                
+                // 监听日历状态
                 onSnapshot(collection(db, `users/${user.uid}/calendar_status`), (snap) => {
                     calendarData = {};
                     snap.docs.forEach(d => calendarData[d.id] = d.data().status);
@@ -271,220 +327,316 @@
             }
         });
 
-        window.refreshAll = () => { renderList(); renderReport(); renderCalendar(); };
+        window.refreshAll = () => {
+            renderList();
+            renderReport();
+            renderCalendar();
+        };
 
+        // === 工具函数：时间计算 (含跨日支持) ===
         function calculateDuration(start, end) {
             if(!start || !end) return 0;
             let [h1, m1] = start.split(':').map(Number);
             let [h2, m2] = end.split(':').map(Number);
             let min1 = h1 * 60 + m1;
             let min2 = h2 * 60 + m2;
+            
+            // 如果结束时间小于开始时间，假设跨天（+24小时）
             if (min2 < min1) min2 += 24 * 60;
+            
             return Number(((min2 - min1) / 60).toFixed(2));
         }
 
-        function formatDuration(hours) {
-            if(!hours) return "(0h 0m)";
-            let h = Math.floor(hours);
-            let m = Math.round((hours - h) * 60);
-            return `(${h}h ${m}m)`;
-        }
-
         window.recalcTimes = () => {
-            const t_off = document.getElementById('f_block_off').value;
-            const t_to = document.getElementById('f_takeoff').value;
-            const t_ldg = document.getElementById('f_landing').value;
-            const t_on = document.getElementById('f_block_on').value;
-            const air = calculateDuration(t_to, t_ldg);
-            document.getElementById('f_air').value = air;
-            document.getElementById('air_hint').textContent = formatDuration(air);
-            const total = calculateDuration(t_off, t_on);
-            document.getElementById('f_total_time').value = total;
-            document.getElementById('total_hint').textContent = formatDuration(total);
+            const getVal = id => document.getElementById(id).value;
+            const air = calculateDuration(getVal('f_takeoff'), getVal('f_landing'));
+            const total = calculateDuration(getVal('f_block_off'), getVal('f_block_on'));
+            
+            document.getElementById('f_air').value = air > 0 ? air : '';
+            document.getElementById('f_total_time').value = total > 0 ? total : '';
         };
 
+        // === AI 核心逻辑 ===
         window.processAI = async () => {
-            const text = document.getElementById('ocrInput').value;
-            const apiKey = document.getElementById('innerApiKey').value;
-            if (!apiKey) return alert("请输入Key");
+            const text = document.getElementById('ocrInput').value.trim();
+            const apiKey = document.getElementById('innerApiKey').value.trim();
+            
+            if (!text) return alert("请先输入内容");
+            if (!apiKey) return alert("请输入 DeepSeek API Key");
             localStorage.setItem("openai_key", apiKey);
 
             const btn = document.getElementById('aiBtn');
-            btn.textContent = "⏳ 运算中..."; btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ AI 正在思考..."; btn.disabled = true;
 
-            const prompt = `
-            Output ONLY valid JSON. No markdown.
-            Input: "${text}"
-            If "7,8 沈阳", return {"type":"calendar", "dates":["2025-05-07","2025-05-08"], "status":"沈阳"}.
-            If flight:
-            - dep/arr: "Code Name" (e.g. ZBAA 北京).
-            - category: "国内"|"港澳台"|"亚洲国际"|"洲际".
-            - crew: string.
-            - time: HH:MM.
-            - overnight_days: int.
-            JSON fields: type="flight", date, dep, arr, category, crew, time_off, time_takeoff, time_landing, time_on, night1, night2, overnight, overnight_city, overnight_days, special_airport, holiday.
-            `;
+            const systemPrompt = `你是一个飞行日志助手。请提取用户输入中的信息并返回纯 JSON。
+            1. 如果是修改状态（如：7,8号 沈阳），返回 {"type":"calendar", "dates":["2025-XX-XX"], "status":"沈阳"}，年份默认为2025年。
+            2. 如果是飞行记录，返回 {"type":"flight", ...字段}。
+            字段要求：
+            - date (YYYY-MM-DD), dep (起飞城市), arr (落地城市)
+            - category (国内/港澳台/亚洲国际/洲际)
+            - crew (字符串), time_off, time_takeoff, time_landing, time_on (HH:MM格式)
+            - night1 (18:30后落地时间h), night2 (00:00后落地时间h)
+            - overnight (无/国内无过夜/国内有过夜/国际无过夜/国际有过夜), overnight_city, overnight_days (int)
+            - special_airport (int), holiday (int)
+            注意：不要输出Markdown，只输出JSON字符串。`;
 
             try {
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-                    body: JSON.stringify({ model: "deepseek-chat", messages: [{role: "user", content: prompt}], temperature: 0.1 })
+                    body: JSON.stringify({ 
+                        model: "deepseek-chat", 
+                        messages: [
+                            {role: "system", content: systemPrompt},
+                            {role: "user", content: text}
+                        ], 
+                        temperature: 0.1 
+                    })
                 });
                 
                 const data = await res.json();
                 if (data.error) throw new Error(data.error.message);
 
-                let content = data.choices[0].message.content.replace(/```json|```/g, '').trim();
-                const jsonStart = content.indexOf('{'); const jsonEnd = content.lastIndexOf('}');
-                if (jsonStart === -1) throw new Error("AI未返回JSON");
-                const r = JSON.parse(content.substring(jsonStart, jsonEnd + 1));
+                let content = data.choices[0].message.content;
+                // 清洗 Markdown 代码块标记
+                content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+                
+                const r = JSON.parse(content);
 
                 if (r.type === 'calendar') {
-                    await Promise.all(r.dates.map(d => setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, d), { status: r.status })));
-                    alert(`✅ 日历已更新: ${r.status}`);
+                    // 批量更新日历状态
+                    const batchPromises = r.dates.map(d => 
+                        setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, d), { status: r.status })
+                    );
+                    await Promise.all(batchPromises);
+                    alert(`✅ 已更新 ${r.dates.length} 天状态为：${r.status}`);
+                    document.getElementById('ocrInput').value = ''; // 清空输入
                 } else {
-                    const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
+                    // 填充表单
+                    const setVal = (id, val) => { 
+                        const el = document.getElementById(id); 
+                        if(el) el.value = val !== undefined ? val : ''; 
+                    };
+                    
                     setVal('f_date', r.date); setVal('f_dep', r.dep); setVal('f_arr', r.arr);
                     setVal('f_cat', r.category); setVal('f_crew', r.crew);
                     setVal('f_block_off', r.time_off); setVal('f_takeoff', r.time_takeoff);
                     setVal('f_landing', r.time_landing); setVal('f_block_on', r.time_on);
-                    recalcTimes();
+                    
+                    recalcTimes(); // 自动计算一次时间
+                    
                     setVal('f_night1', r.night1); setVal('f_night2', r.night2);
                     setVal('f_overnight', r.overnight || '无');
                     setVal('f_overnight_city', r.overnight_city || (r.overnight!=='无'?r.dep:''));
                     setVal('f_overnight_days', r.overnight_days);
                     setVal('f_special', r.special_airport); setVal('f_holiday', r.holiday);
+                    
                     document.getElementById('editForm').style.display = 'block';
+                    document.getElementById('editForm').scrollIntoView({behavior: "smooth"});
                 }
-            } catch (e) { alert("处理失败: " + e.message); console.error(e); } 
-            finally { btn.textContent = "✨ AI 识别 & 计算"; btn.disabled = false; }
+            } catch (e) { 
+                console.error(e);
+                alert("识别失败，请检查 Key 或输入格式。\n错误信息: " + e.message); 
+            } finally { 
+                btn.innerHTML = originalText; btn.disabled = false; 
+            }
         };
 
         window.saveRecord = async () => {
+            if(!document.getElementById('f_date').value) return alert("请选择日期");
+            
             const getNum = (id) => parseFloat(document.getElementById(id).value) || 0;
             const getStr = (id) => document.getElementById(id).value;
+            
             let ovCity = getStr('f_overnight_city');
-            if(!ovCity && getStr('f_overnight') !== '无') ovCity = getStr('f_dep');
+            if(!ovCity && getStr('f_overnight') !== '无') ovCity = getStr('f_dep'); // 默认驻外地为起飞地
 
             const record = {
-                date: getStr('f_date'), dep: getStr('f_dep'), arr: getStr('f_arr'), category: getStr('f_cat'), crew: getStr('f_crew'),
-                block_off: getStr('f_block_off'), takeoff: getStr('f_takeoff'), landing: getStr('f_landing'), block_on: getStr('f_block_on'),
+                date: getStr('f_date'), 
+                dep: getStr('f_dep'), arr: getStr('f_arr'), 
+                category: getStr('f_cat'), crew: getStr('f_crew'),
+                block_off: getStr('f_block_off'), takeoff: getStr('f_takeoff'), 
+                landing: getStr('f_landing'), block_on: getStr('f_block_on'),
                 air_time: getNum('f_air'), total_time: getNum('f_total_time'),
-                block_days: getNum('f_block_days'), night1: getNum('f_night1'), night2: getNum('f_night2'),
+                block_days: getNum('f_block_days'), 
+                night1: getNum('f_night1'), night2: getNum('f_night2'),
                 overnight: getStr('f_overnight'), overnight_city: ovCity, overnight_days: getNum('f_overnight_days'),
-                special_airport: getNum('f_special'), holiday: getNum('f_holiday'), timestamp: new Date()
+                special_airport: getNum('f_special'), holiday: getNum('f_holiday'), 
+                timestamp: new Date()
             };
-            await addDoc(collection(db, `users/${currentUser.uid}/logs`), record);
-            document.getElementById('editForm').style.display = 'none';
-            document.getElementById('ocrInput').value = '';
+
+            try {
+                await addDoc(collection(db, `users/${currentUser.uid}/logs`), record);
+                document.getElementById('editForm').style.display = 'none';
+                document.getElementById('ocrInput').value = ''; // 成功后清空
+                // 简单的 Toast 提示
+                const btn = document.querySelector('button[onclick="saveRecord()"]');
+                const oldTxt = btn.innerText; btn.innerText = "✅ 已保存";
+                setTimeout(()=>btn.innerText=oldTxt, 2000);
+            } catch(e) { alert("保存失败: "+e.message); }
         };
 
-        window.deleteItem = async (id) => { if(confirm("删除?")) try{ await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); }catch(e){alert(e.message)} };
+        window.deleteItem = async (id) => { 
+            if(confirm("确定删除这条记录吗？")) {
+                await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); 
+            }
+        };
 
-        // === 增强版日历渲染 ===
+        // === 渲染逻辑 ===
         window.renderCalendar = () => {
-            const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
+            const grid = document.getElementById('calendarGrid'); 
+            grid.innerHTML = '';
+            
             const [y, m] = document.getElementById('reportMonth').value.split('-').map(Number);
             const daysInMonth = new Date(y, m, 0).getDate();
-            const firstDay = new Date(y, m - 1, 1).getDay();
-            
+            const firstDayOfWeek = new Date(y, m - 1, 1).getDay(); // 0 是周日
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            // 1. 自动推算驻外状态 (根据飞行记录的前推天数)
             let autoCalendar = {};
             allRecords.forEach(r => {
                 if (r.overnight !== '无' && r.overnight_days > 0) {
-                    const parts = r.date.split('-');
-                    const flightDate = new Date(parts[0], parts[1]-1, parts[2]);
+                    const flightDate = new Date(r.date);
                     for(let i=1; i<=r.overnight_days; i++) {
                         const prevDate = new Date(flightDate);
                         prevDate.setDate(flightDate.getDate() - i);
-                        const isoDate = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}-${String(prevDate.getDate()).padStart(2,'0')}`;
-                        autoCalendar[isoDate] = r.overnight_city;
+                        const iso = prevDate.toISOString().split('T')[0];
+                        autoCalendar[iso] = r.overnight_city;
                     }
                 }
             });
 
-            for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
-            
+            // 补白
+            for(let i=0; i<firstDayOfWeek; i++) {
+                grid.innerHTML += `<div class="cal-day" style="background:#f8fafc; border:none;"></div>`;
+            }
+
+            // 渲染每一天
+            let totalHours = 0;
             for(let d=1; d<=daysInMonth; d++) {
                 const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                // 按时间/录入顺序排序，早班在前
-                const flights = allRecords.filter(r => r.date === dateStr).sort((a,b) => (a.block_off || '').localeCompare(b.block_off || ''));
                 
+                // 获取当天飞行记录
+                const flights = allRecords.filter(r => r.date === dateStr)
+                                .sort((a,b) => (a.block_off||'').localeCompare(b.block_off||''));
+                
+                flights.forEach(f => totalHours += f.total_time || 0);
+
+                // 确定状态：手动状态 > 自动推算 > 默认沈阳
                 let statusText = calendarData[dateStr] || autoCalendar[dateStr] || "沈阳";
                 if(['沈阳','SHE','无','基地'].includes(statusText)) statusText = "沈阳";
 
-                const cell = document.createElement('div'); cell.className = 'cal-day';
-                cell.onclick = async (e) => {
-                    // 避免点击飞行条目时触发状态修改
-                    if(e.target.closest('.cal-flight-item')) return;
-                    const n = prompt(`修改 ${dateStr} 驻外地:`, statusText);
-                    if(n && n!==statusText) await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, dateStr), {status:n});
-                };
+                const isToday = dateStr === todayStr;
+                const cell = document.createElement('div'); 
+                cell.className = `cal-day ${isToday ? 'today' : ''}`;
                 
+                // 点击修改状态
+                cell.onclick = async (e) => {
+                    if(e.target.closest('.flight-tag')) return; // 避免点击飞行条目触发
+                    const newStatus = prompt(`修改 ${dateStr} 所在地:`, statusText);
+                    if(newStatus && newStatus !== statusText) {
+                        await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, dateStr), {status: newStatus});
+                    }
+                };
+
                 let flightsHtml = '';
                 if(flights.length > 0) {
                     flightsHtml = `<div class="cal-flights">` + 
                     flights.map(f => {
-                        // 优先显示中文名部分，去除代码
-                        const dep = f.dep.split(' ')[1] || f.dep;
-                        const arr = f.arr.split(' ')[1] || f.arr;
-                        return `<div class="cal-flight-item" title="${f.dep}-${f.arr}">
-                            <span>${dep}-${arr}</span>
-                            <span style="font-weight:bold">${f.air_time}h</span>
+                        const styleClass = (f.category.includes('国际') || f.category.includes('洲际')) ? 'tag-int' : 'tag-dom';
+                        // 简化航线显示：PEK-SHA
+                        const simpleRoute = `${f.dep.split(' ')[0]}-${f.arr.split(' ')[0]}`; 
+                        return `<div class="flight-tag ${styleClass}">
+                            <span>${simpleRoute}</span>
+                            <span>${f.total_time}h</span>
                         </div>`;
                     }).join('') + `</div>`;
                 }
 
                 cell.innerHTML = `
-                    <div class="cal-num">${d}</div>
+                    <div class="cal-num">
+                        ${d} ${isToday ? '<span style="color:var(--primary);font-size:0.6rem">今</span>' : ''}
+                    </div>
                     ${flightsHtml}
-                    <div class="cal-status ${statusText==='沈阳'?'status-base':'status-stay'}">${statusText}</div>
+                    <div class="cal-status ${statusText!=='沈阳'?'status-stay':''}">${statusText}</div>
                 `;
                 grid.appendChild(cell);
             }
+            
+            document.getElementById('calTotal').textContent = `本月总执勤: ${totalHours.toFixed(1)} 小时`;
         };
 
         window.renderList = () => {
-            const el = document.getElementById('logList');
-            el.innerHTML = allRecords.length ? allRecords.map(r => `
+            const listEl = document.getElementById('logList');
+            const mStr = document.getElementById('reportMonth').value;
+            // 仅显示选中月份的记录
+            const displayData = allRecords.filter(r => r.date.startsWith(mStr));
+
+            if (displayData.length === 0) {
+                listEl.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:20px;">本月无记录</div>';
+                return;
+            }
+
+            listEl.innerHTML = displayData.map(r => `
                 <div class="log-item">
-                    <div class="log-header">
-                        <div><span style="color:#64748b;font-family:monospace;margin-right:10px">${r.date}</span><span class="log-route">${r.dep} ➔ ${r.arr}</span></div>
-                        <button class="btn-del" onclick="deleteItem('${r.id}')">删除</button>
+                    <div>
+                        <div style="font-weight:700; color:#1e293b; display:flex; gap:10px; align-items:center;">
+                            <span style="font-family:monospace; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:4px;">${r.date.substring(5)}</span>
+                            ${r.dep} ➔ ${r.arr}
+                        </div>
+                        <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">
+                            ${r.crew || '无机组信息'} · ${r.category} · 
+                            <span style="color:var(--primary); font-weight:bold;">${r.total_time}h</span>
+                        </div>
                     </div>
-                    <div style="font-size:0.85rem;color:#475569;margin-bottom:5px">👨‍✈️ ${r.crew||'-'}</div>
-                    <div style="font-size:0.85rem;color:#475569;display:flex;gap:15px">
-                        <span>☁️${r.air_time}h</span> <span>⌚${r.total_time}h</span>
-                        <span>${r.category}</span>
-                        ${r.overnight!=='无'?`<span style="background:#e0f2fe;color:#0284c7;padding:1px 4px;border-radius:4px">🏠${r.overnight_city} ${r.overnight_days}天</span>`:''}
-                    </div>
-                </div>`).join('') : '<div style="text-align:center;color:#ccc">无记录</div>';
+                    <button class="btn btn-danger" onclick="deleteItem('${r.id}')">🗑️</button>
+                </div>
+            `).join('');
         };
 
         window.renderReport = () => {
             const mStr = document.getElementById('reportMonth').value;
             const data = allRecords.filter(r => r.date.startsWith(mStr));
+            
             const s = { d_a:0, d_b:0, h_a:0, h_b:0, a_a:0, a_b:0, i_a:0, i_b:0, n1:0, n2:0, spec:0, hol:0, o_d:0, o_i:0 };
+            
             data.forEach(r => {
                 if(r.category==='国内') { s.d_a+=r.air_time; s.d_b+=r.block_days; }
                 else if(r.category==='港澳台') { s.h_a+=r.air_time; s.h_b+=r.block_days; }
                 else if(r.category==='亚洲国际') { s.a_a+=r.air_time; s.a_b+=r.block_days; }
                 else { s.i_a+=r.air_time; s.i_b+=r.block_days; }
-                s.n1+=r.night1; s.n2+=r.night2; s.spec+=r.special_airport; s.hol+=r.holiday;
-                if(r.overnight.includes('国内有过夜')) s.o_d += r.overnight_days;
-                if(r.overnight.includes('国际有过夜')) s.o_i += r.overnight_days;
+                
+                s.n1+=r.night1 || 0; 
+                s.n2+=r.night2 || 0; 
+                s.spec+=r.special_airport || 0; 
+                s.hol+=r.holiday || 0;
+                
+                if(r.overnight && r.overnight.includes('国内有过夜')) s.o_d += r.overnight_days;
+                if(r.overnight && r.overnight.includes('国际有过夜')) s.o_i += r.overnight_days;
             });
+
             document.getElementById('reportTable').innerHTML = `
                 <thead>
-                    <tr><th rowspan="2">类型</th><th colspan="2">国内</th><th colspan="2">港澳台</th><th colspan="2">亚洲</th><th colspan="2">洲际</th></tr>
-                    <tr><th>空</th><th>滑</th><th>空</th><th>滑</th><th>空</th><th>滑</th><th>空</th><th>滑</th></tr>
+                    <tr><th rowspan="2">类别</th><th colspan="2">国内</th><th colspan="2">港澳台</th><th colspan="2">亚洲</th><th colspan="2">洲际</th></tr>
+                    <tr><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th></tr>
                 </thead>
                 <tbody>
-                    <tr><td>飞行</td><td>${s.d_a.toFixed(2)}</td><td>${s.d_b}</td><td>${s.h_a.toFixed(2)}</td><td>${s.h_b}</td><td>${s.a_a.toFixed(2)}</td><td>${s.a_b}</td><td>${s.i_a.toFixed(2)}</td><td>${s.i_b}</td></tr>
-                    <tr><td colspan="9" style="background:#f8fafc;height:5px;padding:0"></td></tr>
-                    <tr><th rowspan="2">补助</th><th colspan="2">夜航</th><th colspan="2">特殊/节假</th><th colspan="2">驻外天数</th><th colspan="2"></th></tr>
-                    <tr><th>18:30</th><th>00:00</th><th class="bg-sub">特殊</th><th class="bg-sub">假日</th><th>国有</th><th>外有</th><th>-</th><th>-</th></tr>
-                    <tr><td>统计</td><td>${s.n1.toFixed(1)}</td><td>${s.n2.toFixed(1)}</td><td class="bg-sub">${s.spec}</td><td class="bg-sub">${s.hol}</td><td>${s.o_d}</td><td>${s.o_i}</td><td>-</td><td>-</td></tr>
+                    <tr><td style="font-weight:bold">合计</td>
+                        <td>${s.d_a.toFixed(1)}</td><td>${s.d_b}</td>
+                        <td>${s.h_a.toFixed(1)}</td><td>${s.h_b}</td>
+                        <td>${s.a_a.toFixed(1)}</td><td>${s.a_b}</td>
+                        <td>${s.i_a.toFixed(1)}</td><td>${s.i_b}</td>
+                    </tr>
+                    <tr><td colspan="9" style="height:10px; border:none; background:#fff"></td></tr>
+                    <tr><th rowspan="2">补贴</th><th colspan="2">夜航补助</th><th colspan="2">特殊/节日</th><th colspan="2">驻外天数</th><th colspan="2">总计</th></tr>
+                    <tr><th>18:30</th><th>00:00</th><th class="bg-sub">特殊</th><th class="bg-sub">节日</th><th>国内</th><th>国际</th><th>-</th><th>-</th></tr>
+                    <tr><td style="font-weight:bold">数量</td>
+                        <td>${s.n1.toFixed(1)}</td><td>${s.n2.toFixed(1)}</td>
+                        <td class="bg-sub">${s.spec}</td><td class="bg-sub">${s.hol}</td>
+                        <td>${s.o_d}</td><td>${s.o_i}</td>
+                        <td>-</td><td>-</td>
+                    </tr>
                 </tbody>`;
         };
     </script>
