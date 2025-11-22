@@ -303,11 +303,11 @@ appId: "1:181072044112:web:ca312da2d4780227cef155"
             `;
 
             try {
-                const res = await fetch("https://api.openai.com/v1/chat/completions", {
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
                     body: JSON.stringify({
-                        model: "gpt-4o", messages: [{role: "user", content: prompt}], temperature: 0.1
+                        model: "deepseek-chat", messages: [{role: "user", content: prompt}], temperature: 0.1
                     })
                 });
                 
