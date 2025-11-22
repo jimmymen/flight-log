@@ -17,11 +17,14 @@
             border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
             overflow: hidden; min-height: 80vh; display: flex; flex-direction: column;
         }
+        /* 头部升级：支持左右布局 */
         .header {
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            padding: 25px; text-align: center; color: white;
+            padding: 20px 25px; color: white;
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .header h1 { font-size: 1.8rem; margin-bottom: 5px; }
+        .header-left h1 { font-size: 1.5rem; margin-bottom: 5px; }
+        .header-right { text-align: right; }
         
         /* 导航栏 */
         .nav-tabs { display: flex; background: #f1f5f9; padding: 0 10px; }
@@ -43,15 +46,24 @@
             border: 2px dashed #cbd5e1; padding: 20px; border-radius: 15px;
             background: #f8fafc; margin-bottom: 20px;
         }
+        /* 新增：Key 输入框样式 */
+        .key-input-group {
+            margin-bottom: 15px; background: white; padding: 10px; 
+            border-radius: 8px; border: 1px solid #e2e8f0;
+            display: flex; align-items: center; gap: 10px;
+        }
+
         textarea {
             width: 100%; height: 120px; padding: 15px; border: 1px solid #cbd5e1;
             border-radius: 10px; resize: vertical; font-family: monospace; margin-bottom: 15px;
         }
-        .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; font-size: 0.9rem; }
         .btn-primary { background: #2563eb; color: white; }
         .btn-primary:hover { background: #1d4ed8; }
         .btn-success { background: #10b981; color: white; }
         .btn-danger { background: #ef4444; color: white; }
+        .btn-outline { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); }
+        .btn-outline:hover { background: rgba(255,255,255,0.3); }
 
         /* 表单网格 */
         .form-grid {
@@ -103,20 +115,21 @@
             <button class="btn btn-primary" style="width: 100%; padding: 12px; margin-bottom: 15px; font-size: 1rem;" onclick="loginWithGoogle()">
                 Google 账号登录
             </button>
-            <div style="border-top: 1px solid #eee; margin: 15px 0; padding-top: 15px;">
-                <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 8px; text-align: left;">OpenAI API Key (必填):</p>
-                <input type="password" id="apiKeyInput" placeholder="sk-..." 
-                       style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 5px; text-align: left;">Key 仅保存在你本地浏览器，不上传服务器。</p>
-            </div>
+            <p style="font-size: 0.8rem; color: #64748b;">登录后在应用内填写 API Key</p>
         </div>
     </div>
 
     <!-- 主应用 -->
     <div id="app" class="container" style="display: none;">
         <div class="header">
-            <h1>飞行小时明细表</h1>
-            <p id="userInfo" style="opacity: 0.9; font-size: 0.9rem; margin-top: 5px;">未登录</p>
+            <div class="header-left">
+                <h1>飞行小时明细表</h1>
+                <p id="userInfo" style="opacity: 0.9; font-size: 0.85rem;">未登录</p>
+            </div>
+            <div class="header-right">
+                <!-- 退出按钮 -->
+                <button class="btn btn-outline" onclick="doLogout()">退出登录</button>
+            </div>
         </div>
 
         <div class="nav-tabs">
@@ -129,6 +142,13 @@
         <div id="inputTab" class="tab-content active" class="content">
             <div class="ai-box">
                 <h3 style="margin-bottom: 10px; color: #334155;">🤖 任务书识别</h3>
+                
+                <!-- 新增：这里可以随时改 Key -->
+                <div class="key-input-group">
+                    <span style="font-size: 1.2rem;">🔑</span>
+                    <input type="password" id="innerApiKey" placeholder="在此填入 DeepSeek Key (sk-...)" style="border: none; outline: none; width: 100%; font-size: 0.9rem;">
+                </div>
+
                 <textarea id="ocrInput" placeholder="请在此处粘贴任务书文本 (支持乱码自动纠错)..."></textarea>
                 <button id="aiBtn" class="btn btn-primary" onclick="processAI()">✨ AI 提取数据</button>
             </div>
@@ -203,26 +223,20 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, limit, getDocs, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        // 新增了 signOut 模块
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
         // ============================================================
-        // ▼▼▼▼▼ 请把下面这段配置替换成你自己的 Firebase 配置 ▼▼▼▼▼
+        // ▼▼▼▼▼ 你的配置已集成 ▼▼▼▼▼
         // ============================================================
-const firebaseConfig = {
-
-apiKey: "AIzaSyCFk4f7bKUHlb3d1Cg1jyS1EM-SPC4pr40",
-
-authDomain: "myflightlog-1f4cb.firebaseapp.com",
-
-projectId: "myflightlog-1f4cb",
-
-storageBucket: "myflightlog-1f4cb.firebasestorage.app",
-
-messagingSenderId: "181072044112",
-
-appId: "1:181072044112:web:ca312da2d4780227cef155"
-
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyCFk4f7bKUHlb3d1Cg1jyS1EM-SPC4pr40",
+            authDomain: "myflightlog-1f4cb.firebaseapp.com",
+            projectId: "myflightlog-1f4cb",
+            storageBucket: "myflightlog-1f4cb.firebasestorage.app",
+            messagingSenderId: "181072044112",
+            appId: "1:181072044112:web:ca312da2d4780227cef155"
+        };
         // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
         // 初始化 Firebase
@@ -237,6 +251,15 @@ appId: "1:181072044112:web:ca312da2d4780227cef155"
         // 登录功能
         window.loginWithGoogle = async () => {
             try { await signInWithPopup(auth, provider); } catch (e) { alert("登录失败: " + e.message); }
+        };
+
+        // 退出功能
+        window.doLogout = async () => {
+            try { 
+                await signOut(auth);
+                // 退出后不需要重置 Key，方便下次登录直接用
+                // localStorage.removeItem("openai_key"); 
+            } catch (e) { alert("退出失败: " + e.message); }
         };
 
         // 标签切换
@@ -265,9 +288,9 @@ appId: "1:181072044112:web:ca312da2d4780227cef155"
                     renderReport();
                 });
                 
-                // 恢复 API Key
+                // 恢复 API Key 到内部输入框
                 const savedKey = localStorage.getItem("openai_key");
-                if(savedKey) document.getElementById("apiKeyInput").value = savedKey;
+                if(savedKey) document.getElementById("innerApiKey").value = savedKey;
             } else {
                 document.getElementById('loginScreen').style.display = 'flex';
                 document.getElementById('app').style.display = 'none';
@@ -277,9 +300,10 @@ appId: "1:181072044112:web:ca312da2d4780227cef155"
         // AI 处理逻辑
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value;
-            const apiKey = document.getElementById('apiKeyInput').value;
+            // 从新的输入框获取 Key
+            const apiKey = document.getElementById('innerApiKey').value;
             
-            if (!apiKey) return alert("请先在登录页输入 API Key");
+            if (!apiKey) return alert("请先输入 API Key");
             localStorage.setItem("openai_key", apiKey); // 记住 Key
 
             if (!text.trim()) return alert("请先粘贴任务书");
@@ -303,11 +327,14 @@ appId: "1:181072044112:web:ca312da2d4780227cef155"
             `;
 
             try {
+                // DeepSeek 接口
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
                     body: JSON.stringify({
-                        model: "deepseek-chat", messages: [{role: "user", content: prompt}], temperature: 0.1
+                        model: "deepseek-chat", 
+                        messages: [{role: "user", content: prompt}], 
+                        temperature: 0.1
                     })
                 });
                 
@@ -395,7 +422,7 @@ appId: "1:181072044112:web:ca312da2d4780227cef155"
             `).join('');
         }
 
-        // 渲染报表 (核心逻辑)
+        // 渲染报表
         window.renderReport = () => {
             const monthStr = document.getElementById('reportMonth').value;
             const [y, m] = monthStr.split('-');
