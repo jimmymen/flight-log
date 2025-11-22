@@ -3,112 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飞行日志 - 2025高级统计版</title>
+    <title>飞行日志 - 全景仪表盘</title>
     <style>
-        /* === 界面样式 === */
+        /* === 基础样式 === */
+        :root { --primary: #2563eb; --primary-dark: #1e40af; --bg: #f1f5f9; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
-            min-height: 100vh; padding: 20px; color: #333;
+            background: var(--bg); color: #334155;
+            padding: 20px; min-height: 100vh;
         }
+        
+        /* 容器布局 */
         .container {
-            max-width: 1100px; margin: 0 auto; background: white;
-            border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            overflow: hidden; min-height: 80vh; display: flex; flex-direction: column;
+            max-width: 1000px; margin: 0 auto;
+            display: flex; flex-direction: column; gap: 25px;
         }
-        
-        /* 头部 */
-        .header {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            padding: 20px 25px; color: white;
+
+        /* 通用卡片样式 */
+        .card {
+            background: white; border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow: hidden; border: 1px solid #e2e8f0;
+        }
+        .card-header {
+            padding: 15px 20px; background: linear-gradient(to right, #f8fafc, #fff);
+            border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;
+        }
+        .card-header h2 { font-size: 1.1rem; color: #1e293b; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .card-body { padding: 20px; }
+
+        /* 顶部导航条 */
+        .top-bar {
             display: flex; justify-content: space-between; align-items: center;
-        }
-        .header-left h1 { font-size: 1.5rem; margin-bottom: 5px; }
-        .header-right { text-align: right; }
-        
-        /* 导航栏 */
-        .nav-tabs { display: flex; background: #f1f5f9; padding: 0 10px; order: 0; }
-        .tab {
-            flex: 1; padding: 15px; text-align: center; cursor: pointer;
-            font-weight: 500; color: #64748b; transition: 0.3s; border-bottom: 3px solid transparent;
-        }
-        .tab.active { color: #2563eb; border-bottom-color: #2563eb; background: white; }
-        .tab:hover:not(.active) { background: #e2e8f0; }
-
-        /* 内容区 */
-        .content-wrapper { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
-        .tab-content { display: none; padding: 20px; animation: fadeIn 0.3s; }
-        .tab-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* AI 输入区 */
-        .ai-box {
-            border: 2px dashed #cbd5e1; padding: 20px; border-radius: 15px;
-            background: #f8fafc; margin-bottom: 20px;
-        }
-        .key-input-group {
-            margin-bottom: 15px; background: white; padding: 10px; 
-            border-radius: 8px; border: 1px solid #e2e8f0;
-            display: flex; align-items: center; gap: 10px;
+            background: var(--primary); color: white; padding: 15px 25px;
+            border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
         }
 
+        /* === 模块 1: 统计报表 === */
+        .excel-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 800px; }
+        .table-scroll { overflow-x: auto; border-radius: 8px; border: 1px solid #cbd5e1; }
+        .excel-table th, .excel-table td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; }
+        .excel-table th { background: #f1f5f9; font-weight: 600; color: #475569; }
+        .highlight-col { background-color: #eff6ff; color: var(--primary-dark); font-weight: 600; }
+
+        /* === 模块 2: 智能录入 === */
+        .ai-input-area { position: relative; }
+        .key-input { 
+            position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9);
+            padding: 5px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.8rem; width: 200px;
+        }
         textarea {
-            width: 100%; height: 120px; padding: 15px; border: 1px solid #cbd5e1;
-            border-radius: 10px; resize: vertical; font-family: monospace; margin-bottom: 15px;
+            width: 100%; height: 100px; padding: 15px; border: 2px dashed #cbd5e1;
+            border-radius: 12px; resize: vertical; font-family: monospace; transition: 0.3s;
+            background: #f8fafc;
         }
+        textarea:focus { border-color: var(--primary); outline: none; background: white; }
         
-        /* 按钮系统 */
-        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; font-size: 0.9rem; }
-        .btn-primary { background: #2563eb; color: white; }
-        .btn-primary:hover { background: #1d4ed8; }
-        .btn-success { background: #10b981; color: white; }
-        .btn-danger { background: #ef4444; color: white; }
-        .btn-outline { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); }
-        .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
-
         /* 表单网格 */
+        .edit-form { background: #f8fafc; padding: 20px; border-radius: 12px; margin-top: 15px; border: 1px solid #e2e8f0; }
         .form-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 12px; background: #f1f5f9; padding: 20px; border-radius: 15px; margin-top: 15px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px;
         }
-        .form-group label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; }
-        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
-        
-        /* 列表卡片 */
-        .log-card {
-            background: white; border: 1px solid #e2e8f0; border-radius: 10px;
-            padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between;
-            align-items: center; transition: 0.2s; position: relative;
+        .form-group label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 5px; font-weight: 600; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; }
+        .highlight-field input { border-color: var(--primary); background: #eff6ff; color: var(--primary); font-weight: bold; }
+
+        /* === 模块 3: 历史记录 === */
+        .log-list { max-height: 400px; overflow-y: auto; padding-right: 5px; }
+        .log-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 15px; border-bottom: 1px solid #f1f5f9; transition: 0.2s;
         }
-        .log-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .log-info { flex: 1; padding-right: 10px; }
-        .log-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
-        .tag { padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; background: #e2e8f0; color: #475569; display: inline-block; margin-top: 4px;}
-        .tag.国内 { background: #dbeafe; color: #1e40af; }
+        .log-item:last-child { border-bottom: none; }
+        .log-item:hover { background: #f8fafc; }
+        .log-details { display: flex; gap: 15px; align-items: center; }
+        .log-date { font-family: monospace; font-weight: 600; color: #334155; width: 90px; }
+        .log-route { font-weight: bold; color: var(--primary); width: 120px; }
+        .log-meta { font-size: 0.85rem; color: #64748b; display: flex; gap: 10px; }
+        .badge { padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; background: #e2e8f0; }
+        .badge-days { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
 
-        /* 报表表格 */
-        .table-container { overflow-x: auto; margin-top: 10px; }
-        .excel-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 1000px; }
-        .excel-table th, .excel-table td { border: 1px solid #cbd5e1; padding: 8px 6px; text-align: center; }
-        .excel-table th { background: #f8fafc; font-weight: 600; color: #334155; }
-        .excel-table tr:hover { background-color: #f1f5f9; }
-        .highlight-cell { background-color: #eff6ff; font-weight: bold; color: #1d4ed8; }
+        /* 按钮 */
+        .btn { padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3); }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+        .btn-icon { padding: 6px; border-radius: 6px; background: transparent; color: #94a3b8; cursor: pointer; }
+        .btn-icon:hover { background: #fee2e2; color: #ef4444; }
 
-        /* 登录层 */
+        /* 登录遮罩 */
         .login-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
-            display: flex; justify-content: center; align-items: center; z-index: 100;
+            display: flex; justify-content: center; align-items: center; z-index: 999;
         }
-        .login-box { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 350px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
-        
-        .spinner {
-            width: 16px; height: 16px; border: 2px solid #ffffff;
-            border-top: 2px solid transparent; border-radius: 50%;
-            animation: spin 1s linear infinite; display: inline-block; margin-right: 5px;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .login-box { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 320px; }
     </style>
 </head>
 <body>
@@ -116,98 +105,75 @@
     <!-- 登录界面 -->
     <div id="loginScreen" class="login-screen">
         <div class="login-box">
-            <h2 style="margin-bottom: 20px; color: #1e40af;">✈️ 飞行日志登录</h2>
-            <button class="btn btn-primary" style="width: 100%; padding: 12px; margin-bottom: 15px; font-size: 1rem;" onclick="loginWithGoogle()">
-                Google 账号登录
-            </button>
-            <p style="font-size: 0.8rem; color: #64748b;">登录后在应用内填写 API Key</p>
+            <h2 style="color: var(--primary); margin-bottom: 20px;">✈️ 飞行日志</h2>
+            <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="loginWithGoogle()">Google 账号登录</button>
         </div>
     </div>
 
-    <!-- 主应用 -->
+    <!-- 主界面容器 -->
     <div id="app" class="container" style="display: none;">
-        <div class="header">
-            <div class="header-left">
-                <h1>飞行小时明细表</h1>
-                <p id="userInfo" style="opacity: 0.9; font-size: 0.85rem;">未登录</p>
+        
+        <!-- 顶部栏 -->
+        <div class="top-bar">
+            <div>
+                <h1 style="font-size: 1.25rem;">飞行员控制台</h1>
+                <span id="userInfo" style="font-size: 0.8rem; opacity: 0.9;">未登录</span>
             </div>
-            <div class="header-right">
-                <button class="btn btn-outline" onclick="doLogout()">退出登录</button>
-            </div>
+            <button class="btn" style="background: rgba(255,255,255,0.2); color: white;" onclick="doLogout()">退出</button>
         </div>
 
-        <!-- 导航栏调整：报表在前，录入在后 -->
-        <div class="nav-tabs">
-            <div class="tab active" onclick="switchTab('report')">📊 统计报表</div>
-            <div class="tab" onclick="switchTab('list')">📋 历史记录</div>
-            <div class="tab" onclick="switchTab('input')">📝 智能录入</div>
-        </div>
-
-        <div class="content-wrapper">
-            
-            <!-- 1. 报表页 (默认显示) -->
-            <div id="reportTab" class="tab-content active">
-                <div style="background: #f8fafc; padding: 15px; border-radius: 10px; display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                    <label style="font-weight: 600;">统计月份：</label>
-                    <input type="month" id="reportMonth" onchange="renderReport()" style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                    <span style="flex:1"></span>
-                    <button class="btn btn-primary btn-sm" onclick="renderReport()">🔄 刷新</button>
+        <!-- 第一部分：统计报表 (Top) -->
+        <section class="card">
+            <div class="card-header">
+                <h2>📊 月度统计报表</h2>
+                <div>
+                    <label style="font-size: 0.85rem; color: #64748b;">统计月份：</label>
+                    <input type="month" id="reportMonth" onchange="renderReport()" style="border: 1px solid #cbd5e1; padding: 4px; border-radius: 4px;">
                 </div>
-                
-                <div class="table-container">
+            </div>
+            <div class="card-body">
+                <div class="table-scroll">
                     <table class="excel-table" id="reportTable">
-                        <!-- JS 生成表头 -->
+                        <!-- JS生成内容 -->
                     </table>
                 </div>
-                <p style="margin-top: 15px; color: #64748b; font-size: 0.85rem;">* 说明：统计表会自动汇总驻外天数；删除历史记录会自动更新此表。</p>
             </div>
+        </section>
 
-            <!-- 2. 列表页 -->
-            <div id="listTab" class="tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3>历史记录明细</h3>
-                    <span style="font-size: 0.8rem; color: #64748b;">按日期倒序排列</span>
-                </div>
-                <div id="logList">
-                    <!-- JS 生成列表 -->
-                </div>
+        <!-- 第二部分：智能录入 (Middle) -->
+        <section class="card">
+            <div class="card-header">
+                <h2>📝 智能录入</h2>
+                <span style="font-size: 0.8rem; color: #64748b;">支持手写识别/任务书OCR</span>
             </div>
-
-            <!-- 3. 录入页 (放在最后) -->
-            <div id="inputTab" class="tab-content">
-                <div class="ai-box">
-                    <h3 style="margin-bottom: 10px; color: #334155;">🤖 手写识别/任务书录入</h3>
-                    
-                    <div class="key-input-group">
-                        <span style="font-size: 1.2rem;">🔑</span>
-                        <input type="password" id="innerApiKey" placeholder="在此填入 DeepSeek Key (sk-...)" style="border: none; outline: none; width: 100%; font-size: 0.9rem;">
-                    </div>
-
-                    <textarea id="ocrInput" placeholder="请在此处粘贴 OCR 识别后的乱码或文本...&#10;例如：&#10;2025-05-01 PEK-SHA 3.5h 过夜2天"></textarea>
-                    <button id="aiBtn" class="btn btn-primary" onclick="processAI()">✨ AI 智能提取</button>
+            <div class="card-body">
+                <div class="ai-input-area">
+                    <input type="password" id="innerApiKey" class="key-input" placeholder="在此填入 DeepSeek Key">
+                    <textarea id="ocrInput" placeholder="粘贴文本... 例：2025-05-20 北京-上海 3.5h 过夜2天"></textarea>
+                </div>
+                <div style="text-align: right; margin-top: 10px;">
+                    <button id="aiBtn" class="btn btn-primary" onclick="processAI()">✨ AI 提取数据</button>
                 </div>
 
-                <div id="editForm" style="display: none;">
-                    <h3 style="color: #334155; padding-left: 5px; border-left: 4px solid #2563eb; margin-bottom:15px;">核对数据</h3>
+                <!-- 隐藏的编辑表单 -->
+                <div id="editForm" class="edit-form" style="display: none;">
                     <div class="form-grid">
                         <div class="form-group"><label>日期</label><input type="date" id="f_date"></div>
-                        <div class="form-group"><label>起飞机场</label><input type="text" id="f_dep"></div>
-                        <div class="form-group"><label>落地机场</label><input type="text" id="f_arr"></div>
-                        <div class="form-group"><label>区域分类</label>
+                        <div class="form-group"><label>起飞</label><input type="text" id="f_dep"></div>
+                        <div class="form-group"><label>落地</label><input type="text" id="f_arr"></div>
+                        <div class="form-group"><label>区域</label>
                             <select id="f_cat">
                                 <option value="国内">国内</option>
                                 <option value="港澳台">港澳台</option>
-                                <option value="亚洲国际">亚洲国际(非港澳台)</option>
-                                <option value="洲际">洲际(亚洲外)</option>
+                                <option value="亚洲国际">亚洲国际</option>
+                                <option value="洲际">洲际</option>
                             </select>
                         </div>
-                        <div class="form-group"><label>空中时间 (h)</label><input type="number" step="0.01" id="f_air"></div>
-                        <div class="form-group"><label>滑行天数</label><input type="number" id="f_block_days" value="1"></div>
+                        <div class="form-group"><label>空中时间(h)</label><input type="number" step="0.01" id="f_air"></div>
+                        <div class="form-group"><label>滑行次数</label><input type="number" id="f_block_days" value="1"></div>
+                        <div class="form-group"><label>夜航(18:30+)</label><input type="number" step="0.01" id="f_night1"></div>
+                        <div class="form-group"><label>夜航(00:00+)</label><input type="number" step="0.01" id="f_night2"></div>
                         
-                        <div class="form-group"><label>夜航 (18:30-24)</label><input type="number" step="0.01" id="f_night1"></div>
-                        <div class="form-group"><label>夜航 (0-6:30)</label><input type="number" step="0.01" id="f_night2"></div>
-                        
-                        <!-- 修改：驻外类型 + 天数 -->
                         <div class="form-group"><label>驻外类型</label>
                             <select id="f_overnight">
                                 <option value="国内无过夜">国内无过夜</option>
@@ -216,33 +182,44 @@
                                 <option value="国际有过夜">国际有过夜</option>
                             </select>
                         </div>
-                        <div class="form-group highlight-cell" style="background: #eff6ff; border-radius:6px; padding:4px;">
-                            <label style="color:#1d4ed8">驻外天数</label>
-                            <input type="number" id="f_overnight_days" value="0" style="border:1px solid #2563eb;">
+                        <div class="form-group highlight-field">
+                            <label>驻外天数</label>
+                            <input type="number" id="f_overnight_days" value="0">
                         </div>
-
-                        <div class="form-group"><label>国内机组餐</label><input type="number" id="f_meal_d" value="0"></div>
-                        <div class="form-group"><label>国际机组餐</label><input type="number" id="f_meal_i" value="0"></div>
-                        <div class="form-group"><label>法定节假日(天)</label><input type="number" id="f_holiday" value="0"></div>
                         
-                        <input type="hidden" id="f_takeoff"><input type="hidden" id="f_landing">
+                        <div class="form-group"><label>机组餐(国)</label><input type="number" id="f_meal_d" value="0"></div>
+                        <div class="form-group"><label>机组餐(外)</label><input type="number" id="f_meal_i" value="0"></div>
+                        <div class="form-group"><label>节假日</label><input type="number" id="f_holiday" value="0"></div>
                     </div>
-                    <div style="margin-top: 20px; text-align: right;">
-                        <button class="btn" style="background: #cbd5e1; margin-right: 10px;" onclick="document.getElementById('editForm').style.display='none'">取消</button>
-                        <button class="btn btn-success" onclick="saveRecord()">💾 确认保存</button>
+                    <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
+                        <button class="btn" style="background: #e2e8f0;" onclick="document.getElementById('editForm').style.display='none'">取消</button>
+                        <button class="btn btn-primary" style="background: #10b981;" onclick="saveRecord()">💾 确认保存</button>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
+
+        <!-- 第三部分：历史记录 (Bottom) -->
+        <section class="card">
+            <div class="card-header">
+                <h2>📋 历史记录</h2>
+                <span style="font-size: 0.8rem; color: #64748b;">实时同步</span>
+            </div>
+            <div class="card-body">
+                <div id="logList" class="log-list">
+                    <!-- JS 填充列表 -->
+                </div>
+            </div>
+        </section>
+
     </div>
 
-    <!-- Firebase SDK -->
+    <!-- 逻辑脚本 -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, limit, getDocs, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-        // Firebase 配置
         const firebaseConfig = {
             apiKey: "AIzaSyCFk4f7bKUHlb3d1Cg1jyS1EM-SPC4pr40",
             authDomain: "myflightlog-1f4cb.firebaseapp.com",
@@ -260,131 +237,80 @@
         let currentUser = null;
         let allRecords = [];
 
-        // 登录/退出
-        window.loginWithGoogle = async () => { try { await signInWithPopup(auth, provider); } catch (e) { alert("登录失败: " + e.message); } };
-        window.doLogout = async () => { try { await signOut(auth); } catch (e) { alert("退出失败: " + e.message); } };
+        // 认证逻辑
+        window.loginWithGoogle = async () => { try { await signInWithPopup(auth, provider); } catch (e) { alert("Error: " + e.message); } };
+        window.doLogout = async () => { await signOut(auth); };
 
-        // 标签切换
-        window.switchTab = (tabId) => {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.querySelector(`.tab[onclick="switchTab('${tabId}')"]`).classList.add('active');
-            document.getElementById(tabId + 'Tab').classList.add('active');
-            if(tabId === 'report') renderReport();
-        };
-
-        // 监听用户状态
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
-                document.getElementById('userInfo').textContent = `👤 ${user.email}`;
+                document.getElementById('userInfo').textContent = `👨‍✈️ ${user.displayName}`;
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('app').style.display = 'flex';
                 document.getElementById('reportMonth').value = new Date().toISOString().slice(0, 7);
+                
+                const savedKey = localStorage.getItem("openai_key");
+                if(savedKey) document.getElementById("innerApiKey").value = savedKey;
 
-                // 实时监听数据库：任何增删改都会触发这里，自动更新列表和报表
+                // 核心：实时监听
                 const q = query(collection(db, `users/${user.uid}/logs`), orderBy("date", "desc"));
                 onSnapshot(q, (snapshot) => {
                     allRecords = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
                     renderList();
                     renderReport();
                 });
-                
-                const savedKey = localStorage.getItem("openai_key");
-                if(savedKey) document.getElementById("innerApiKey").value = savedKey;
             } else {
                 document.getElementById('loginScreen').style.display = 'flex';
                 document.getElementById('app').style.display = 'none';
             }
         });
 
-        // AI 核心逻辑
+        // AI 处理逻辑
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value;
             const apiKey = document.getElementById('innerApiKey').value;
-            
-            if (!apiKey) return alert("请先输入 API Key");
+            if (!apiKey || !text) return alert("请检查 Key 或输入内容");
             localStorage.setItem("openai_key", apiKey);
 
-            if (!text.trim()) return alert("请先粘贴内容");
-
             const btn = document.getElementById('aiBtn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner"></span> 识别 OCR 中...';
-            btn.disabled = true;
+            btn.textContent = "⏳ 分析中..."; btn.disabled = true;
 
-            // 修改后的提示词，强调 OCR 纠错和提取天数
             const prompt = `
-            你是一个飞行日志助手。请分析以下可能包含OCR错误的手写识别文本，提取数据并返回纯JSON。
-            
-            文本：${text}
-            
-            需提取字段：
-            date (YYYY-MM-DD), 
-            dep (起飞三字码或中文), arr (落地三字码或中文), 
-            category ("国内"|"港澳台"|"亚洲国际"|"洲际"),
-            air_time (数字小时), block_days (滑行天数,默认1),
-            night1 (18:30-24:00时长), night2 (00:00-06:30时长),
-            overnight ("国内无过夜"|"国内有过夜"|"国际无过夜"|"国际有过夜"),
-            overnight_days (数字，驻外/过夜的天数。如果文本提到"过夜3天"则为3，无过夜则为0)
-            
-            注意：如果是乱码，请尝试根据上下文猜测机场代码和时间。
-            返回格式仅包含JSON，无Markdown。
+            分析飞行任务文本，返回JSON。
+            字段: date(YYYY-MM-DD), dep, arr, category("国内"|"港澳台"|"亚洲国际"|"洲际"),
+            air_time(小时), block_days(滑行次数,默认1), night1(18:30-24:00), night2(00:00-06:30),
+            overnight("国内无过夜"|"国内有过夜"|"国际无过夜"|"国际有过夜"),
+            overnight_days(int, 驻外天数，如'过夜2天'则为2，无过夜为0)
+            文本: ${text}
             `;
 
             try {
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-                    body: JSON.stringify({
-                        model: "deepseek-chat", 
-                        messages: [{role: "user", content: prompt}], 
-                        temperature: 0.1
-                    })
+                    body: JSON.stringify({ model: "deepseek-chat", messages: [{role: "user", content: prompt}], temperature: 0.1 })
                 });
-                
                 const data = await res.json();
-                if(data.error) throw new Error(data.error.message);
-                
-                let content = data.choices[0].message.content.replace(/```json|```/g, '');
-                // 简单的 JSON 提取保护
-                const jsonStart = content.indexOf('{');
-                const jsonEnd = content.lastIndexOf('}');
-                if (jsonStart !== -1 && jsonEnd !== -1) {
-                    content = content.substring(jsonStart, jsonEnd + 1);
-                }
-                
-                const result = JSON.parse(content);
+                let content = data.choices[0].message.content;
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                const result = JSON.parse(jsonMatch ? jsonMatch[0] : content);
 
-                // 填入表单
-                document.getElementById('f_date').value = result.date || '';
-                document.getElementById('f_dep').value = result.dep || '';
-                document.getElementById('f_arr').value = result.arr || '';
-                document.getElementById('f_cat').value = result.category || '国内';
-                document.getElementById('f_air').value = result.air_time || 0;
-                document.getElementById('f_block_days').value = result.block_days || 1;
-                document.getElementById('f_night1').value = result.night1 || 0;
-                document.getElementById('f_night2').value = result.night2 || 0;
-                document.getElementById('f_overnight').value = result.overnight || '国内无过夜';
-                // 填入新增的天数
-                document.getElementById('f_overnight_days').value = result.overnight_days || 0;
+                // 填充
+                ['date','dep','arr','cat','air','block_days','night1','night2','overnight','overnight_days'].forEach(k => {
+                    const el = document.getElementById(`f_${k === 'cat' ? 'cat' : k === 'air' ? 'air' : k === 'overnight' ? 'overnight' : k}`);
+                    if(el) el.value = result[k] || (k === 'cat' ? '国内' : 0);
+                });
+                // 特殊处理下拉框默认值
+                if(result.category) document.getElementById('f_cat').value = result.category;
+                if(result.overnight) document.getElementById('f_overnight').value = result.overnight;
                 
                 document.getElementById('editForm').style.display = 'block';
-                // 滚动到表单
-                document.getElementById('editForm').scrollIntoView({ behavior: 'smooth' });
-                
-            } catch (e) {
-                alert("AI 解析失败: " + e.message);
-                console.error(e);
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
+            } catch (e) { alert("AI Error: " + e.message); } 
+            finally { btn.textContent = "✨ AI 提取数据"; btn.disabled = false; }
         };
 
-        // 保存记录
+        // 保存
         window.saveRecord = async () => {
-            if (!currentUser) return;
             const record = {
                 date: document.getElementById('f_date').value,
                 dep: document.getElementById('f_dep').value,
@@ -395,135 +321,87 @@
                 night1: parseFloat(document.getElementById('f_night1').value) || 0,
                 night2: parseFloat(document.getElementById('f_night2').value) || 0,
                 overnight: document.getElementById('f_overnight').value,
-                overnight_days: parseInt(document.getElementById('f_overnight_days').value) || 0, // 新增字段
+                overnight_days: parseInt(document.getElementById('f_overnight_days').value) || 0,
                 meal_d: parseInt(document.getElementById('f_meal_d').value) || 0,
                 meal_i: parseInt(document.getElementById('f_meal_i').value) || 0,
                 holiday: parseInt(document.getElementById('f_holiday').value) || 0,
                 timestamp: new Date()
             };
-
-            try {
-                await addDoc(collection(db, `users/${currentUser.uid}/logs`), record);
-                document.getElementById('editForm').style.display = 'none';
-                document.getElementById('ocrInput').value = '';
-                // 自动跳转到报表页查看结果
-                switchTab('report');
-            } catch (e) { alert("保存失败: " + e.message); }
+            await addDoc(collection(db, `users/${currentUser.uid}/logs`), record);
+            document.getElementById('editForm').style.display = 'none';
+            document.getElementById('ocrInput').value = '';
         };
 
-        // 删除指定记录
-        window.deleteItem = async (docId) => {
-            if(confirm("⚠️ 确定要永久删除这条记录吗？删除后统计报表会自动更新。")) {
-                try {
-                    await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, docId));
-                    // 不需要手动调用 render，onSnapshot 会自动处理
-                } catch(e) { alert("删除失败: " + e.message); }
+        // 删除
+        window.deleteItem = async (id) => {
+            if(confirm("确定删除此记录？报表将自动更新。")) {
+                await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id));
             }
         };
 
-        // 渲染列表 (包含删除按钮)
+        // 渲染列表
         window.renderList = () => {
-            const listDiv = document.getElementById('logList');
-            if (allRecords.length === 0) {
-                listDiv.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">暂无记录，请去“智能录入”页添加。</p>';
-                return;
-            }
-            listDiv.innerHTML = allRecords.map(r => `
-                <div class="log-card">
-                    <div class="log-info">
-                        <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px; display:flex; justify-content:space-between;">
-                            <span>${r.date}</span>
-                            <span style="color:#2563eb">${r.dep} ➔ ${r.arr}</span>
-                        </div>
-                        <div style="font-size: 0.85rem; color: #64748b; margin-bottom:4px;">
-                            ⏱️ 空中 ${r.air_time}h | 🌙 夜 ${(r.night1+r.night2).toFixed(2)}h
-                        </div>
-                        <div>
-                            <span class="tag ${r.category}">${r.category}</span>
-                            ${r.overnight_days > 0 ? `<span class="tag" style="background:#fef3c7; color:#d97706">🏠 ${r.overnight} ${r.overnight_days}天</span>` : ''}
+            const el = document.getElementById('logList');
+            if(!allRecords.length) { el.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8">暂无数据</div>'; return; }
+            el.innerHTML = allRecords.map(r => `
+                <div class="log-item">
+                    <div class="log-details">
+                        <div class="log-date">${r.date.slice(5)}</div>
+                        <div class="log-route">${r.dep}-${r.arr}</div>
+                        <div class="log-meta">
+                            <span>⏱️ ${r.air_time}h</span>
+                            <span class="badge">${r.category}</span>
+                            ${r.overnight_days > 0 ? `<span class="badge badge-days">🏠 ${r.overnight_days}天</span>` : ''}
                         </div>
                     </div>
-                    <div class="log-actions">
-                        <button class="btn btn-danger btn-sm" onclick="deleteItem('${r.id}')" title="删除此条">🗑️</button>
-                    </div>
+                    <button class="btn-icon" onclick="deleteItem('${r.id}')" title="删除">🗑️</button>
                 </div>
             `).join('');
         };
 
-        // 渲染报表 (更新统计逻辑)
+        // 渲染报表
         window.renderReport = () => {
-            const monthStr = document.getElementById('reportMonth').value;
-            const [y, m] = monthStr.split('-');
-            const data = allRecords.filter(r => r.date.startsWith(monthStr));
-
-            // 初始化统计
-            const s = { 
-                d_air:0, d_bk:0, h_air:0, h_bk:0, a_air:0, a_bk:0, i_air:0, i_bk:0,
-                n1:0, n2:0, 
-                o_d0:0, o_d1:0, o_i0:0, o_i1:0, // 这里现在统计的是“天数”
-                m_d:0, m_i:0, hol:0 
-            };
-
+            const mStr = document.getElementById('reportMonth').value;
+            const [y, m] = mStr.split('-');
+            const data = allRecords.filter(r => r.date.startsWith(mStr));
+            
+            const s = { d_air:0,d_bk:0,h_air:0,h_bk:0,a_air:0,a_bk:0,i_air:0,i_bk:0, n1:0,n2:0, o_d0:0,o_d1:0,o_i0:0,o_i1:0, m_d:0,m_i:0 };
+            
             data.forEach(r => {
-                // 飞行时间汇总
-                if(r.category==='国内') { s.d_air+=r.air_time; s.d_bk+=r.block_days; }
-                else if(r.category==='港澳台') { s.h_air+=r.air_time; s.h_bk+=r.block_days; }
-                else if(r.category==='亚洲国际') { s.a_air+=r.air_time; s.a_bk+=r.block_days; }
-                else { s.i_air+=r.air_time; s.i_bk+=r.block_days; }
-                
-                s.n1+=r.night1; s.n2+=r.night2;
-                s.m_d+=r.meal_d; s.m_i+=r.meal_i;
-                s.hol+=r.holiday;
+                const catMap = {'国内':['d_air','d_bk'], '港澳台':['h_air','h_bk'], '亚洲国际':['a_air','a_bk'], '洲际':['i_air','i_bk']};
+                const [k_air, k_bk] = catMap[r.category] || ['d_air','d_bk'];
+                s[k_air] += r.air_time; s[k_bk] += r.block_days;
+                s.n1 += r.night1; s.n2 += r.night2;
+                s.m_d += r.meal_d; s.m_i += r.meal_i;
 
-                // 驻外天数汇总 (使用新字段 r.overnight_days)
-                // 如果没有天数但选择了有过夜，默认+1，或者根据您的规则这里改为 +r.overnight_days
-                const days = r.overnight_days || 0; 
-                
-                if(r.overnight==='国内无过夜') s.o_d0 += days; // 通常无过夜天数为0，但以防万一
+                const days = r.overnight_days || 0;
+                if(r.overnight==='国内无过夜') s.o_d0 += days;
                 if(r.overnight==='国内有过夜') s.o_d1 += days;
                 if(r.overnight==='国际无过夜') s.o_i0 += days;
                 if(r.overnight==='国际有过夜') s.o_i1 += days;
             });
 
-            const totalAir = s.d_air + s.h_air + s.a_air + s.i_air;
-
             document.getElementById('reportTable').innerHTML = `
                 <thead>
-                    <tr><th colspan="16" style="background:#e2e8f0; font-size:1.1rem; padding:10px;">
-                        ${y}年${m}月 飞行数据汇总 (总计: ${totalAir.toFixed(2)}h)
-                    </th></tr>
-                    <tr>
-                        <th rowspan="2" style="width:80px;">人员</th>
-                        <th colspan="2">国内飞行</th><th colspan="2">港澳台</th>
-                        <th colspan="2">亚洲(非港澳)</th><th colspan="2">亚洲以外</th>
-                        <th colspan="2">夜航(国内)</th>
-                        <th colspan="4" class="highlight-cell">驻外补助(天数)</th>
-                        <th colspan="2">机组餐</th>
-                    </tr>
-                    <tr>
-                        <th>空中</th><th>滑行</th><th>空中</th><th>滑行</th>
-                        <th>空中</th><th>滑行</th><th>空中</th><th>滑行</th>
-                        <th>18:30+</th><th>00:00+</th>
-                        <th style="font-size:0.75rem">国无</th><th style="font-size:0.75rem">国有</th>
-                        <th style="font-size:0.75rem">外无</th><th style="font-size:0.75rem">外有</th>
-                        <th>国</th><th>外</th>
-                    </tr>
+                    <tr><th rowspan="2">类型</th><th colspan="2">国内</th><th colspan="2">港澳台</th><th colspan="2">亚洲</th><th colspan="2">洲际</th></tr>
+                    <tr><th>空</th><th>滑</th><th>空</th><th>滑</th><th>空</th><th>滑</th><th>空</th><th>滑</th></tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td style="font-weight:bold">${currentUser ? currentUser.displayName.split(' ')[0] : '-'}</td>
-                        <td>${s.d_air.toFixed(2)}</td><td>${s.d_bk}</td>
-                        <td>${s.h_air.toFixed(2)}</td><td>${s.h_bk}</td>
-                        <td>${s.a_air.toFixed(2)}</td><td>${s.a_bk}</td>
-                        <td>${s.i_air.toFixed(2)}</td><td>${s.i_bk}</td>
-                        <td>${s.n1.toFixed(2)}</td><td>${s.n2.toFixed(2)}</td>
-                        
-                        <!-- 驻外天数显示区 -->
-                        <td class="highlight-cell">${s.o_d0}</td>
-                        <td class="highlight-cell">${s.o_d1}</td>
-                        <td class="highlight-cell">${s.o_i0}</td>
-                        <td class="highlight-cell">${s.o_i1}</td>
-                        
+                        <td>飞行</td>
+                        <td>${s.d_air.toFixed(1)}</td><td>${s.d_bk}</td>
+                        <td>${s.h_air.toFixed(1)}</td><td>${s.h_bk}</td>
+                        <td>${s.a_air.toFixed(1)}</td><td>${s.a_bk}</td>
+                        <td>${s.i_air.toFixed(1)}</td><td>${s.i_bk}</td>
+                    </tr>
+                    <tr><td colspan="9" style="background:#f8fafc;height:5px;padding:0"></td></tr>
+                    <tr><th rowspan="2">补助</th><th colspan="2">夜航</th><th colspan="4">驻外天数</th><th colspan="2">机组餐</th></tr>
+                    <tr><th>18:30+</th><th>00:00+</th><th>国无</th><th class="highlight-col">国有</th><th>外无</th><th class="highlight-col">外有</th><th>国</th><th>外</th></tr>
+                    <tr>
+                        <td>统计</td>
+                        <td>${s.n1.toFixed(1)}</td><td>${s.n2.toFixed(1)}</td>
+                        <td>${s.o_d0}</td><td class="highlight-col">${s.o_d1}</td>
+                        <td>${s.o_i0}</td><td class="highlight-col">${s.o_i1}</td>
                         <td>${s.m_d}</td><td>${s.m_i}</td>
                     </tr>
                 </tbody>
