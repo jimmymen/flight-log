@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飞行日志 - 2025 稳定修复版</title>
+    <title>飞行日志 - 2025 稳定修复版 (v3.2)</title>
     <style>
         /* === 基础样式 === */
         :root { --primary: #2563eb; --bg: #f1f5f9; --text: #334155; }
@@ -292,7 +292,7 @@
             document.getElementById('total_hint').textContent = formatDuration(total);
         };
 
-        // === 修复后的 AI 处理逻辑 ===
+        // === 修复版 AI 逻辑 ===
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value;
             const apiKey = document.getElementById('innerApiKey').value;
@@ -303,16 +303,18 @@
             btn.textContent = "⏳ 运算中..."; btn.disabled = true;
 
             const prompt = `
-            识别文本。若是排班指令(7,8 沈阳)返回type="calendar"。
-            若是飞行:
-            1. 机场 dep/arr 格式为"代码 中文名" (如 "ZBAA 北京首都")。
-            2. category 自动判断: 国内/港澳台/亚洲国际/洲际。
-            3. crew 提取所有机组人员。
-            4. time_off/takeoff/landing/on 提取 HH:MM。
-            5. 提取 overnight_days (天数)。
+            You are a data extraction tool. Output ONLY valid JSON. No markdown blocks. No explanation.
+            Input: "${text}"
             
-            返回JSON。
-            字段: type, dates[], status, date, dep, arr, category, crew, time_off, time_takeoff, time_landing, time_on, night1, night2, overnight, overnight_city, overnight_days, special_airport, holiday.
+            Tasks:
+            1. If input is like "7,8 沈阳", return {"type":"calendar", "dates":["2025-05-07","2025-05-08"], "status":"沈阳"}.
+            2. If input is flight data:
+               - dep/arr: "Code Name" (e.g. "ZBAA 北京").
+               - category: "国内"|"港澳台"|"亚洲国际"|"洲际".
+               - crew: string of names.
+               - time_off/takeoff/landing/on: HH:MM.
+               - overnight_days: int.
+               return JSON fields: type="flight", date, dep, arr, category, crew, time_off, time_takeoff, time_landing, time_on, night1, night2, overnight, overnight_city, overnight_days, special_airport, holiday.
             `;
 
             try {
@@ -325,23 +327,27 @@
                 const data = await res.json();
                 if (data.error) throw new Error(data.error.message);
 
-                // === 修复：更健壮的 JSON 提取逻辑 ===
+                // === 暴力清洗 JSON ===
                 let content = data.choices[0].message.content;
-                content = content.replace(/```json|```/g, '').trim(); // 去除 markdown
+                console.log("AI Raw:", content); // 调试用
+                
+                // 移除 Markdown 代码块符号
+                content = content.replace(/```json/g, '').replace(/```/g, '');
+                
+                // 提取第一个 { 到 最后一个 } 之间的内容
                 const jsonStart = content.indexOf('{');
                 const jsonEnd = content.lastIndexOf('}');
                 
                 if (jsonStart === -1 || jsonEnd === -1) {
-                    throw new Error("AI 未返回有效 JSON，请尝试修改输入文本。");
+                    throw new Error("AI 未返回 JSON，请尝试简化输入或重试。");
                 }
 
-                const jsonStr = content.substring(jsonStart, jsonEnd + 1);
-                const r = JSON.parse(jsonStr);
-                // ====================================
+                const cleanJson = content.substring(jsonStart, jsonEnd + 1);
+                const r = JSON.parse(cleanJson);
 
                 if (r.type === 'calendar') {
                     await Promise.all(r.dates.map(d => setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, d), { status: r.status })));
-                    alert("✅ 日历已更新");
+                    alert(`✅ 日历已更新: ${r.status}`);
                 } else {
                     const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
                     setVal('f_date', r.date); setVal('f_dep', r.dep); setVal('f_arr', r.arr);
@@ -349,7 +355,7 @@
                     setVal('f_block_off', r.time_off); setVal('f_takeoff', r.time_takeoff);
                     setVal('f_landing', r.time_landing); setVal('f_block_on', r.time_on);
                     
-                    recalcTimes(); // 调用前端重算
+                    recalcTimes(); // 重算时间
 
                     setVal('f_night1', r.night1); setVal('f_night2', r.night2);
                     setVal('f_overnight', r.overnight || '无');
@@ -358,7 +364,10 @@
                     setVal('f_special', r.special_airport); setVal('f_holiday', r.holiday);
                     document.getElementById('editForm').style.display = 'block';
                 }
-            } catch (e) { alert("错误: " + e.message); } 
+            } catch (e) { 
+                console.error(e);
+                alert("处理失败: " + e.message); 
+            } 
             finally { btn.textContent = "✨ AI 识别 & 计算"; btn.disabled = false; }
         };
 
