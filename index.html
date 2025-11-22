@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飞行日志 Pro - 2025 实时统计版</title>
+    <title>飞行日志 Pro - 2025 双重计时版</title>
     <style>
         /* === 基础变量 === */
         :root {
             --primary: #2563eb; --bg: #f8fafc; --text: #334155; --border: #e2e8f0;
             /* 状态颜色定义 */
-            --dom-stay-bg: #dbeafe; --dom-stay-text: #1e40af; /* 国内有过夜 - 蓝 */
-            --dom-no-bg: #d1fae5; --dom-no-text: #065f46;   /* 国内无过夜 - 绿 */
-            --int-stay-bg: #f3e8ff; --int-stay-text: #6b21a8; /* 国际有过夜 - 紫 */
-            --int-no-bg: #fef3c7; --int-no-text: #92400e;   /* 国际无过夜 - 黄 */
+            --dom-stay-bg: #dbeafe; --dom-stay-text: #1e40af;
+            --dom-no-bg: #d1fae5; --dom-no-text: #065f46;
+            --int-stay-bg: #f3e8ff; --int-stay-text: #6b21a8;
+            --int-no-bg: #fef3c7; --int-no-text: #92400e;
             --meal-bg: #fff7ed; --meal-text: #c2410c; --meal-border: #ffedd5;
             --night-bg: #0f172a; --night-text: #fcd34d;
         }
@@ -36,11 +36,16 @@
         /* 表格 */
         .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
         .excel-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 900px; }
-        .excel-table th, .excel-table td { border: 1px solid var(--border); padding: 8px 6px; text-align: center; }
+        .excel-table th, .excel-table td { border: 1px solid var(--border); padding: 8px 6px; text-align: center; vertical-align: middle; }
         .excel-table th { background: #f8fafc; font-weight: 600; color: #475569; }
         .bg-cal-stat { background-color: #ecfdf5; color: #047857; font-weight: bold; }
         .bg-sub { background-color: #fdf4ff; color: #86198f; font-weight: bold; }
         .bg-meal { background-color: var(--meal-bg); color: var(--meal-text); font-weight: bold; }
+        
+        /* 时间双重显示样式 */
+        .time-dual { line-height: 1.2; }
+        .time-dec { font-weight: bold; font-size: 0.9rem; color: #0f172a; }
+        .time-hm { font-size: 0.7rem; color: #64748b; display: block; margin-top: 2px; font-family: monospace; }
 
         /* 录入区 */
         .ai-box { position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; background: #f8fafc; }
@@ -54,7 +59,8 @@
         .form-full { grid-column: 1 / -1; }
         .form-group label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 6px; font-weight: 600; }
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
-        
+        .time-hint { font-size: 0.75rem; color: var(--primary); font-weight: bold; float: right; }
+
         /* 日历 */
         .calendar-wrapper { user-select: none; }
         .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.8rem; color: #94a3b8; padding: 10px 0; font-weight: 600; }
@@ -82,14 +88,8 @@
         .st-base { color: #cbd5e1; font-weight: normal; }
 
         /* 模态框 */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);
-            display: none; justify-content: center; align-items: flex-end; z-index: 1000;
-        }
-        .modal-content {
-            background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 25px;
-            animation: slideUp 0.3s ease; display: flex; flex-direction: column; gap: 15px;
-        }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000; }
+        .modal-content { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 25px; animation: slideUp 0.3s ease; display: flex; flex-direction: column; gap: 15px; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .modal-title { font-size: 1.1rem; font-weight: bold; text-align: center; }
         .modal-input-group { text-align: center; }
@@ -119,12 +119,13 @@
 </head>
 <body>
 
+    <!-- 状态模态框 -->
     <div id="statusModal" class="modal-overlay" onclick="if(event.target===this) closeStatusModal()">
         <div class="modal-content">
             <div class="modal-title">修改 <span id="modalDateStr" style="color:var(--primary)"></span> 驻外状态</div>
             <div class="modal-input-group">
-                <input type="text" id="modalCityInput" class="city-input" placeholder="输入城市名 (可选，如：上海)">
-                <div style="font-size:0.75rem; color:#64748b; margin-top:5px;">统计依据下方按钮选择，城市名仅供显示</div>
+                <input type="text" id="modalCityInput" class="city-input" placeholder="输入城市名 (可选)">
+                <div style="font-size:0.75rem; color:#64748b; margin-top:5px;">报表统计以按钮选择为准</div>
             </div>
             <div class="status-grid">
                 <button class="status-btn" style="background:#dbeafe; color:#1e40af;" onclick="saveCalendarStatus('国内有过夜')">🔵 国内有过夜</button>
@@ -163,7 +164,7 @@
 
         <section class="card">
             <div class="card-header">
-                <h2>📅 执勤日历 (点击日期修改)</h2>
+                <h2>📅 执勤日历 (点击修改)</h2>
                 <span id="calTotal" style="font-size: 0.8rem; color: #64748b;"></span>
             </div>
             <div class="card-body calendar-wrapper">
@@ -192,12 +193,21 @@
                         <div class="form-group"><label>落地</label><input type="text" id="f_arr"></div>
                         <div class="form-group"><label>属性</label><select id="f_cat"><option value="国内">国内</option><option value="港澳台">港澳台</option><option value="亚洲国际">亚洲国际</option><option value="洲际">洲际</option></select></div>
                         <div class="form-group form-full"><label>机组</label><input type="text" id="f_crew"></div>
+                        
                         <div class="form-full" style="background:#f8fafc; padding:10px; border-radius:8px; border:1px dashed #e2e8f0; display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
                             <input type="time" id="f_block_off" onchange="recalcTimes()"><input type="time" id="f_takeoff" onchange="recalcTimes()">
                             <input type="time" id="f_landing" onchange="recalcTimes()"><input type="time" id="f_block_on" onchange="recalcTimes()">
                         </div>
-                        <div class="form-group"><label>空时</label><input type="number" step="0.01" id="f_air"></div>
-                        <div class="form-group"><label>总时</label><input type="number" step="0.01" id="f_total_time"></div>
+
+                        <div class="form-group">
+                            <label>空时 <span id="hint_air" class="time-hint"></span></label>
+                            <input type="number" step="0.01" id="f_air">
+                        </div>
+                        <div class="form-group">
+                            <label>总时 <span id="hint_total" class="time-hint"></span></label>
+                            <input type="number" step="0.01" id="f_total_time">
+                        </div>
+
                         <div class="form-group"><label>夜18:30</label><input type="number" step="0.1" id="f_night1"></div>
                         <div class="form-group"><label>夜00:00</label><input type="number" step="0.1" id="f_night2"></div>
                         <div class="form-group"><label>驻外参考</label><select id="f_overnight"><option value="无">无</option><option value="国内有过夜">国内有过夜</option><option value="国内无过夜">国内无过夜</option><option value="国际有过夜">国际有过夜</option><option value="国际无过夜">国际无过夜</option></select></div>
@@ -244,7 +254,7 @@
                 document.getElementById('reportMonth').value = new Date().toISOString().slice(0, 7);
                 if(localStorage.getItem("openai_key")) document.getElementById("innerApiKey").value = localStorage.getItem("openai_key");
                 
-                // 关键修改：两个监听器都调用 refreshAll 以保证实时更新
+                // 监听数据变化，调用 refreshAll 确保报表实时更新
                 onSnapshot(query(collection(db, `users/${user.uid}/logs`), orderBy("date", "desc")), (snap) => { 
                     allRecords = snap.docs.map(d => ({id: d.id, ...d.data()})); 
                     refreshAll(); 
@@ -259,9 +269,19 @@
 
         window.refreshAll = () => { renderList(); renderReport(); renderCalendar(); };
 
+        // === 辅助：十进制转 HH:MM 格式化 ===
+        function formatTimePair(decimalHours) {
+            if (!decimalHours) return `<div class="time-dual"><span class="time-dec">0.00</span></div>`;
+            let h = Math.floor(decimalHours);
+            let m = Math.round((decimalHours - h) * 60);
+            if (m === 60) { h++; m = 0; }
+            const mm = String(m).padStart(2, '0');
+            return `<div class="time-dual"><div class="time-dec">${decimalHours.toFixed(2)}</div><div class="time-hm">(${h}:${mm})</div></div>`;
+        }
+
+        // === 模态框 ===
         window.openStatusModal = (dateStr) => { 
-            currentModalDate = dateStr; 
-            document.getElementById('modalDateStr').innerText = dateStr; 
+            currentModalDate = dateStr; document.getElementById('modalDateStr').innerText = dateStr; 
             const currentData = calendarData[dateStr];
             document.getElementById('modalCityInput').value = (currentData && currentData.city) ? currentData.city : '';
             document.getElementById('statusModal').style.display = 'flex'; 
@@ -270,15 +290,13 @@
         window.saveCalendarStatus = async (type) => {
             if(currentUser && currentModalDate) {
                 const city = document.getElementById('modalCityInput').value.trim();
-                if (!type) {
-                    await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, currentModalDate), { type: null, city: null });
-                } else {
-                    await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, currentModalDate), { type: type, city: city });
-                }
+                if (!type) await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, currentModalDate), { type: null, city: null });
+                else await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, currentModalDate), { type: type, city: city });
                 closeStatusModal();
             }
         };
 
+        // === AI & Form ===
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value.trim();
             const apiKey = document.getElementById('innerApiKey').value.trim();
@@ -306,12 +324,28 @@
             let min1 = h1 * 60 + m1; let min2 = h2 * 60 + m2; if (min2 < min1) min2 += 24 * 60;
             return Number(((min2 - min1) / 60).toFixed(2));
         }
+        
+        // 优化：增加实时提示
+        function updateTimeHint(decimal, elementId) {
+            if (!decimal) { document.getElementById(elementId).innerText = ''; return; }
+            let h = Math.floor(decimal);
+            let m = Math.round((decimal - h) * 60);
+            if (m === 60) { h++; m = 0; }
+            const mm = String(m).padStart(2, '0');
+            document.getElementById(elementId).innerText = `(${h}:${mm})`;
+        }
+
         window.recalcTimes = () => {
             const getVal = id => document.getElementById(id).value;
             const air = calculateDuration(getVal('f_takeoff'), getVal('f_landing'));
             const total = calculateDuration(getVal('f_block_off'), getVal('f_block_on'));
-            document.getElementById('f_air').value = air || ''; document.getElementById('f_total_time').value = total || '';
+            document.getElementById('f_air').value = air || ''; 
+            document.getElementById('f_total_time').value = total || '';
+            
+            updateTimeHint(air, 'hint_air');
+            updateTimeHint(total, 'hint_total');
         };
+
         function setFormValues(data) {
             const setVal = (id, val) => { const el = document.getElementById('f_'+id); if(el) el.value = val !== undefined ? val : ''; };
             setVal('date', data.date); setVal('dep', data.dep); setVal('arr', data.arr); setVal('cat', data.category); setVal('crew', data.crew);
@@ -321,16 +355,19 @@
             setVal('overnight', data.overnight||'无'); setVal('overnight_city', data.overnight_city||''); setVal('overnight_days', data.overnight_days);
             setVal('special', data.special_airport); setVal('holiday', data.holiday); setVal('block_days', data.block_days);
             setVal('meal_dom', data.crew_meal_dom||0); setVal('meal_int', data.crew_meal_int||0);
+            updateTimeHint(data.air_time, 'hint_air'); updateTimeHint(data.total_time, 'hint_total');
         }
         function resetForm() {
             document.getElementById('edit_doc_id').value = '';
             document.querySelectorAll('.edit-form input, .edit-form select').forEach(i => { if(i.type!=='hidden') i.value = ''; });
             document.getElementById('f_block_days').value = 1; document.getElementById('f_overnight_days').value = 0;
             document.getElementById('f_meal_dom').value = 0; document.getElementById('f_meal_int').value = 0;
+            document.getElementById('hint_air').innerText = ''; document.getElementById('hint_total').innerText = '';
         }
         window.closeForm = () => document.getElementById('editForm').style.display = 'none';
         function showForm() { document.getElementById('editForm').style.display = 'block'; document.getElementById('editForm').scrollIntoView({behavior: "smooth"}); }
         window.editRecord = (id) => { const rec = allRecords.find(r => r.id === id); if(!rec) return; resetForm(); document.getElementById('edit_doc_id').value = id; setFormValues(rec); showForm(); };
+        
         window.saveRecord = async () => {
             const docId = document.getElementById('edit_doc_id').value;
             const getStr = (id) => document.getElementById('f_'+id).value; const getNum = (id) => parseFloat(document.getElementById('f_'+id).value) || 0;
@@ -366,10 +403,7 @@
             allRecords.forEach(r => {
                 if(r.overnight && !r.overnight.includes('无') && r.overnight_days > 0) {
                     const d = new Date(r.date);
-                    for(let i=1; i<=r.overnight_days; i++) {
-                        const p = new Date(d); p.setDate(d.getDate()-i); const iso = p.toISOString().split('T')[0];
-                        autoStatus[iso] = { type: r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜', city: r.overnight_city };
-                    }
+                    for(let i=1; i<=r.overnight_days; i++) { const p = new Date(d); p.setDate(d.getDate()-i); const iso = p.toISOString().split('T')[0]; autoStatus[iso] = { type: r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜', city: r.overnight_city }; }
                 }
             });
             for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="cal-day" style="border:none;background:transparent"></div>`;
@@ -428,7 +462,8 @@
                 }
                 if (type === '国内有过夜') s.cal_dom_stay++; else if (type === '国内无过夜') s.cal_dom_no++; else if (type === '国际有过夜') s.cal_int_stay++; else if (type === '国际无过夜') s.cal_int_no++;
             }
-            document.getElementById('reportTable').innerHTML = `<thead><tr><th rowspan="2">类别</th><th colspan="2">国内</th><th colspan="2">港澳台</th><th colspan="2">亚洲</th><th colspan="2">洲际</th></tr><tr><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th></tr></thead><tbody><tr><td style="font-weight:bold">合计</td><td>${s.d_a.toFixed(1)}</td><td>${s.d_b}</td><td>${s.h_a.toFixed(1)}</td><td>${s.h_b}</td><td>${s.a_a.toFixed(1)}</td><td>${s.a_b}</td><td>${s.i_a.toFixed(1)}</td><td>${s.i_b}</td></tr><tr><td colspan="9" style="height:8px;border:none;background:white"></td></tr><tr><th rowspan="2">补贴</th><th colspan="2">机组餐(份)</th><th colspan="2">驻外-国内</th><th colspan="2">驻外-国际</th><th colspan="2">其他</th></tr><tr><th class="bg-meal">国内</th><th class="bg-meal">国际</th><th class="bg-cal-stat">国有(天)</th><th class="bg-cal-stat">国无(次)</th><th class="bg-cal-stat">外有(天)</th><th class="bg-cal-stat">外无(次)</th><th class="bg-sub">特殊</th><th class="bg-sub">节日</th></tr><tr><td style="font-weight:bold">统计</td><td class="bg-meal">${s.meal_d}</td><td class="bg-meal">${s.meal_i}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_no}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_no}</td><td class="bg-sub">${s.spec}</td><td class="bg-sub">${s.hol}</td></tr><tr><td colspan="9" style="font-size:0.7rem;color:#94a3b8;text-align:right;padding:4px;border:none">夜航: 18:30(${s.n1.toFixed(1)}) / 00:00(${s.n2.toFixed(1)})</td></tr></tbody>`;
+            
+            document.getElementById('reportTable').innerHTML = `<thead><tr><th rowspan="2">类别</th><th colspan="2">国内</th><th colspan="2">港澳台</th><th colspan="2">亚洲</th><th colspan="2">洲际</th></tr><tr><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th></tr></thead><tbody><tr><td style="font-weight:bold">合计</td><td>${formatTimePair(s.d_a)}</td><td>${s.d_b}</td><td>${formatTimePair(s.h_a)}</td><td>${s.h_b}</td><td>${formatTimePair(s.a_a)}</td><td>${s.a_b}</td><td>${formatTimePair(s.i_a)}</td><td>${s.i_b}</td></tr><tr><td colspan="9" style="height:8px;border:none;background:white"></td></tr><tr><th rowspan="2">补贴</th><th colspan="2">机组餐(份)</th><th colspan="2">驻外-国内</th><th colspan="2">驻外-国际</th><th colspan="2">其他</th></tr><tr><th class="bg-meal">国内</th><th class="bg-meal">国际</th><th class="bg-cal-stat">国有(天)</th><th class="bg-cal-stat">国无(次)</th><th class="bg-cal-stat">外有(天)</th><th class="bg-cal-stat">外无(次)</th><th class="bg-sub">特殊</th><th class="bg-sub">节日</th></tr><tr><td style="font-weight:bold">统计</td><td class="bg-meal">${s.meal_d}</td><td class="bg-meal">${s.meal_i}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_no}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_no}</td><td class="bg-sub">${s.spec}</td><td class="bg-sub">${s.hol}</td></tr><tr><td colspan="9" style="font-size:0.7rem;color:#94a3b8;text-align:right;padding:4px;border:none">夜航: 18:30(${s.n1.toFixed(1)}) / 00:00(${s.n2.toFixed(1)})</td></tr></tbody>`;
         };
         window.renderList = () => {
             const listEl = document.getElementById('logList'); const mStr = document.getElementById('reportMonth').value; const displayData = allRecords.filter(r => r.date.startsWith(mStr));
