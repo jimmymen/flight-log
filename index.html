@@ -3,14 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>飞行日志 Pro - 机长年薪结算版</title>
+    <title>飞行日志 Pro - 机长全能版</title>
     <style>
         /* === 基础变量 === */
         :root {
             --primary: #2563eb; --primary-dark: #1e40af; 
             --bg: #f8fafc; --text: #334155; --border: #cbd5e1;
+            /* 状态颜色 */
+            --dom-stay-bg: #dbeafe; --dom-stay-text: #1e40af;
+            --dom-no-bg: #d1fae5; --dom-no-text: #065f46;
+            --int-stay-bg: #f3e8ff; --int-stay-text: #6b21a8;
+            --int-no-bg: #fef3c7; --int-no-text: #92400e;
             --meal-bg: #fff7ed; --meal-text: #c2410c; --meal-border: #ffedd5;
             --night-bg: #0f172a; --night-text: #fcd34d;
+            --tax-red: #dc2626; --income-green: #16a34a;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
@@ -29,20 +35,25 @@
         .top-bar { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: 16px 24px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(37,99,235,0.3); margin-bottom: 10px; }
         .user-pill { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; backdrop-filter: blur(4px); margin-top: 5px; display: inline-block; }
 
-        /* 薪资表格样式 (带计算过程) */
+        /* === 薪资表格样式 (增强版：显示计算过程) === */
+        .salary-summary-box { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 12px; border: 1px solid #bfdbfe; }
+        .ss-item { text-align: center; }
+        .ss-label { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
+        .ss-val { font-size: 1.1rem; font-weight: 800; font-family: monospace; }
+        .ss-total { grid-column: 1/-1; border-top: 1px dashed #bfdbfe; padding-top: 10px; margin-top: 5px; }
+        
         .salary-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        .salary-table th { text-align: left; color: #64748b; padding: 10px 8px; border-bottom: 2px solid #e2e8f0; font-size: 0.8rem; background: #f8fafc; }
-        .salary-table td { padding: 12px 8px; border-bottom: 1px dashed #e2e8f0; vertical-align: middle; }
-        .salary-table tr:last-child td { border-bottom: none; font-weight: bold; font-size: 1.2rem; color: #16a34a; border-top: 2px solid #e2e8f0; background: #f0fdf4; }
+        .salary-table th { text-align: left; padding: 10px 8px; border-bottom: 2px solid #e2e8f0; color: #64748b; font-size: 0.8rem; background: #f8fafc; }
+        .salary-table td { padding: 12px 8px; border-bottom: 1px dashed #e2e8f0; vertical-align: top; }
+        .salary-table tr:last-child td { border-bottom: none; }
         
-        .col-item { width: 25%; font-weight: 600; color: #334155; }
-        .col-calc { width: 50%; font-family: monospace; color: #64748b; font-size: 0.8rem; line-height: 1.4; }
-        .col-money { width: 25%; text-align: right; font-family: monospace; font-weight: 700; color: #0f172a; font-size: 0.95rem; }
+        /* 列宽控制 */
+        .col-name { width: 25%; font-weight: 600; color: #334155; }
+        .col-proc { width: 50%; font-family: monospace; color: #64748b; font-size: 0.8rem; line-height: 1.5; }
+        .col-amt { width: 25%; text-align: right; font-family: monospace; font-weight: 700; font-size: 0.95rem; color: #0f172a; }
         
-        .calc-tag { background: #eff6ff; color: var(--primary); padding: 2px 4px; border-radius: 4px; margin-right: 4px; border: 1px solid #dbeafe; }
-        .calc-x { color: #94a3b8; margin: 0 2px; }
-        .tax-line { color: #dc2626; }
-        .income-line { color: #16a34a; }
+        .calc-tag { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 5px; margin-right: 4px; font-size: 0.75rem; color: #475569; }
+        .tax-highlight { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 2px; font-weight: bold; }
 
         /* 表格通用 */
         .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); -webkit-overflow-scrolling: touch; }
@@ -56,19 +67,24 @@
         .time-dec { font-weight: bold; font-size: 0.9rem; color: #0f172a; }
         .time-hm { font-size: 0.7rem; color: #64748b; display: block; margin-top: 2px; font-family: monospace; }
 
-        /* AI 输入框 */
+        /* AI 录入区 */
         .ai-box { position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; background: #f8fafc; transition: border-color 0.3s; }
         .ai-box:focus-within { border-color: var(--primary); }
         .key-input { position: absolute; top: 10px; right: 10px; padding: 6px; border-radius: 6px; border: 1px solid var(--border); width: 120px; font-size: 0.75rem; background: rgba(255,255,255,0.9); }
         textarea { width: 100%; height: 100px; padding: 15px; border: none; background: transparent; resize: none; outline: none; font-size: 1rem; line-height: 1.5; }
 
         /* 编辑表单 */
-        .edit-form { background: #fff; padding: 20px; border-radius: 12px; margin-top: 20px; border: 1px solid var(--primary); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); position: relative; display: none; }
+        .edit-form { background: #fff; padding: 20px; border-radius: 12px; margin-top: 20px; border: 1px solid var(--primary); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); position: relative; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .form-tag { position: absolute; top: -10px; left: 20px; background: var(--primary); color: white; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; }
         .form-full { grid-column: 1 / -1; }
         .form-group label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 6px; font-weight: 600; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; outline: none; font-size: 0.9rem; background: #fff; }
-        
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; outline: none; transition: 0.2s; font-size: 0.9rem; background: #fff; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .time-hint { font-size: 0.75rem; color: var(--primary); font-weight: bold; float: right; }
+        .auto-hint { font-size: 0.65rem; color: #10b981; font-weight: normal; margin-left: 4px; }
+
         /* 日历 */
         .calendar-wrapper { user-select: none; }
         .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.8rem; color: #94a3b8; padding: 10px 0; font-weight: 600; }
@@ -81,22 +97,34 @@
         .cal-flights { flex: 1; display: flex; flex-direction: column; gap: 2px; overflow: hidden; margin-bottom: 4px; }
         .flight-tag { padding: 2px 4px; border-radius: 3px; font-size: 0.65rem; color: #fff; display: flex; justify-content: space-between; align-items: center; line-height: 1; }
         .tag-dom { background: #3b82f6; } .tag-int { background: #8b5cf6; } .tag-dh { background: #64748b; }
+        .night-tag { background: var(--night-bg); color: var(--night-text); font-size: 0.65rem; padding: 2px; border-radius: 3px; text-align: center; font-weight: bold; margin-top: 2px; display: flex; justify-content: center; align-items: center; gap: 4px; }
         .cal-status { font-size: 0.65rem; padding: 2px 4px; border-radius: 4px; text-align: center; margin-top: auto; font-weight: 700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .st-dom-stay { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
-        .st-dom-no { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-        .st-int-stay { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
-        .st-int-no { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .st-dom-stay { background: var(--dom-stay-bg); color: var(--dom-stay-text); border: 1px solid #bfdbfe; }
+        .st-dom-no { background: var(--dom-no-bg); color: var(--dom-no-text); border: 1px solid #a7f3d0; }
+        .st-int-stay { background: var(--int-stay-bg); color: var(--int-stay-text); border: 1px solid #e9d5ff; }
+        .st-int-no { background: var(--int-no-bg); color: var(--int-no-text); border: 1px solid #fde68a; }
         .st-base { color: #cbd5e1; font-weight: normal; }
 
         /* 模态框 */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000; backdrop-filter: blur(2px); }
-        .modal-content { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 25px; display: flex; flex-direction: column; gap: 15px; }
-        .settings-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 16px; width: 320px; display: none; z-index: 2000; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .modal-content { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 25px; animation: slideUp 0.3s ease; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
+        .settings-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 2000; width: 320px; display: none; }
         
+        .modal-title { font-size: 1.1rem; font-weight: bold; text-align: center; }
+        .modal-section-title { font-size: 0.8rem; color: #64748b; font-weight: bold; margin-top: 10px; margin-bottom: 5px; }
+        .city-input { width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; font-size: 1rem; text-align: center; outline: none; }
+        .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .status-btn { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+        .night-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .night-btn { background: #0f172a; color: #fcd34d; border: 1px solid #334155; }
+        .night-btn.clear { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+        .btn-cancel { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; background: white; color: #64748b; font-weight: bold; cursor: pointer; }
+
         /* 列表 */
         .log-list { max-height: 450px; overflow-y: auto; padding-right: 5px; }
-        .log-item { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .log-item { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
         .log-info { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+        .log-header { display: flex; justify-content: space-between; align-items: center; }
         .meal-badge { font-size: 0.7rem; background: var(--meal-bg); color: var(--meal-text); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--meal-border); font-weight: bold; margin-left: 5px;}
         .ac-badge { font-size: 0.7rem; background: #e0e7ff; color: #3730a3; padding: 1px 5px; border-radius: 3px; font-family: monospace; }
         .crew-badge { font-size: 0.75rem; color: #475569; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; display: inline-block; }
@@ -107,13 +135,10 @@
         .btn-edit { background: #eff6ff; color: var(--primary); padding: 8px 12px; font-size: 0.9rem; margin-right: 5px; }
         .btn-danger { background: #fee2e2; color: #ef4444; padding: 8px 12px; font-size: 0.9rem; }
         
-        .city-input { width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; font-size: 1rem; text-align: center; outline: none; }
-        .status-btn { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
-        .btn-cancel { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; background: white; color: #64748b; font-weight: bold; cursor: pointer; }
-
         .login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at center, #3b82f6 0%, #1e3a8a 100%); display: flex; justify-content: center; align-items: center; z-index: 9999; }
         .login-card { background: white; padding: 40px; border-radius: 24px; width: 90%; max-width: 320px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
-        
+
+        /* Loading */
         .loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: none; justify-content: center; align-items: center; z-index: 20; backdrop-filter: blur(1px); border-radius: 12px; }
         .spinner { width: 30px; height: 30px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -121,13 +146,13 @@
 </head>
 <body>
 
-    <!-- 薪资/税务设置弹窗 -->
+    <!-- 薪资/税务设置弹窗 (必须输入累计数据才能算准税) -->
     <div id="settingsModal" class="modal-overlay" onclick="if(event.target===this) document.getElementById('settingsModal').style.display='none'">
         <div class="settings-modal" onclick="event.stopPropagation()">
             <h3 style="margin-bottom:15px; text-align:center; color:#0f172a;">⚙️ 薪资与税务配置</h3>
             
             <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:15px;">
-                <p style="font-size:0.75rem; color:#64748b; margin-bottom:5px;">请填入个税APP中<b>截至上个月</b>的数据，用于计算补税：</p>
+                <p style="font-size:0.75rem; color:#64748b; margin-bottom:5px;">请填入个税APP中<b>截至上个月</b>的数据，用于精准计算补税：</p>
                 <div class="form-group">
                     <label>年初至今累计应纳税所得额</label>
                     <input type="number" id="set_cum_income" placeholder="例: 942692" style="font-family:monospace; font-weight:bold;">
@@ -164,14 +189,15 @@
             <div style="margin-top:10px; text-align:center;">
                 <input type="text" id="modalCityInput" class="city-input" placeholder="输入驻外城市名">
             </div>
-            <div class="status-grid" style="margin-top:15px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="modal-section-title">驻外状态</div>
+            <div class="status-grid">
                 <button class="status-btn" style="background:#dbeafe; color:#1e40af;" onclick="saveCalendarStatus('国内有过夜')">🔵 国内有过夜</button>
                 <button class="status-btn" style="background:#d1fae5; color:#065f46;" onclick="saveCalendarStatus('国内无过夜')">🟢 国内无过夜</button>
                 <button class="status-btn" style="background:#f3e8ff; color:#6b21a8;" onclick="saveCalendarStatus('国际有过夜')">🟣 国际有过夜</button>
                 <button class="status-btn" style="background:#fef3c7; color:#92400e;" onclick="saveCalendarStatus('国际无过夜')">🟡 国际无过夜</button>
                 <button class="status-btn" style="grid-column: 1/-1; background:#f1f5f9; color:#475569;" onclick="saveCalendarStatus(null)">🏠 回沈阳/休息</button>
             </div>
-            <button class="btn-cancel" onclick="closeStatusModal()" style="margin-top:10px;">关闭</button>
+            <button class="btn-cancel" onclick="closeStatusModal()">关闭</button>
         </div>
     </div>
 
@@ -194,15 +220,36 @@
             </div>
         </div>
 
-        <!-- 💰 薪资核算 (重写逻辑：带过程) -->
+        <!-- 💰 薪资核算 (深度定制版) -->
         <section class="card">
             <div class="card-header">
-                <h2>💰 本月实发估算 (<span id="salaryRankDisplay">机长</span>)</h2>
-                <span id="taxRateDisplay" style="font-size:0.75rem; background:#f3e8ff; color:#6b21a8; padding:2px 6px; border-radius:4px; font-weight:bold;">税率 --%</span>
+                <h2>💰 本月实发结算单</h2>
+                <span id="taxRateDisplay" style="font-size:0.75rem; background:#f3e8ff; color:#6b21a8; padding:2px 6px; border-radius:4px; font-weight:bold;">当前税率 --%</span>
             </div>
             <div class="card-body">
+                <!-- 实发汇总大屏 -->
+                <div class="salary-summary-box">
+                    <div class="ss-item">
+                        <div class="ss-label">固定实发</div>
+                        <div class="ss-val" style="color:#0f172a">96,080</div>
+                    </div>
+                    <div class="ss-item">
+                        <div class="ss-label">变动实发(税后)</div>
+                        <div class="ss-val" style="color:var(--tax-red)" id="disp_net_var">0</div>
+                    </div>
+                    <div class="ss-item">
+                        <div class="ss-label">补助实发(免税)</div>
+                        <div class="ss-val" style="color:var(--income-green)" id="disp_net_allow">0</div>
+                    </div>
+                    <div class="ss-item ss-total">
+                        <div class="ss-label">本月银行卡合计</div>
+                        <div class="ss-val" style="font-size:1.5rem; color:#1e40af;" id="disp_total_bank">¥0.00</div>
+                    </div>
+                </div>
+
+                <!-- 详细计算过程表 -->
                 <table class="salary-table">
-                    <thead><tr><th class="col-item">项目</th><th class="col-calc">计算过程</th><th class="col-money">金额</th></tr></thead>
+                    <thead><tr><th class="col-name">项目</th><th class="col-proc">计算公式 / 过程</th><th class="col-amt">金额</th></tr></thead>
                     <tbody id="salaryTableBody">
                         <!-- JS 自动填充 -->
                     </tbody>
@@ -233,7 +280,7 @@
             </div>
         </section>
 
-        <!-- 📝 AI 录入 -->
+        <!-- 📝 AI 录入 (保留原有) -->
         <section class="card">
             <div class="card-header"><h2>📝 智能录入</h2><button class="btn btn-primary" id="aiBtn" onclick="processAI()">✨ AI 识别</button></div>
             <div class="card-body">
@@ -244,7 +291,7 @@
                 </div>
                 
                 <!-- 编辑表单 -->
-                <div id="editForm" class="edit-form">
+                <div id="editForm" class="edit-form" style="display: none;">
                     <div class="form-tag" id="formModeTag">新增</div>
                     <input type="hidden" id="edit_doc_id">
                     <div class="form-grid">
@@ -253,6 +300,7 @@
                         <div class="form-group"><label>起飞地</label><input type="text" id="f_dep"></div>
                         <div class="form-group"><label>落地地</label><input type="text" id="f_arr"></div>
                         <div class="form-group"><label>航线属性</label><select id="f_cat"><option value="国内">国内</option><option value="港澳台">港澳台</option><option value="亚洲国际">亚洲国际</option><option value="洲际">洲际</option></select></div>
+                        <div class="form-group form-full"><label>机组成员</label><input type="text" id="f_crew"></div>
                         <div class="form-group"><label>机型</label><input type="text" id="f_ac_type" list="ac_list"></div>
                         <datalist id="ac_list"><option value="G650ER"><option value="CL850"><option value="G550"></datalist>
 
@@ -265,7 +313,8 @@
 
                         <div class="form-group"><label>空时</label><input type="number" step="0.01" id="f_air"></div>
                         <div class="form-group"><label>总时</label><input type="number" step="0.01" id="f_total_time"></div>
-                        <div class="form-group" style="background:#e0f2fe;"><label style="color:#0369a1;font-weight:bold">滑行天数</label><input type="number" id="f_block_days" value="1"></div>
+                        <!-- 滑行天数 -->
+                        <div class="form-group" style="background:#e0f2fe; border-radius:8px;"><label style="color:#0369a1;font-weight:bold;padding-left:5px;">滑行天数</label><input type="number" id="f_block_days" value="1" style="background:#e0f2fe;font-weight:bold;"></div>
 
                         <div class="form-group"><label>夜(18:30-24:00)</label><input type="number" step="0.1" id="f_night1"></div>
                         <div class="form-group"><label>夜(24:00+)</label><input type="number" step="0.1" id="f_night2"></div>
@@ -296,7 +345,7 @@
         </section>
     </div>
 
-    <!-- Firebase SDK & Logic -->
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, setDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
@@ -321,7 +370,7 @@
         let calendarData = {}; 
         let currentModalDate = '';
 
-        // === 费率配置 (年薪制调整) ===
+        // === 核心费率配置 (年薪制调整) ===
         // 节假日按照日薪3倍算(约7262/天)
         const HOLIDAY_RATE = 7262; 
         const FIXED_BASE_NET = 96080.65; // 固定工资到手
@@ -334,7 +383,7 @@
             "副驾驶": { dom: 200, hk:{s:320, u:230}, asia:{s:320, u:240}, out:{s:360, u:240}, n1:25, n2:60, dom_no:200, dom_stay:400, int_no:400, int_stay:700, spec:500 },
         };
 
-        // 2025个税阶梯
+        // 2025个税阶梯 (累计预扣法)
         const TAX_BRACKETS = [
             { limit: 36000, rate: 0.03, quick: 0 },
             { limit: 144000, rate: 0.10, quick: 2520 },
@@ -353,12 +402,10 @@
             const icao = document.getElementById('set_icao').value;
             const ci = document.getElementById('set_cum_income').value;
             const ct = document.getElementById('set_cum_tax').value;
-            
             localStorage.setItem('user_rank', rank);
             localStorage.setItem('user_icao', icao);
             localStorage.setItem('user_cum_income', ci);
             localStorage.setItem('user_cum_tax', ct);
-            
             document.getElementById('settingsModal').style.display = 'none';
             refreshAll();
         };
@@ -403,7 +450,7 @@
             return amount * 0.45 - 181920;
         }
 
-        // === 核心逻辑修改：薪资计算 (滑行天数独立 + 过程展示) ===
+        // === 核心逻辑修改：薪资计算 (全细节展示) ===
         window.renderSalary = () => {
             const rank = document.getElementById('set_rank').value;
             const isSigned = document.getElementById('set_icao').value === 'signed';
@@ -413,13 +460,12 @@
             const prevCumIncome = parseFloat(localStorage.getItem('user_cum_income')) || 942692;
             const prevCumTax = parseFloat(localStorage.getItem('user_cum_tax')) || 244022;
 
-            document.getElementById('salaryRankDisplay').innerText = rank + (isSigned ? "·已签" : "·未签");
             const mStr = document.getElementById('reportMonth').value;
             const data = allRecords.filter(r => r.date.startsWith(mStr));
             
             // 统计变量
             let s = { dom_air:0, hk_air:0, asia_air:0, out_air:0, n1:0, n2:0, spec_cnt:0, holiday_days:0, dom_stay:0, dom_no:0, int_stay:0, int_no:0, meal:0 };
-            // 滑行天数独立统计
+            // 滑行天数独立统计 (Block Days)
             let block = { dom:0, hk:0, asia:0, out:0 };
 
             data.forEach(r => {
@@ -436,7 +482,7 @@
                 s.meal += (r.crew_meal_dom || 0) * 60 + (r.crew_meal_int || 0) * 180;
             });
 
-            // 驻外统计 logic ... 
+            // 驻外统计 Logic (同前)
             const [y, m] = mStr.split('-').map(Number); const daysInMonth = new Date(y, m, 0).getDate();
             let autoStatus = {};
             allRecords.forEach(r => { if(r.overnight && !r.overnight.includes('无') && r.overnight_days > 0) { const d = new Date(r.date); for(let i=1; i<=r.overnight_days; i++) { const p = new Date(d); p.setDate(d.getDate()-i); autoStatus[p.toISOString().split('T')[0]] = r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜'; } } });
@@ -445,55 +491,57 @@
             const fmt = (n) => n.toLocaleString('zh-CN', {style:'currency', currency:'CNY'});
             let rows = ``;
 
-            // 1. 固定工资
-            rows += `<tr><td class="col-item">固定工资 (税后)</td><td class="col-calc">包含国内飞行/滑行费<br><span style="color:#059669">公司全额承担个税</span></td><td class="col-money">${fmt(FIXED_BASE_NET)}</td></tr>`;
+            // 1. 固定工资 (始终显示)
+            rows += `<tr><td class="col-name">固定工资 (税后)</td><td class="col-proc">包含国内飞行/滑行费<br><span style="color:#059669">公司全额承担个税</span></td><td class="col-amt">${fmt(FIXED_BASE_NET)}</td></tr>`;
 
             // 2. 国际飞行小时费 (国内=0)
             let gross_var = 0;
-            
             if(s.hk_air > 0) {
                 const r = isSigned?cfg.hk.s:cfg.hk.u; const amt = s.hk_air * r; gross_var += amt;
-                rows += `<tr><td class="col-item">港澳台空时</td><td class="col-calc"><span class="calc-tag">${s.hk_air.toFixed(1)}h</span><span class="calc-x">×</span>${r}</td><td class="col-money">${fmt(amt)}</td></tr>`;
+                rows += `<tr><td class="col-name">港澳台空时</td><td class="col-proc"><span class="calc-tag">${s.hk_air.toFixed(1)}h</span>× ${r}</td><td class="col-amt">${fmt(amt)}</td></tr>`;
             }
             if(s.asia_air > 0) {
                 const r = isSigned?cfg.asia.s:cfg.asia.u; const amt = s.asia_air * r; gross_var += amt;
-                rows += `<tr><td class="col-item">亚洲空时</td><td class="col-calc"><span class="calc-tag">${s.asia_air.toFixed(1)}h</span><span class="calc-x">×</span>${r}</td><td class="col-money">${fmt(amt)}</td></tr>`;
+                rows += `<tr><td class="col-name">亚洲空时</td><td class="col-proc"><span class="calc-tag">${s.asia_air.toFixed(1)}h</span>× ${r}</td><td class="col-amt">${fmt(amt)}</td></tr>`;
             }
             if(s.out_air > 0) {
                 const r = isSigned?cfg.out.s:cfg.out.u; const amt = s.out_air * r; gross_var += amt;
-                rows += `<tr><td class="col-item">洲际空时</td><td class="col-calc"><span class="calc-tag">${s.out_air.toFixed(1)}h</span><span class="calc-x">×</span>${r}</td><td class="col-money">${fmt(amt)}</td></tr>`;
+                rows += `<tr><td class="col-name">洲际空时</td><td class="col-proc"><span class="calc-tag">${s.out_air.toFixed(1)}h</span>× ${r}</td><td class="col-amt">${fmt(amt)}</td></tr>`;
             }
 
             // 3. 滑行天数费 (独立计算，国际*0.6)
             if(block.hk > 0) {
                 const r = isSigned?cfg.hk.s:cfg.hk.u; const amt = block.hk * r * 0.6; gross_var += amt;
-                rows += `<tr><td class="col-item">港澳台滑行</td><td class="col-calc"><span class="calc-tag">${block.hk}天</span><span class="calc-x">×</span>${r}<span class="calc-x">×</span>0.6</td><td class="col-money">${fmt(amt)}</td></tr>`;
+                rows += `<tr><td class="col-name">港澳台滑行</td><td class="col-proc"><span class="calc-tag">${block.hk}天</span>× ${r} × 0.6</td><td class="col-amt">${fmt(amt)}</td></tr>`;
             }
             if(block.asia > 0) {
                 const r = isSigned?cfg.asia.s:cfg.asia.u; const amt = block.asia * r * 0.6; gross_var += amt;
-                rows += `<tr><td class="col-item">亚洲滑行</td><td class="col-calc"><span class="calc-tag">${block.asia}天</span><span class="calc-x">×</span>${r}<span class="calc-x">×</span>0.6</td><td class="col-money">${fmt(amt)}</td></tr>`;
+                rows += `<tr><td class="col-name">亚洲滑行</td><td class="col-proc"><span class="calc-tag">${block.asia}天</span>× ${r} × 0.6</td><td class="col-amt">${fmt(amt)}</td></tr>`;
             }
             if(block.out > 0) {
                 const r = isSigned?cfg.out.s:cfg.out.u; const amt = block.out * r * 0.6; gross_var += amt;
-                rows += `<tr><td class="col-item">洲际滑行</td><td class="col-calc"><span class="calc-tag">${block.out}天</span><span class="calc-x">×</span>${r}<span class="calc-x">×</span>0.6</td><td class="col-money">${fmt(amt)}</td></tr>`;
+                rows += `<tr><td class="col-name">洲际滑行</td><td class="col-proc"><span class="calc-tag">${block.out}天</span>× ${r} × 0.6</td><td class="col-amt">${fmt(amt)}</td></tr>`;
             }
 
-            // 4. 其他变动
+            // 4. 其他变动 (节假日3倍)
             if(s.holiday_days > 0) {
                 const amt = s.holiday_days * HOLIDAY_RATE; gross_var += amt;
-                rows += `<tr><td class="col-item">节假日加班</td><td class="col-calc"><span class="calc-tag">${s.holiday_days}天</span><span class="calc-x">×</span>${HOLIDAY_RATE}</td><td class="col-money">${fmt(amt)}</td></tr>`;
+                rows += `<tr><td class="col-name">节假日加班</td><td class="col-proc"><span class="calc-tag">${s.holiday_days}天</span>× ${HOLIDAY_RATE}</td><td class="col-amt">${fmt(amt)}</td></tr>`;
             }
-            if(s.n1 > 0) { const amt = s.n1 * cfg.n1; gross_var += amt; rows += `<tr><td class="col-item">夜航(前)</td><td class="col-calc">${s.n1.toFixed(1)}h × ${cfg.n1}</td><td class="col-money">${fmt(amt)}</td></tr>`; }
-            if(s.n2 > 0) { const amt = s.n2 * cfg.n2; gross_var += amt; rows += `<tr><td class="col-item">夜航(后)</td><td class="col-calc">${s.n2.toFixed(1)}h × ${cfg.n2}</td><td class="col-money">${fmt(amt)}</td></tr>`; }
-            if(s.spec_cnt > 0) { const amt = s.spec_cnt * cfg.spec; gross_var += amt; rows += `<tr><td class="col-item">特殊机场</td><td class="col-calc">${s.spec_cnt}次 × ${cfg.spec}</td><td class="col-money">${fmt(amt)}</td></tr>`; }
+            if(s.n1 > 0) { const amt = s.n1 * cfg.n1; gross_var += amt; rows += `<tr><td class="col-name">夜航(前)</td><td class="col-proc">${s.n1.toFixed(1)}h × ${cfg.n1}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            if(s.n2 > 0) { const amt = s.n2 * cfg.n2; gross_var += amt; rows += `<tr><td class="col-name">夜航(后)</td><td class="col-proc">${s.n2.toFixed(1)}h × ${cfg.n2}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            if(s.spec_cnt > 0) { const amt = s.spec_cnt * cfg.spec; gross_var += amt; rows += `<tr><td class="col-name">特殊机场</td><td class="col-proc">${s.spec_cnt}次 × ${cfg.spec}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
 
-            // 5. 免税补助
+            // 5. 免税补助 (计算并显示)
             const allowances = s.meal + (s.dom_stay * cfg.dom_stay) + (s.dom_no * cfg.dom_no) + (s.int_stay * cfg.int_stay) + (s.int_no * cfg.int_no);
+            let allow_proc = `餐补: ${s.meal}`;
+            if(s.dom_stay>0) allow_proc += `, 驻外(国有):${s.dom_stay*cfg.dom_stay}`;
+            // ... (可以根据需要展开更多补助细节)
             if(allowances > 0) {
-                rows += `<tr><td class="col-item income-line">免税补助</td><td class="col-calc">餐补+驻外补贴<br>(不参与计税)</td><td class="col-money income-line">+${fmt(allowances)}</td></tr>`;
+                rows += `<tr><td class="col-name" style="color:#16a34a">免税补助</td><td class="col-proc">餐补+驻外补贴<br>(不参与计税)</td><td class="col-amt" style="color:#16a34a">+${fmt(allowances)}</td></tr>`;
             }
 
-            // 6. 个税计算
+            // 6. 税务核心计算 (显示补税)
             const month_taxable_base = FIXED_BASE_GROSS - SOCIAL_RATE - 5000;
             const month_taxable_var = gross_var;
             const total_new_income = prevCumIncome + month_taxable_base + month_taxable_var;
@@ -508,26 +556,42 @@
             let self_tax_share = month_tax_total - company_tax_share;
             if(self_tax_share < 0) self_tax_share = 0;
 
-            const currentRate = total_new_income > 960000 ? 45 : (total_new_income > 660000 ? 35 : 30);
+            const currentRate = total_new_income > 960000 ? 0.45 : (total_new_income > 660000 ? 0.35 : 0.30);
             const rateEl = document.getElementById('taxRateDisplay');
-            rateEl.innerText = `税率 ${currentRate}%`;
-            rateEl.style.color = currentRate >= 45 ? '#dc2626' : '#6b21a8';
-            rateEl.style.backgroundColor = currentRate >= 45 ? '#fee2e2' : '#f3e8ff';
+            rateEl.innerText = `当前税率 ${(currentRate*100).toFixed(0)}%`;
+            rateEl.style.color = currentRate >= 0.45 ? '#dc2626' : '#6b21a8';
+            rateEl.style.backgroundColor = currentRate >= 0.45 ? '#fee2e2' : '#f3e8ff';
+
+            // 计算补税差额
+            const normal_tax = gross_var * currentRate; // 理论上本月变动应交
+            const catch_up_tax = self_tax_share - normal_tax; // 实际交 - 理论交 = 以前少交的
 
             if(self_tax_share > 0) {
-                rows += `<tr><td class="col-item tax-line">个人承担个税</td><td class="col-calc">变动部分税额+跨档补税<br>当前累计:${(total_new_income/10000).toFixed(1)}万</td><td class="col-money tax-line">-${fmt(self_tax_share)}</td></tr>`;
+                let tax_detail = `变动工资 × ${(currentRate*100).toFixed(0)}%`;
+                if (catch_up_tax > 100) {
+                    tax_detail += `<br><span class="tax-highlight">含跨档补缴 ¥${catch_up_tax.toFixed(0)}</span>`;
+                }
+                tax_detail += `<br>累计应纳税所得:${(total_new_income/10000).toFixed(1)}万`;
+                
+                rows += `<tr><td class="col-name" style="color:#dc2626">个人承担个税</td><td class="col-proc">${tax_detail}</td><td class="col-amt" style="color:#dc2626">-${fmt(self_tax_share)}</td></tr>`;
             }
 
+            // 7. 汇总计算
             const net_var = gross_var - self_tax_share;
             const final_net = FIXED_BASE_NET + allowances + net_var;
 
-            rows += `<tr><td>本月实发</td><td style="font-size:0.8rem;font-weight:normal;color:#64748b">固定+变动+补助-个税</td><td class="col-money" style="font-size:1.3rem; color:#16a34a">${fmt(final_net)}</td></tr>`;
-            
+            // 更新表格
             document.getElementById('salaryTableBody').innerHTML = rows;
+
+            // 更新顶部的实发汇总大屏
+            document.getElementById('disp_net_var').innerText = fmt(net_var);
+            document.getElementById('disp_net_allow').innerText = fmt(allowances);
+            document.getElementById('disp_total_bank').innerText = fmt(final_net);
         };
 
-        // ... [此处保持 renderCalendar, renderReport, formatTimePair, AI Logic 不变] ...
-        
+        // ... [此处保持 renderCalendar, renderReport, formatTimePair 等函数不变] ...
+        // ... [AI Logic 保持不变] ...
+
         function formatTimePair(decimal) {
             if (!decimal) return `<div class="time-dual"><span class="time-dec">0.00</span></div>`;
             let h = Math.floor(decimal); let m = Math.round((decimal - h) * 60); if (m === 60) { h++; m = 0; }
