@@ -280,7 +280,7 @@
             </div>
         </section>
 
-        <!-- 📝 AI 录入 (已修复) -->
+        <!-- 📝 AI 录入 (已修复提示词错误) -->
         <section class="card">
             <div class="card-header"><h2>📝 智能录入</h2><button class="btn btn-primary" id="aiBtn" onclick="processAI()">✨ AI 识别</button></div>
             <div class="card-body">
@@ -626,7 +626,7 @@
         window.saveCalendarStatus = async (type) => { if(currentUser && currentModalDate) { const city = document.getElementById('modalCityInput').value.trim(); await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, currentModalDate), type ? { type: type, city: city } : { type: null, city: null }, { merge: true }); closeStatusModal(); } };
         window.recalcTimes = () => { const t_tk = document.getElementById('f_takeoff').value; const t_ld = document.getElementById('f_landing').value; const t_off = document.getElementById('f_block_off').value; const t_on = document.getElementById('f_block_on').value; document.getElementById('f_air').value = calculateDuration(t_tk, t_ld) || ''; document.getElementById('f_total_time').value = calculateDuration(t_off, t_on) || ''; if(t_tk && t_ld) { const n = getNightDuration(t_tk, t_ld); document.getElementById('f_night1').value = n.n1; document.getElementById('f_night2').value = n.n2; } };
 
-        // === 修复后的 AI 识别功能 (增加错误检测) ===
+        // === 修复后的 AI 识别功能 (增加错误检测 & 修复 Prompt) ===
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value.trim();
             const apiKey = document.getElementById('innerApiKey').value.trim();
@@ -642,7 +642,8 @@
             btn.disabled = true; 
             loader.style.display = "flex";
 
-            const prompt = `分析飞行记录。规则：节假日加班需识别关键字返回holiday字段(天数)。滑行天数返回block_days(默认1)。国内飞行hours计费为0但需记录时间。字段: date, dep, arr, category(国内/港澳台/亚洲国际/洲际), crew, flight_no, ac_type, time_off, time_takeoff, time_landing, time_on, night1, night2, overnight, overnight_city, overnight_days, special_airport, holiday(int), block_days(int), crew_meal_dom, crew_meal_int.`;
+            // ⚠️ 关键修改：Prompt 中必须包含 "JSON" 这个词，否则 API 会报错 400
+            const prompt = `请分析飞行记录并返回 JSON 格式数据。规则：节假日加班需识别关键字返回holiday字段(天数)。滑行天数返回block_days(默认1)。国内飞行hours计费为0但需记录时间。字段: date, dep, arr, category(国内/港澳台/亚洲国际/洲际), crew, flight_no, ac_type, time_off, time_takeoff, time_landing, time_on, night1, night2, overnight, overnight_city, overnight_days, special_airport, holiday(int), block_days(int), crew_meal_dom, crew_meal_int.`;
             
             try {
                 const res = await fetch("https://api.deepseek.com/chat/completions", { 
