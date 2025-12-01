@@ -121,8 +121,6 @@
         
         /* Loading */
         .loader { position: absolute; inset: 0; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; border-radius: 10px; z-index: 10; }
-        .spinner { width: 24px; height: 24px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -136,7 +134,7 @@
         </div>
     </div>
 
-    <!-- 设置弹窗 -->
+    <!-- 设置弹窗 (关键：输入累计税基) -->
     <div id="settingsModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
         <div class="modal-card">
             <h3 style="text-align:center; margin-bottom:15px;">⚙️ 税务与薪资设置</h3>
@@ -174,6 +172,7 @@
                 <button class="st-btn" style="grid-column:1/-1; background:#f1f5f9; color:#64748b;" onclick="saveCalStatus(null)">🏠 回家/清除状态</button>
             </div>
             
+            <!-- 找回的夜航手动标记功能 -->
             <div class="night-section">
                 <p style="font-size:0.75rem; color:#64748b; margin-bottom:5px; font-weight:bold;">🌙 标记夜航机型</p>
                 <div class="night-grid">
@@ -279,6 +278,7 @@
                         <div><label class="input-label">总时 (h)</label><input type="number" step="0.1" id="f_total" class="input-field"></div>
                     </div>
                     
+                    <!-- 重点字段高亮 -->
                     <div class="form-grid" style="margin-top:10px; background:#eff6ff; padding:10px; border-radius:8px;">
                         <div><label class="input-label" style="color:#1e40af">滑行天数 (Block)</label><input type="number" id="f_block" class="input-field" value="1"></div>
                         <div><label class="input-label" style="color:#b91c1c">节假日天数 (3倍)</label><input type="number" id="f_hol" class="input-field" value="0"></div>
@@ -334,7 +334,7 @@
         const FIXED_NET = 96080.65;
         const FIXED_GROSS = 101740.00;
         const SOCIAL = 5217.09;
-        const HOLIDAY_RATE = 7262; 
+        const HOLIDAY_RATE = 7262; // 29048/4
         
         const RATES = {
             "机长": { 
@@ -349,6 +349,7 @@
             }
         };
 
+        // 2025 个税表
         const TAX_TABLE = [
             { l: 36000, r: 0.03, q: 0 },
             { l: 144000, r: 0.10, q: 2520 },
@@ -359,11 +360,13 @@
             { l: Infinity, r: 0.45, q: 181920 }
         ];
 
+        // 辅助：计算个税
         function calcTax(amount) {
             for(let t of TAX_TABLE) if(amount <= t.l) return amount * t.r - t.q;
             return amount * 0.45 - 181920;
         }
 
+        // === 认证 ===
         window.loginWithGoogle = () => signInWithPopup(auth, new GoogleAuthProvider());
         window.doLogout = () => signOut(auth).then(()=>location.reload());
 
@@ -374,9 +377,13 @@
                 document.getElementById('app').style.display='block';
                 document.getElementById('reportMonth').value = new Date().toISOString().slice(0,7);
                 document.getElementById('apiKey').value = localStorage.getItem('ai_key')||'';
+                
+                // 加载设置
                 ['set_rank','set_icao','set_cum_income','set_cum_tax'].forEach(k => {
                     if(localStorage.getItem(k)) document.getElementById(k).value = localStorage.getItem(k);
                 });
+
+                // 监听数据
                 onSnapshot(query(collection(db, `users/${u.uid}/logs`), orderBy("date","desc")), s => {
                     allRecords = s.docs.map(d=>({id:d.id, ...d.data()}));
                     refreshAll();
@@ -405,44 +412,66 @@
             renderList();
         };
 
+        // === 核心：薪资计算 (全细节) ===
         function renderSalary() {
             const mStr = document.getElementById('reportMonth').value;
             const rank = document.getElementById('set_rank').value || '机长';
             const signed = document.getElementById('set_icao').value === 'signed';
             const rate = RATES[rank] || RATES['机长'];
             
+            // 筛选本月数据
             const data = allRecords.filter(r => r.date.startsWith(mStr));
+            
+            // 统计各项
             let stats = { hk_h:0, asia_h:0, out_h:0, hk_b:0, asia_b:0, out_b:0, hol:0, n1:0, n2:0, spec:0, meal:0 };
             
             data.forEach(r => {
+                // 小时 & 滑行 (国内不计)
                 if(r.category === '港澳台') { stats.hk_h += r.air_time||0; stats.hk_b += r.block_days||0; }
                 else if(r.category === '亚洲国际') { stats.asia_h += r.air_time||0; stats.asia_b += r.block_days||0; }
                 else if(r.category === '洲际') { stats.out_h += r.air_time||0; stats.out_b += r.block_days||0; }
+                
+                // 其他变动
                 stats.hol += r.holiday||0;
                 stats.n1 += r.night1||0; stats.n2 += r.night2||0;
                 stats.spec += r.special||0;
+                
+                // 餐补
                 stats.meal += (r.meal_d||0)*60 + (r.meal_i||0)*180;
             });
 
+            // 统计驻外 (结合日历)
             let stay = { d:0, dn:0, i:0, in:0 };
             const [y,m] = mStr.split('-').map(Number);
             const daysInMonth = new Date(y, m, 0).getDate();
             
+            // 自动推算+日历覆盖
             for(let d=1; d<=daysInMonth; d++) {
                 const dStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 let type = null;
-                if(calendarData[dStr] && calendarData[dStr].type) type = calendarData[dStr].type;
+                // 优先看日历手动标记
+                if(calendarData[dStr] && calendarData[dStr].type) {
+                    type = calendarData[dStr].type;
+                } else {
+                    // 自动逻辑 (略简化，以后台记录为准)
+                    const rec = data.find(r => r.date === dStr && r.over_days > 0);
+                    if(rec) { /* 简化：此处仅依靠手动标记或单条记录 */ } 
+                }
+                
                 if(type==='国内有过夜') stay.d++;
                 else if(type==='国内无过夜') stay.dn++;
                 else if(type==='国际有过夜') stay.i++;
                 else if(type==='国际无过夜') stay.in++;
             }
 
+            // --- 开始生成表格行 ---
             let rows = '';
             const fmt = n => n.toLocaleString('zh-CN', {style:'currency', currency:'CNY'});
             
-            rows += `<tr><td class="col-name">固定工资</td><td class="col-proc">含国内飞/税/社保</td><td class="col-amt">${fmt(FIXED_NET)}</td></tr>`;
+            // 1. 固定工资
+            rows += `<tr><td class="col-name">固定工资 (税后)</td><td class="col-proc">含国内飞行/滑行<br><span style="color:#059669">公司全额包税</span></td><td class="col-amt">${fmt(FIXED_NET)}</td></tr>`;
 
+            // 2. 国际小时费
             let gross_var = 0;
             const r_hk = signed ? rate.hk.s : rate.hk.u;
             const r_asia = signed ? rate.asia.s : rate.asia.u;
@@ -461,6 +490,7 @@
                 rows += `<tr><td class="col-name">洲际空时</td><td class="col-proc"><span class="proc-tag">${stats.out_h.toFixed(1)}h</span><span class="proc-op">×</span>${r_out}</td><td class="col-amt">${fmt(amt)}</td></tr>`;
             }
 
+            // 3. 滑行天数 (国际x0.6)
             if(stats.hk_b > 0) {
                 const amt = stats.hk_b * r_hk * 0.6; gross_var += amt;
                 rows += `<tr><td class="col-name">港澳台滑行</td><td class="col-proc"><span class="proc-tag">${stats.hk_b}天</span>× ${r_hk} × 0.6</td><td class="col-amt">${fmt(amt)}</td></tr>`;
@@ -474,6 +504,7 @@
                 rows += `<tr><td class="col-name">洲际滑行</td><td class="col-proc"><span class="proc-tag">${stats.out_b}天</span>× ${r_out} × 0.6</td><td class="col-amt">${fmt(amt)}</td></tr>`;
             }
 
+            // 4. 三倍工资 & 其他
             if(stats.hol > 0) {
                 const amt = stats.hol * HOLIDAY_RATE; gross_var += amt;
                 rows += `<tr><td class="col-name">节假日加班</td><td class="col-proc"><span class="proc-tag">${stats.hol}天</span>× ${HOLIDAY_RATE}</td><td class="col-amt">${fmt(amt)}</td></tr>`;
@@ -482,6 +513,7 @@
             if(stats.n2>0) { const amt = stats.n2*rate.n2; gross_var+=amt; rows+=`<tr><td class="col-name">夜航(后)</td><td class="col-proc">${stats.n2}h × ${rate.n2}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
             if(stats.spec>0) { const amt = stats.spec*rate.spec; gross_var+=amt; rows+=`<tr><td class="col-name">特殊机场</td><td class="col-proc">${stats.spec}次 × ${rate.spec}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
 
+            // 5. 补助 (免税)
             const sub_stay = (stay.d*rate.stay.d) + (stay.dn*rate.stay.dn) + (stay.i*rate.stay.i) + (stay.in*rate.stay.in);
             const total_allow = stats.meal + sub_stay;
             
@@ -491,13 +523,18 @@
                 rows += `<tr><td class="col-name val-green">免税补助</td><td class="col-proc">${p}</td><td class="col-amt val-green">+${fmt(total_allow)}</td></tr>`;
             }
 
+            // 6. 补税计算
             const cumInc = parseFloat(document.getElementById('set_cum_income').value)||942692;
             const cumTax = parseFloat(document.getElementById('set_cum_tax').value)||244022;
             
+            // 本月新增应税 = 固定基数 + 变动基数 - 社保 - 起征点(5000)
             const monthBaseTaxable = FIXED_GROSS - SOCIAL - 5000;
             const newTotalInc = cumInc + monthBaseTaxable + gross_var;
+            
             const totalTaxNeeded = calcTax(newTotalInc);
             const monthTotalTax = totalTaxNeeded - cumTax;
+            
+            // 公司承担部分 (假设无变动时的税)
             const baseTotalInc = cumInc + monthBaseTaxable;
             const compTax = calcTax(baseTotalInc) - cumTax;
             
@@ -509,13 +546,15 @@
             if(selfTax > 0) {
                 const normTax = gross_var * curRate;
                 const catchUp = selfTax - normTax;
-                let desc = `变动 × ${(curRate*100).toFixed(0)}% + 跨档补税`;
-                if(catchUp > 50) desc += `<br><span class="tax-highlight">补税 ¥${catchUp.toFixed(0)}</span>`;
+                let desc = `按 ${(curRate*100).toFixed(0)}% 税率`;
+                if(catchUp > 50) desc += `<br><span class="tax-highlight">含跨档补税 ¥${catchUp.toFixed(0)}</span>`;
                 
                 rows += `<tr><td class="col-name val-red">个人承担个税</td><td class="col-proc">${desc}</td><td class="col-amt val-red">-${fmt(selfTax)}</td></tr>`;
             }
 
+            // 更新 UI
             document.getElementById('salaryBody').innerHTML = rows;
+            
             const netVar = gross_var - selfTax;
             const final = FIXED_NET + total_allow + netVar;
             
@@ -529,32 +568,44 @@
             badge.style.color = curRate>=0.45 ? '#b91c1c' : '#7e22ce';
         }
 
+        // === 辅助功能 ===
         function renderCalendar() {
             const el = document.getElementById('calendarGrid'); el.innerHTML = '';
             const mStr = document.getElementById('reportMonth').value;
             const [y,m] = mStr.split('-').map(Number);
             const days = new Date(y, m, 0).getDate();
             const first = new Date(y, m-1, 1).getDay();
+            
             for(let i=0; i<first; i++) el.innerHTML+=`<div></div>`;
+            
             for(let d=1; d<=days; d++) {
                 const date = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const st = calendarData[date] || {};
                 const flights = allRecords.filter(r => r.date === date);
+                
                 let dot = '';
                 flights.forEach(f => {
                     const cls = (f.category.includes('国际')||f.category.includes('洲际')) ? 'dot-int' : 'dot-dom';
                     dot += `<div class="flight-dot ${cls}">${f.dep}-${f.arr}</div>`;
                 });
+
                 let stCls = '';
                 if(st.type==='国内有过夜') stCls='st-dom-stay';
                 else if(st.type==='国内无过夜') stCls='st-dom-no';
                 else if(st.type==='国际有过夜') stCls='st-int-stay';
                 else if(st.type==='国际无过夜') stCls='st-int-no';
+
                 const nightIcon = st.night_ac ? `<div class="night-badge">🌙${st.night_ac}</div>` : '';
+
                 const cell = document.createElement('div');
                 cell.className = `cal-day ${date===new Date().toISOString().slice(0,10)?'today':''}`;
                 cell.onclick = () => openCalModal(date);
-                cell.innerHTML = `<div class="cal-num"><span>${d}</span></div>${nightIcon}<div style="flex:1">${dot}</div><div class="status-badge ${stCls}">${st.city||st.type||''}</div>`;
+                cell.innerHTML = `
+                    <div class="cal-num"><span>${d}</span></div>
+                    ${nightIcon}
+                    <div style="flex:1">${dot}</div>
+                    <div class="status-badge ${stCls}">${st.city||st.type||''}</div>
+                `;
                 el.appendChild(cell);
             }
         }
@@ -586,28 +637,29 @@
             const key = document.getElementById('apiKey').value;
             if(!txt || !key) return alert('请输入内容和Key');
             localStorage.setItem('ai_key', key);
+            
             document.getElementById('aiBtn').disabled=true;
             document.getElementById('aiLoader').style.display='flex';
+            
             try {
-                const prompt = `解析飞行。规则:国内cat=国内。block_days默认为1。节假日需识别holiday(天数)。字段:date, dep, arr, cat(国内/港澳台/亚洲国际/洲际), air, block_days, hol, n1, n2, spec, meal_d, meal_i, over_type, over_days.`;
+                const prompt = `解析飞行记录返回JSON。规则：国内飞行category=国内。block_days默认为1。节假日需识别holiday(天数)。字段:date, dep, arr, category, crew, air_time, total_time, block_days, holiday, night1, night2, special, meal_d, meal_i, over_type, over_days.`;
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
                     body:JSON.stringify({model:"deepseek-chat", messages:[{role:"system",content:prompt},{role:"user",content:txt}], response_format:{type:"json_object"}})
                 });
+                const data = JSON.parse((await res.json()).choices[0].message.content);
                 
-                if (!res.ok) throw new Error((await res.json()).error?.message || "API Error");
-                const json = await res.json();
-                if (!json.choices || !json.choices[0]) throw new Error("Empty AI Response");
-                
-                const data = JSON.parse(json.choices[0].message.content);
+                // 填充表单
                 document.getElementById('editForm').style.display='block';
                 for(let k in data) {
-                    const id = 'f_'+k.replace('cat','cat').replace('air','air').replace('block_days','block').replace('hol','hol').replace('over_type','over_type').replace('over_days','over_days').replace('meal_d','meal_d').replace('meal_i','meal_i').replace('n1','n1').replace('n2','n2').replace('spec','spec');
-                    const el = document.getElementById(id);
+                    const el = document.getElementById('f_'+k.replace('air_time','air').replace('total_time','total').replace('block_days','block').replace('holiday','hol').replace('over_type','over_type').replace('over_days','over_days').replace('meal_d','meal_d').replace('meal_i','meal_i'));
                     if(el) el.value = data[k];
                 }
+                // 日期特殊处理
                 if(data.date) document.getElementById('f_date').value = data.date;
+                
             } catch(e) { alert('识别失败: '+e.message); }
+            
             document.getElementById('aiBtn').disabled=false;
             document.getElementById('aiLoader').style.display='none';
         };
@@ -615,14 +667,20 @@
         window.saveRecord = () => {
             const getVal = id => document.getElementById(id).value;
             const getNum = id => parseFloat(getVal(id))||0;
+            
             const rec = {
-                date: getVal('f_date'), category: getVal('f_cat'),
+                date: getVal('f_date'),
+                category: getVal('f_cat'),
                 dep: getVal('f_dep'), arr: getVal('f_arr'),
-                air_time: getNum('f_air'), block_days: getNum('f_block'),
-                holiday: getNum('f_hol'), meal_d: getNum('f_meal_d'), meal_i: getNum('f_meal_i'),
-                over_days: getNum('f_over_days'), night1: getNum('f_n1'), night2: getNum('f_n2'), special: getNum('f_spec'),
+                air_time: getNum('f_air'),
+                block_days: getNum('f_block'),
+                holiday: getNum('f_hol'),
+                meal_d: getNum('f_meal_d'), meal_i: getNum('f_meal_i'),
+                over_days: getNum('f_over_days'),
+                night1: getNum('f_n1'), night2: getNum('f_n2'), special: getNum('f_spec'),
                 created: new Date().toISOString()
             };
+            
             addDoc(collection(db, `users/${currentUser.uid}/logs`), rec).then(()=>{
                 document.getElementById('editForm').style.display='none';
                 document.getElementById('aiInput').value='';
@@ -650,6 +708,7 @@
             const list = document.getElementById('logList'); list.innerHTML='';
             const mStr = document.getElementById('reportMonth').value;
             const data = allRecords.filter(r => r.date.startsWith(mStr)).sort((a,b)=>b.date.localeCompare(a.date));
+            
             data.forEach(r => {
                 const div = document.createElement('div'); div.className='log-item';
                 div.innerHTML = `
@@ -658,14 +717,16 @@
                         <span style="font-weight:bold; font-size:0.85rem">${r.dep}-${r.arr}</span>
                         <div class="log-details">${r.category} · ${r.air_time}h · 滑${r.block_days}</div>
                     </div>
-                    <div><button onclick="delLog('${r.id}')" style="color:#ef4444; border:none; background:none; font-weight:bold;">×</button></div>
+                    <div>
+                        <button onclick="delLog('${r.id}')" style="color:#ef4444; border:none; background:none; font-weight:bold;">×</button>
+                    </div>
                 `;
                 list.appendChild(div);
             });
         };
         
         window.delLog = (id) => { if(confirm('删除?')) deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
-        window.recalcTimes = () => {}; 
+        window.recalcTimes = () => {}; // 占位
     </script>
 </body>
 </html>
