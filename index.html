@@ -280,7 +280,7 @@
             </div>
         </section>
 
-        <!-- 📝 AI 录入 (保留原有) -->
+        <!-- 📝 AI 录入 (已修复) -->
         <section class="card">
             <div class="card-header"><h2>📝 智能录入</h2><button class="btn btn-primary" id="aiBtn" onclick="processAI()">✨ AI 识别</button></div>
             <div class="card-body">
@@ -589,9 +589,6 @@
             document.getElementById('disp_total_bank').innerText = fmt(final_net);
         };
 
-        // ... [此处保持 renderCalendar, renderReport, formatTimePair 等函数不变] ...
-        // ... [AI Logic 保持不变] ...
-
         function formatTimePair(decimal) {
             if (!decimal) return `<div class="time-dual"><span class="time-dec">0.00</span></div>`;
             let h = Math.floor(decimal); let m = Math.round((decimal - h) * 60); if (m === 60) { h++; m = 0; }
@@ -629,26 +626,71 @@
         window.saveCalendarStatus = async (type) => { if(currentUser && currentModalDate) { const city = document.getElementById('modalCityInput').value.trim(); await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, currentModalDate), type ? { type: type, city: city } : { type: null, city: null }, { merge: true }); closeStatusModal(); } };
         window.recalcTimes = () => { const t_tk = document.getElementById('f_takeoff').value; const t_ld = document.getElementById('f_landing').value; const t_off = document.getElementById('f_block_off').value; const t_on = document.getElementById('f_block_on').value; document.getElementById('f_air').value = calculateDuration(t_tk, t_ld) || ''; document.getElementById('f_total_time').value = calculateDuration(t_off, t_on) || ''; if(t_tk && t_ld) { const n = getNightDuration(t_tk, t_ld); document.getElementById('f_night1').value = n.n1; document.getElementById('f_night2').value = n.n2; } };
 
+        // === 修复后的 AI 识别功能 (增加错误检测) ===
         window.processAI = async () => {
             const text = document.getElementById('ocrInput').value.trim();
             const apiKey = document.getElementById('innerApiKey').value.trim();
-            if (!text || !apiKey) return alert("请输入Key");
+            
+            if (!text) return alert("请输入需要识别的文本");
+            if (!apiKey) return alert("请输入 DeepSeek API Key");
+            
             localStorage.setItem("openai_key", apiKey);
-            const btn = document.getElementById('aiBtn'); const loader = document.getElementById('aiLoading');
-            btn.innerHTML = "⏳"; btn.disabled = true; loader.style.display = "flex";
+            
+            const btn = document.getElementById('aiBtn'); 
+            const loader = document.getElementById('aiLoading');
+            btn.innerHTML = "⏳ 思考中..."; 
+            btn.disabled = true; 
+            loader.style.display = "flex";
+
             const prompt = `分析飞行记录。规则：节假日加班需识别关键字返回holiday字段(天数)。滑行天数返回block_days(默认1)。国内飞行hours计费为0但需记录时间。字段: date, dep, arr, category(国内/港澳台/亚洲国际/洲际), crew, flight_no, ac_type, time_off, time_takeoff, time_landing, time_on, night1, night2, overnight, overnight_city, overnight_days, special_airport, holiday(int), block_days(int), crew_meal_dom, crew_meal_int.`;
+            
             try {
                 const res = await fetch("https://api.deepseek.com/chat/completions", { 
-                    method: "POST", headers: {"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`}, 
-                    body: JSON.stringify({ model: "deepseek-chat", messages: [{role: "system", content: prompt}, {role: "user", content: text}], response_format: { type: "json_object" } }) 
+                    method: "POST", 
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${apiKey}`
+                    }, 
+                    body: JSON.stringify({ 
+                        model: "deepseek-chat", 
+                        messages: [
+                            {role: "system", content: prompt}, 
+                            {role: "user", content: text}
+                        ], 
+                        response_format: { type: "json_object" } 
+                    }) 
                 });
-                const r = JSON.parse((await res.json()).choices[0].message.content);
+
+                const rawData = await res.json();
+
+                // 错误检查
+                if (!res.ok) {
+                    const errMsg = rawData.error ? rawData.error.message : "未知错误";
+                    throw new Error(`API请求失败 (${res.status}): ${errMsg}`);
+                }
+                if (!rawData.choices || rawData.choices.length === 0) {
+                    console.error("API Error Log:", rawData);
+                    throw new Error("AI 未返回有效内容，请检查 Key 或余额");
+                }
+
+                const r = JSON.parse(rawData.choices[0].message.content);
                 resetForm();
                 if (r.type === 'return_base') {
-                    // ...
-                } else { setFormValues(r); recalcTimes(); }
+                    // 预留逻辑
+                } else { 
+                    setFormValues(r); 
+                    recalcTimes(); 
+                }
                 showForm();
-            } catch (e) { alert(e.message); } finally { btn.innerHTML = "✨ AI 识别"; btn.disabled = false; loader.style.display = "none"; }
+
+            } catch (e) { 
+                console.error(e);
+                alert("❌ 识别出错: " + e.message); 
+            } finally { 
+                btn.innerHTML = "✨ AI 识别"; 
+                btn.disabled = false; 
+                loader.style.display = "none"; 
+            }
         };
 
         function setFormValues(d) {
