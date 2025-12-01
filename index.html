@@ -161,11 +161,9 @@
     <div id="statusModal" class="modal-overlay" onclick="if(event.target===this) closeStatusModal()">
         <div class="modal-content">
             <div class="modal-title">修改 <span id="modalDateStr" style="color:var(--primary)"></span> 日志</div>
-            
             <div style="margin-top:10px; text-align:center;">
                 <input type="text" id="modalCityInput" class="city-input" placeholder="输入驻外城市名">
             </div>
-
             <div class="modal-section-title">驻外状态</div>
             <div class="status-grid">
                 <button class="status-btn" style="background:#dbeafe; color:#1e40af;" onclick="saveCalendarStatus('国内有过夜')">🔵 国内有过夜</button>
@@ -174,14 +172,12 @@
                 <button class="status-btn" style="background:#fef3c7; color:#92400e;" onclick="saveCalendarStatus('国际无过夜')">🟡 国际无过夜</button>
                 <button class="status-btn" style="grid-column: 1/-1; background:#f1f5f9; color:#475569;" onclick="saveCalendarStatus(null)">🏠 回沈阳/休息 (清除驻外)</button>
             </div>
-
             <div class="modal-section-title">手动夜航标记 (不影响工资计算)</div>
             <div class="night-grid">
                 <button class="status-btn night-btn" onclick="saveNightStatus('CL850')">CL850</button>
                 <button class="status-btn night-btn" onclick="saveNightStatus('G650')">G650</button>
                 <button class="status-btn night-btn clear" onclick="saveNightStatus(null)">清除夜航</button>
             </div>
-
             <button class="btn-cancel" onclick="closeStatusModal()">关闭</button>
         </div>
     </div>
@@ -302,7 +298,7 @@
         </section>
     </div>
 
-    <!-- Firebase SDK (Modular) -->
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, setDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
@@ -327,10 +323,10 @@
         let calendarData = {}; 
         let currentModalDate = '';
 
-        // 费率配置 (根据表格)
+        // 费率配置 (年薪制调整：教员/机长国内=0)
         const FEE_CONFIG = {
-            "教员": { dom: 450, hk:{s:720, u:518}, asia:{s:720, u:540}, out:{s:810, u:540}, n1:80, n2:200, dom_no:200, dom_stay:500, int_no:400, int_stay:900, spec:1000 },
-            "机长": { dom: 400, hk:{s:640, u:460}, asia:{s:640, u:480}, out:{s:720, u:480}, n1:80, n2:200, dom_no:200, dom_stay:500, int_no:400, int_stay:900, spec:1000 },
+            "教员": { dom: 0, hk:{s:720, u:518}, asia:{s:720, u:540}, out:{s:810, u:540}, n1:80, n2:200, dom_no:200, dom_stay:500, int_no:400, int_stay:900, spec:1000 },
+            "机长": { dom: 0, hk:{s:640, u:460}, asia:{s:640, u:480}, out:{s:720, u:480}, n1:80, n2:200, dom_no:200, dom_stay:500, int_no:400, int_stay:900, spec:1000 },
             "副驾驶": { dom: 200, hk:{s:320, u:230}, asia:{s:320, u:240}, out:{s:360, u:240}, n1:25, n2:60, dom_no:200, dom_stay:400, int_no:400, int_stay:700, spec:500 },
             "副驾驶(跟座)": { dom: 150, hk:{s:240, u:173}, asia:{s:240, u:180}, out:{s:270, u:180}, n1:25, n2:60, dom_no:200, dom_stay:400, int_no:400, int_stay:700, spec:500 },
             "学员": { dom: 100, hk:{s:160, u:115}, asia:{s:160, u:120}, out:{s:180, u:120}, n1:25, n2:60, dom_no:200, dom_stay:400, int_no:400, int_stay:700, spec:500 }
@@ -339,7 +335,6 @@
         window.loginWithGoogle = async () => { try { await signInWithPopup(auth, provider); } catch (e) { alert("登录失败: " + e.message); } };
         window.doLogout = async () => { await signOut(auth); window.location.reload(); };
 
-        // 设置逻辑
         window.saveSettings = () => {
             const rank = document.getElementById('set_rank').value;
             const icao = document.getElementById('set_icao').value;
@@ -361,7 +356,6 @@
                 document.getElementById('reportMonth').value = new Date().toISOString().slice(0, 7);
                 if(localStorage.getItem("openai_key")) document.getElementById("innerApiKey").value = localStorage.getItem("openai_key");
                 initSettings();
-                
                 onSnapshot(query(collection(db, `users/${user.uid}/logs`), orderBy("date", "desc")), (snap) => { 
                     allRecords = snap.docs.map(d => ({id: d.id, ...d.data()})); 
                     refreshAll(); 
@@ -519,7 +513,6 @@
                 s.n1 += r.night1||0; s.n2 += r.night2||0; s.spec_cnt += r.special_airport||0;
             });
 
-            // 驻外统计
             const [y, m] = mStr.split('-').map(Number); const daysInMonth = new Date(y, m, 0).getDate();
             let autoStatus = {};
             allRecords.forEach(r => {
@@ -612,7 +605,6 @@
                 if(r.category==='国内') { s.d_a+=r.air_time; s.d_b+=r.block_days; } else if(r.category==='港澳台') { s.h_a+=r.air_time; s.h_b+=r.block_days; } else if(r.category==='亚洲国际') { s.a_a+=r.air_time; s.a_b+=r.block_days; } else { s.i_a+=r.air_time; s.i_b+=r.block_days; }
                 s.n1+=r.night1||0; s.n2+=r.night2||0; s.spec+=r.special_airport||0; s.hol+=r.holiday||0; s.meal_d+=r.crew_meal_dom||0; s.meal_i+=r.crew_meal_int||0;
             });
-            // 报表日历统计部分，直接复用 renderSalary 的逻辑简化版或保持原样
             const [y, m] = mStr.split('-').map(Number); const daysInMonth = new Date(y, m, 0).getDate();
             let autoStatus = {};
             allRecords.forEach(r => {
