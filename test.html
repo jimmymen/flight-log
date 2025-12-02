@@ -443,7 +443,13 @@
             }
         });
 
-        window.refreshAll = () => { renderList(); renderReport(); renderCalendar(); renderSalary(); };
+        window.refreshAll = () => { 
+            // 每一个渲染函数都包裹 try-catch，防止一个模块的错误导致全屏空白
+            try { renderList(); } catch(e) { console.error("Render List Error", e); }
+            try { renderReport(); } catch(e) { console.error("Render Report Error", e); }
+            try { renderCalendar(); } catch(e) { console.error("Render Calendar Error", e); }
+            try { renderSalary(); } catch(e) { console.error("Render Salary Error", e); }
+        };
 
         function calculateTax(amount) {
             for (let b of TAX_BRACKETS) {
@@ -467,23 +473,55 @@
             let block = { dom:0, hk:0, asia:0, out:0 };
 
             data.forEach(r => {
-                const air = r.air_time || 0;
-                const bDays = r.block_days || 0;
+                // 强制类型转换，防止空字符串导致计算NaN
+                const air = parseFloat(r.air_time) || 0;
+                const bDays = parseFloat(r.block_days) || 0;
+                
                 if(r.category==='国内') { s.dom_air += air; block.dom += bDays; } 
                 else if(r.category==='港澳台') { s.hk_air += air; block.hk += bDays; } 
                 else if(r.category==='亚洲国际') { s.asia_air += air; block.asia += bDays; } 
                 else { s.out_air += air; block.out += bDays; }
                 
-                s.n1 += r.night1||0; s.n2 += r.night2||0; s.spec_cnt += r.special_airport||0; 
-                s.holiday_days += r.holiday||0;
-                s.meal_dom_cnt += r.crew_meal_dom || 0;
-                s.meal_int_cnt += r.crew_meal_int || 0;
+                s.n1 += parseFloat(r.night1)||0; 
+                s.n2 += parseFloat(r.night2)||0; 
+                s.spec_cnt += parseFloat(r.special_airport)||0; 
+                s.holiday_days += parseFloat(r.holiday)||0;
+                s.meal_dom_cnt += parseFloat(r.crew_meal_dom)||0;
+                s.meal_int_cnt += parseFloat(r.crew_meal_int)||0;
             });
 
-            const [y, m] = mStr.split('-').map(Number); const daysInMonth = new Date(y, m, 0).getDate();
+            // 自动计算驻外统计 (增加安全检查)
             let autoStatus = {};
-            allRecords.forEach(r => { if(r.overnight && !r.overnight.includes('无') && r.overnight_days > 0) { const d = new Date(r.date); for(let i=1; i<=r.overnight_days; i++) { const p = new Date(d); p.setDate(d.getDate()-i); autoStatus[p.toISOString().split('T')[0]] = r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜'; } } });
-            for(let d=1; d<=daysInMonth; d++) { const dStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let type = null; let raw = calendarData[dStr]; if (raw && raw.type) type = raw.type; else { const flights = allRecords.filter(r => r.date === dStr); const hasReturn = flights.find(f => f.overnight && f.overnight.includes('无过夜')); if (hasReturn) type = hasReturn.overnight.includes('国际') ? '国际无过夜' : '国内无过夜'; else type = autoStatus[dStr] || '沈阳'; } if (type === '国内有过夜') s.dom_stay++; else if (type === '国内无过夜') s.dom_no++; else if (type === '国际有过夜') s.int_stay++; else if (type === '国际无过夜') s.int_no++; }
+            allRecords.forEach(r => { 
+                if(r.overnight && !r.overnight.includes('无') && (parseFloat(r.overnight_days) || 0) > 0) { 
+                    const d = new Date(r.date); 
+                    for(let i=1; i<=r.overnight_days; i++) { 
+                        const p = new Date(d); p.setDate(d.getDate()-i); 
+                        autoStatus[p.toISOString().split('T')[0]] = r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜'; 
+                    } 
+                } 
+            });
+
+            const [y, m] = mStr.split('-').map(Number); 
+            const daysInMonth = new Date(y, m, 0).getDate();
+            
+            for(let d=1; d<=daysInMonth; d++) { 
+                const dStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; 
+                let type = null; 
+                let raw = calendarData[dStr] || {}; // 安全访问
+                
+                if (raw.type) type = raw.type; 
+                else { 
+                    const flights = allRecords.filter(r => r.date === dStr); 
+                    const hasReturn = flights.find(f => f.overnight && f.overnight.includes('无过夜')); 
+                    if (hasReturn) type = hasReturn.overnight.includes('国际') ? '国际无过夜' : '国内无过夜'; 
+                    else type = autoStatus[dStr] || '沈阳'; 
+                } 
+                if (type === '国内有过夜') s.dom_stay++; 
+                else if (type === '国内无过夜') s.dom_no++; 
+                else if (type === '国际有过夜') s.int_stay++; 
+                else if (type === '国际无过夜') s.int_no++; 
+            }
 
             const fmt = (n) => n.toLocaleString('zh-CN', {style:'currency', currency:'CNY'});
             let rows = ``;
@@ -556,12 +594,13 @@
         };
 
         function formatTimePair(decimal) {
-            if (!decimal) return `<div class="time-dual"><span class="time-dec">0.00</span></div>`;
+            // 安全处理 NaN
+            if (!decimal || isNaN(decimal)) return `<div class="time-dual"><span class="time-dec">0.00</span></div>`;
             let h = Math.floor(decimal); let m = Math.round((decimal - h) * 60); if (m === 60) { h++; m = 0; }
             return `<div class="time-dual"><div class="time-dec">${decimal.toFixed(2)}</div><div class="time-hm">(${h}:${String(m).padStart(2, '0')})</div></div>`;
         }
         function decimalToHM(val) {
-            if(!val) return '';
+            if(!val || isNaN(val)) return '';
             let h = Math.floor(val);
             let m = Math.round((val - h) * 60);
             if (m === 60) { h++; m = 0; }
@@ -591,7 +630,7 @@
 
         window.openStatusModal = (dateStr) => { 
             currentModalDate = dateStr; document.getElementById('modalDateStr').innerText = dateStr; 
-            const currentData = calendarData[dateStr];
+            const currentData = calendarData[dateStr] || {}; // 安全访问
             document.getElementById('modalCityInput').value = (currentData && currentData.city) ? currentData.city : '';
             document.getElementById('statusModal').style.display = 'flex'; 
         };
@@ -774,23 +813,32 @@
         };
 
         window.deleteItem = async (id) => { if(confirm("删除?")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
+        
         window.renderCalendar = () => {
-            const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
+            const grid = document.getElementById('calendarGrid'); 
+            if(!grid) return;
+            grid.innerHTML = '';
+            
             const [y, m] = document.getElementById('reportMonth').value.split('-').map(Number);
             const daysInMonth = new Date(y, m, 0).getDate(); const firstDay = new Date(y, m - 1, 1).getDay(); const todayStr = new Date().toISOString().split('T')[0];
+            
             let autoStatus = {};
             allRecords.forEach(r => {
-                if(r.overnight && !r.overnight.includes('无') && r.overnight_days > 0) {
+                // 安全处理数字
+                const ovDays = parseFloat(r.overnight_days) || 0;
+                if(r.overnight && !r.overnight.includes('无') && ovDays > 0) {
                     const d = new Date(r.date);
-                    for(let i=1; i<=r.overnight_days; i++) { const p = new Date(d); p.setDate(d.getDate()-i); autoStatus[p.toISOString().split('T')[0]] = { type: r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜', city: r.overnight_city }; }
+                    for(let i=1; i<=ovDays; i++) { const p = new Date(d); p.setDate(d.getDate()-i); autoStatus[p.toISOString().split('T')[0]] = { type: r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜', city: r.overnight_city }; }
                 }
             });
+
             for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="cal-day" style="border:none;background:transparent"></div>`;
+            
             let totalHours = 0;
             for(let d=1; d<=daysInMonth; d++) {
                 const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const flights = allRecords.filter(r => r.date === dateStr).sort((a,b)=>(a.block_off||'').localeCompare(b.block_off||''));
-                flights.forEach(f => totalHours += f.total_time||0);
+                flights.forEach(f => totalHours += parseFloat(f.total_time)||0);
                 
                 let raw = calendarData[dateStr] || {}; let finalStatus = { type: null, city: null };
                 if (raw.type) finalStatus = raw; else {
@@ -805,20 +853,63 @@
                 const cell = document.createElement('div'); cell.className = `cal-day ${isToday ? 'today' : ''}`;
                 cell.onclick = (e) => { if(e.target.closest('.flight-tag')) return; openStatusModal(dateStr); };
                 let fHtml = flights.map(f => {
-                    let c = (f.category.includes('国际')||f.category.includes('洲际'))?'tag-int':'tag-dom'; if(f.total_time===0) c='tag-dh';
-                    return `<div class="flight-tag ${c}"><span>${f.dep.split(' ')[0]}-${f.arr.split(' ')[0]}</span><span>${f.total_time===0?'DH':f.total_time}</span></div>`;
+                    let c = (f.category.includes('国际')||f.category.includes('洲际'))?'tag-int':'tag-dom'; if(parseFloat(f.total_time)===0) c='tag-dh';
+                    return `<div class="flight-tag ${c}"><span>${f.dep.split(' ')[0]}-${f.arr.split(' ')[0]}</span><span>${parseFloat(f.total_time)||'DH'}</span></div>`;
                 }).join('');
                 cell.innerHTML = `<div class="cal-num">${d}${isToday?'<span style="color:var(--primary)">今</span>':''}</div><div class="cal-flights">${fHtml}</div>${nightACTag}<div class="cal-status ${stClass}">${displayText}</div>`;
                 grid.appendChild(cell);
             }
-            document.getElementById('calTotal').textContent = `本月: ${totalHours.toFixed(1)}h`;
+            const ct = document.getElementById('calTotal');
+            if(ct) ct.textContent = `本月: ${totalHours.toFixed(1)}h`;
+        };
+
+        window.renderReport = () => {
+            const mStr = document.getElementById('reportMonth').value; 
+            const data = allRecords.filter(r => r.date.startsWith(mStr));
+            let s = { d_a:0, d_b:0, h_a:0, h_b:0, a_a:0, a_b:0, i_a:0, i_b:0, n1:0, n2:0, spec:0, hol:0, meal_d:0, meal_i:0, cal_dom_stay:0, cal_dom_no:0, cal_int_stay:0, cal_int_no:0 };
+            
+            data.forEach(r => {
+                const air = parseFloat(r.air_time) || 0;
+                const blk = parseFloat(r.block_days) || 0;
+                
+                if(r.category==='国内') { s.d_a+=air; s.d_b+=blk; } 
+                else if(r.category==='港澳台') { s.h_a+=air; s.h_b+=blk; } 
+                else if(r.category==='亚洲国际') { s.a_a+=air; s.a_b+=blk; } 
+                else { s.i_a+=air; s.i_b+=blk; }
+                
+                s.n1+=parseFloat(r.night1)||0; s.n2+=parseFloat(r.night2)||0; s.spec+=parseFloat(r.special_airport)||0; s.hol+=parseFloat(r.holiday)||0; 
+                s.meal_d+=parseFloat(r.crew_meal_dom)||0; s.meal_i+=parseFloat(r.crew_meal_int)||0;
+            });
+            
+            const [y, m] = mStr.split('-').map(Number); const daysInMonth = new Date(y, m, 0).getDate();
+            let autoStatus = {};
+            allRecords.forEach(r => {
+                const ovDays = parseFloat(r.overnight_days)||0;
+                if(r.overnight && !r.overnight.includes('无') && ovDays > 0) {
+                    const d = new Date(r.date);
+                    for(let i=1; i<=ovDays; i++) { const p = new Date(d); p.setDate(d.getDate()-i); autoStatus[p.toISOString().split('T')[0]] = r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜'; }
+                }
+            });
+            for(let d=1; d<=daysInMonth; d++) {
+                const dStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; 
+                let type = null; let raw = calendarData[dStr] || {};
+                if (raw.type) type = raw.type; else {
+                    const flights = allRecords.filter(r => r.date === dStr); 
+                    const hasReturn = flights.find(f => f.overnight && f.overnight.includes('无过夜'));
+                    if (hasReturn) type = hasReturn.overnight.includes('国际') ? '国际无过夜' : '国内无过夜'; else type = autoStatus[dStr] || '沈阳';
+                }
+                if (type === '国内有过夜') s.cal_dom_stay++; else if (type === '国内无过夜') s.cal_dom_no++; else if (type === '国际有过夜') s.cal_int_stay++; else if (type === '国际无过夜') s.cal_int_no++;
+            }
+            document.getElementById('reportTable').innerHTML = `<thead><tr><th rowspan="2">类别</th><th colspan="2">国内</th><th colspan="2">港澳台</th><th colspan="2">亚洲</th><th colspan="2">洲际</th></tr><tr><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th></tr></thead><tbody><tr><td style="font-weight:bold">合计</td><td>${formatTimePair(s.d_a)}</td><td>${s.d_b}</td><td>${formatTimePair(s.h_a)}</td><td>${s.h_b}</td><td>${formatTimePair(s.a_a)}</td><td>${s.a_b}</td><td>${formatTimePair(s.i_a)}</td><td>${s.i_b}</td></tr><tr><td colspan="9" style="height:8px;border:none;background:white"></td></tr><tr><th rowspan="2">补贴</th><th colspan="2">机组餐(份)</th><th colspan="2">驻外-国内</th><th colspan="2">驻外-国际</th><th colspan="2">其他</th></tr><tr><th class="bg-meal">国内</th><th class="bg-meal">国际</th><th class="bg-cal-stat">国有(天)</th><th class="bg-cal-stat">国无(次)</th><th class="bg-cal-stat">外有(天)</th><th class="bg-cal-stat">外无(次)</th><th class="bg-sub">特殊</th><th class="bg-sub">节日</th></tr><tr><td style="font-weight:bold">统计</td><td class="bg-meal">${s.meal_d}</td><td class="bg-meal">${s.meal_i}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_no}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_no}</td><td class="bg-sub">${s.spec}</td><td class="bg-sub">${s.hol}</td></tr><tr><td colspan="9" style="font-size:0.7rem;color:#94a3b8;text-align:right;padding:4px;border:none">夜航: 18:30(${s.n1.toFixed(1)}) / 00:00(${s.n2.toFixed(1)})</td></tr></tbody>`;
         };
         window.renderList = () => {
             const listEl = document.getElementById('logList'); const mStr = document.getElementById('reportMonth').value; 
             const displayData = allRecords.filter(r => r.date.startsWith(mStr));
             if (!displayData.length) { listEl.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px">本月无飞行记录</div>'; return; }
             listEl.innerHTML = displayData.map(r => {
-                const ms=[]; if(r.crew_meal_dom>0)ms.push(`${r.crew_meal_dom}国`); if(r.crew_meal_int>0)ms.push(`${r.crew_meal_int}外`);
+                const ms=[]; 
+                if((parseFloat(r.crew_meal_dom)||0)>0) ms.push(`${r.crew_meal_dom}国`); 
+                if((parseFloat(r.crew_meal_int)||0)>0) ms.push(`${r.crew_meal_int}外`);
                 return `<div class="log-item"><div class="log-info"><div class="log-header"><div style="font-weight:700;color:#1e293b;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.8rem">${r.date.substring(5)}</span>${r.dep} <span style="color:#cbd5e1">➜</span> ${r.arr} ${r.ac_type?`<span class="ac-badge">${r.ac_type}</span>`:''}</div>${ms.length?`<span class="meal-badge">🍱 ${ms.join('+')}</span>`:''}</div><div style="font-size:0.8rem;color:#64748b;margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="color:var(--primary);font-weight:bold">${r.total_time}h</span> · ${r.category} ${r.flight_no?`· ${r.flight_no}`:''} ${r.crew?`<div class="crew-badge">👨‍✈️ ${r.crew}</div>`:''}</div></div><div class="log-actions" style="display:flex;gap:5px;margin-left:5px;"><button class="btn btn-edit" onclick="editRecord('${r.id}')">✏️</button><button class="btn btn-danger" onclick="deleteItem('${r.id}')">🗑️</button></div></div>`;
             }).join('');
         };
