@@ -26,42 +26,85 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg); color: var(--text);
-            height: 100vh; overflow: hidden; /* 全局禁止滚动，由Tab内容接管 */
+            height: 100vh; overflow: hidden;
         }
 
-        /* === Tab 页面布局管理 === */
+        /* === 布局容器 === */
         .tab-content {
-            height: calc(100% - 60px); /* 减去底部导航高度 */
+            height: calc(100% - 60px); /* 留出底部导航高度 */
             overflow-y: auto;
             display: none;
-            padding: 15px; /* 首页和报表页保留边距 */
+            padding: 15px;
         }
         .tab-content.active { display: block; }
 
-        /* === 日历专属全屏容器 (特殊处理) === */
+        /* === 日历专属全屏容器 (强制横屏逻辑) === */
         #tab-calendar {
-            padding: 0; /* 无边距 */
+            padding: 0; margin: 0;
             background: #fff;
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            z-index: 6000; /* 覆盖在最上层 */
-            display: none; /* 默认隐藏，由JS切换 */
+            z-index: 9999; /* 覆盖一切 */
+            display: none;
         }
-        #tab-calendar.active { display: flex; }
+        #tab-calendar.active { display: block; }
 
-        /* 强制旋转逻辑：竖屏时，强制旋转90度，让用户横过来手机看 */
+        /* 旋转包装器：核心逻辑 */
         .calendar-rotate-wrapper {
             width: 100%; height: 100%;
             display: flex; flex-direction: column;
+            background: #fff;
         }
+        
+        /* 竖屏时强制旋转90度，模拟横屏效果 */
         @media screen and (orientation: portrait) {
             .calendar-rotate-wrapper {
-                width: 100vh; /* 宽度变成屏幕高度 */
-                height: 100vw; /* 高度变成屏幕宽度 */
+                width: 100vh; /* 宽度取屏幕高度 */
+                height: 100vw; /* 高度取屏幕宽度 */
                 transform: rotate(90deg);
                 transform-origin: top left;
-                position: absolute; top: 0; left: 100%; /* 移回可视区域 */
+                position: absolute; top: 0; left: 100%;
             }
         }
+
+        /* 日历内部布局 - 绝对填满 */
+        .calendar-controls {
+            flex: 0 0 40px; /* 顶部工具栏高度 */
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+        }
+        .cal-header-row {
+            flex: 0 0 25px; /* 星期表头高度 */
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            text-align: center; font-weight: bold; color: #64748b; font-size: 0.8rem;
+            background: #fff; border-bottom: 1px solid #e2e8f0; align-items: center;
+        }
+        .cal-grid-area {
+            flex: 1; /* 剩余空间全部给格子 */
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-template-rows: repeat(6, 1fr); /* 强制 6 行均分剩余高度 */
+            border-bottom: 1px solid var(--border);
+        }
+        .cal-day {
+            border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+            background: #fff; padding: 2px 4px; display: flex; flex-direction: column;
+            position: relative; overflow: hidden;
+        }
+        .cal-day.today { background: #eff6ff; }
+
+        /* 日历格子内容微调 */
+        .cal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1px; }
+        .cal-num { font-size: 0.9rem; font-weight: 800; color: #cbd5e1; }
+        .cal-day.today .cal-num { color: var(--primary); }
+        .cal-stay { font-size: 0.65rem; font-weight: bold; padding: 0 3px; border-radius: 3px; white-space: nowrap; overflow: hidden; }
+        
+        .cal-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+        .cal-route { font-size: 0.75rem; color: #334155; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.1; }
+        
+        .cal-bot { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 1px; }
+        .type-tag { font-size: 0.6rem; padding: 1px 3px; border-radius: 3px; color: white; display: flex; align-items: center; white-space: nowrap; }
+        .tag-g650 { background: var(--g650-bg); color: var(--g650-text); }
+        .tag-cl850 { background: var(--cl850-bg); color: var(--cl850-text); }
 
         .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 20px; }
 
@@ -105,43 +148,15 @@
         .bg-cal-stat { background-color: #ecfdf5; color: #047857; font-weight: bold; }
         .bg-sub { background-color: #fdf4ff; color: #86198f; font-weight: bold; }
         .bg-meal { background-color: var(--meal-bg); color: var(--meal-text); font-weight: bold; }
-        .bg-g650 { background-color: #eff6ff; color: #1e3a8a; font-weight: bold; } /* 新增机型色 */
+        .bg-g650 { background-color: #eff6ff; color: #1e3a8a; font-weight: bold; }
         .bg-cl850 { background-color: #faf5ff; color: #581c87; font-weight: bold; }
         .time-dual { line-height: 1.2; } .time-dec { font-weight: bold; font-size: 0.9rem; color: #0f172a; } .time-hm { font-size: 0.7rem; color: #64748b; display: block; margin-top: 2px; font-family: monospace; }
 
-        /* === 日历样式 (横屏全屏版) === */
-        .calendar-controls { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #fff; border-bottom: 1px solid #e2e8f0; z-index: 20; }
-        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.9rem; color: #94a3b8; padding: 8px 0; font-weight: 600; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex: 0 0 auto; }
-        .calendar-grid { 
-            display: grid; 
-            grid-template-columns: repeat(7, 1fr); 
-            grid-template-rows: repeat(6, 1fr); /* 强制 6 行均分高度 */
-            flex: 1; /* 撑满剩余空间 */
-            overflow: hidden; 
-        }
-        .cal-day { 
-            background: #fff; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); 
-            padding: 4px; display: flex; flex-direction: column; 
-            cursor: pointer; transition: 0.2s; position: relative; overflow: hidden;
-        }
-        .cal-day.today { background: #eff6ff; }
-        
-        .cal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
-        .cal-num { font-size: 1.1rem; font-weight: 800; color: #cbd5e1; }
-        .cal-day.today .cal-num { color: var(--primary); }
-        .cal-status { font-size: 0.8rem; padding: 1px 5px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
+        /* 状态颜色类 */
         .st-dom-stay { background: var(--dom-stay-bg); color: var(--dom-stay-text); border: 1px solid #bfdbfe; }
         .st-dom-no { background: var(--dom-no-bg); color: var(--dom-no-text); border: 1px solid #a7f3d0; }
         .st-int-stay { background: var(--int-stay-bg); color: var(--int-stay-text); border: 1px solid #e9d5ff; }
         .st-int-no { background: var(--int-no-bg); color: var(--int-no-text); border: 1px solid #fde68a; }
-
-        .cal-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
-        .cal-route { font-size: 0.9rem; font-weight: 600; color: #334155; white-space: nowrap; }
-        
-        .cal-bot { margin-top: auto; display: flex; gap: 3px; flex-wrap: wrap; }
-        .type-tag { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; color: #fff; display: flex; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-weight:bold; }
-        .tag-g650 { background: var(--g650-bg); color: var(--g650-text); }
-        .tag-cl850 { background: var(--cl850-bg); color: var(--cl850-text); }
 
         /* AI & Form */
         .ai-box { position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; background: #f8fafc; }
@@ -261,7 +276,7 @@
                         <input type="password" id="innerApiKey" class="key-input" placeholder="DeepSeek API Key">
                         <textarea id="ocrInput" placeholder="在此粘贴文本..."></textarea>
                     </div>
-                    <!-- 编辑表单 (保持原样) -->
+                    <!-- 编辑表单 -->
                     <div id="editForm" class="edit-form" style="display: none;">
                         <div class="form-tag" id="formModeTag">新增</div><input type="hidden" id="edit_doc_id">
                         <div class="form-grid">
@@ -303,16 +318,16 @@
             </section>
         </div>
 
-        <!-- Tab 2: 日历 (强制全屏/横屏逻辑) -->
-        <div id="tab-calendar" class="tab-content">
-            <!-- 旋转容器：处理横竖屏 -->
+        <!-- Tab 2: 日历 (强制全屏/旋转逻辑) -->
+        <div id="tab-calendar">
             <div class="calendar-rotate-wrapper">
                 <div class="calendar-controls">
-                    <h2 style="font-size:1.1rem; color:#0f172a;">📅 执勤全景</h2>
-                    <div id="calTotal" style="font-size:0.9rem; font-weight:bold; color:#64748b;"></div>
+                    <button class="btn btn-ghost" style="padding:4px 8px;font-size:0.8rem;" onclick="switchTab('home', document.querySelector('.nav-item'))">⬅ 返回</button>
+                    <h2 style="font-size:1rem; color:#0f172a;">📅 执勤全景</h2>
+                    <div id="calTotal" style="font-size:0.8rem; font-weight:bold; color:#64748b;"></div>
                 </div>
-                <div class="calendar-header"><div>周日</div><div>周一</div><div>周二</div><div>周三</div><div>周四</div><div>周五</div><div>周六</div></div>
-                <div class="calendar-grid" id="calendarGrid"></div>
+                <div class="cal-header-row"><div>周日</div><div>周一</div><div>周二</div><div>周三</div><div>周四</div><div>周五</div><div>周六</div></div>
+                <div class="cal-grid-area" id="calendarGrid"></div>
             </div>
         </div>
 
@@ -355,10 +370,13 @@
         const TAX_BRACKETS = [{limit:36000,rate:0.03,quick:0},{limit:144000,rate:0.10,quick:2520},{limit:300000,rate:0.20,quick:16920},{limit:420000,rate:0.25,quick:31920},{limit:660000,rate:0.30,quick:52920},{limit:960000,rate:0.35,quick:85920},{limit:Infinity,rate:0.45,quick:181920}];
 
         window.switchTab = (id, el) => {
+            // 如果是日历，切换全屏覆盖模式；否则切换普通Tab
+            if(id === 'calendar') { document.getElementById('tab-calendar').classList.add('active'); window.renderCalendar(); return; }
+            document.getElementById('tab-calendar').classList.remove('active'); // 退出全屏
             document.querySelectorAll('.tab-content').forEach(p=>p.classList.remove('active'));
             document.getElementById('tab-'+id).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(t=>t.classList.remove('active'));
-            el.classList.add('active'); window.refreshAll();
+            if(el) el.classList.add('active'); window.refreshAll();
         };
 
         window.loginWithGoogle = async () => { try{await signInWithPopup(auth, provider);}catch(e){alert(e.message);} };
@@ -402,18 +420,17 @@
 
         function calculateTax(a) { for (let b of TAX_BRACKETS) { if (a <= b.limit) return a*b.rate - b.quick; } return a*0.45 - 181920; }
 
+        // === 薪资逻辑 (修正：仅国内算夜航) ===
         window.renderSalary = () => {
             const rk=document.getElementById('set_rank').value, sg=document.getElementById('set_icao').value==='signed', cfg=FEE_CONFIG[rk]||FEE_CONFIG['机长'];
             const mStr=document.getElementById('reportMonth').value, data=allRecords.filter(r=>r.date.startsWith(mStr));
             let s={hk:0,as:0,ou:0, n1:0,n2:0, sp:0,hol:0, ds:0,dn:0,is:0,in:0, md:0,mi:0, mid:0}, b={hk:0,as:0,ou:0};
             data.forEach(r => {
                 const air=parseFloat(r.air_time)||0, bd=parseFloat(r.block_days)||0;
-                // 逻辑修正：仅国内算夜航
                 if(r.category==='国内') { if(r.takeoff&&r.landing&&r.landing<r.takeoff) s.mid++; s.n1+=parseFloat(r.night1)||0; s.n2+=parseFloat(r.night2)||0; } 
                 else { if(r.category==='港澳台'){s.hk+=air;b.hk+=bd;} else if(r.category==='亚洲国际'){s.as+=air;b.as+=bd;} else{s.ou+=air;b.ou+=bd;} }
                 s.sp+=parseFloat(r.special_airport)||0; s.hol+=parseFloat(r.holiday)||0; s.md+=parseFloat(r.crew_meal_dom)||0; s.mi+=parseFloat(r.crew_meal_int)||0;
             });
-            // 驻外略，复用...
             let as={}; allRecords.forEach(r=>{if(r.overnight&&!r.overnight.includes('无')&&(parseFloat(r.overnight_days)||0)>0){const d=new Date(r.date);for(let i=1;i<=r.overnight_days;i++){const p=new Date(d);p.setDate(d.getDate()-i);as[p.toISOString().split('T')[0]]=r.overnight.includes('国际')?'国际有过夜':'国内有过夜';}}});
             const [y,m]=mStr.split('-').map(Number), days=new Date(y,m,0).getDate();
             for(let d=1; d<=days; d++){ const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let t=calendarData[ds]?.type; if(!t){ const f=allRecords.filter(r=>r.date===ds), ret=f.find(x=>x.overnight&&x.overnight.includes('无过夜')); t=ret?(ret.overnight.includes('国际')?'国际无过夜':'国内无过夜'):(as[ds]||'沈阳'); } if(t==='国内有过夜')s.ds++;else if(t==='国内无过夜')s.dn++;else if(t==='国际有过夜')s.is++;else if(t==='国际无过夜')s.in++; }
@@ -455,6 +472,7 @@
         window.closeStatusModal = () => document.getElementById('statusModal').style.display='none';
         window.saveCalendarStatus = async (t) => { if(currentUser){ await setDoc(doc(db,`users/${currentUser.uid}/calendar_status`,currentModalDate), t?{type:t,city:document.getElementById('modalCityInput').value}:{type:null,city:null},{merge:true}); closeStatusModal(); } };
         
+        // 联动计算：只要输入就强制更新
         window.recalcTimes = () => { 
             const tk=document.getElementById('f_takeoff').value, ld=document.getElementById('f_landing').value;
             const a=calculateDuration(tk, ld), t=calculateDuration(document.getElementById('f_block_off').value, document.getElementById('f_block_on').value);
@@ -477,10 +495,10 @@
         window.closeForm = () => document.getElementById('editForm').style.display='none';
         function showForm() { document.getElementById('editForm').style.display='block'; document.getElementById('editForm').scrollIntoView({behavior:"smooth"}); }
         window.editRecord = (id) => { const rec = allRecords.find(r=>r.id===id); if(rec){ resetForm(); document.getElementById('edit_doc_id').value=id; setFormValues(rec); recalcTimes(); showForm(); } };
-        window.saveRecord = async () => { /* 逻辑同前, 略 */ try{if(!currentUser)throw new Error("请登录");const getV=k=>document.getElementById('f_'+k).value.trim(), getN=k=>parseFloat(getV(k))||0; if(!getV('date')||!getV('dep')||!getV('arr'))throw new Error("必填项为空"); let ov=getV('overnight_city'); if(!ov&&getV('overnight')!=='无')ov=getV('arr'); const d={date:getV('date'),dep:getV('dep'),arr:getV('arr'),category:getV('cat'),crew:getV('crew'),flight_no:getV('flight_no'),ac_type:getV('ac_type'),landings_day:parseInt(getV('landings_day'))||0,landings_night:parseInt(getV('landings_night'))||0,block_off:getV('block_off'),takeoff:getV('takeoff'),landing:getV('landing'),block_on:getV('block_on'),air_time:getN('air'),total_time:getN('total_time'),block_days:getN('block_days'),night1:getN('night1'),night2:getN('night2'),overnight:getV('overnight'),overnight_city:ov,overnight_days:getN('overnight_days'),special_airport:getN('special'),holiday:getN('holiday'),crew_meal_dom:getN('meal_dom'),crew_meal_int:getN('meal_int'),timestamp:new Date()}; const did=document.getElementById('edit_doc_id').value; if(d.overnight.includes('无过夜')&&d.arr.includes('沈阳')){const p=new Date(d.date);p.setDate(p.getDate()-1);await setDoc(doc(db,`users/${currentUser.uid}/calendar_status`,p.toISOString().split('T')[0]),{type:"国内有过夜",city:d.dep},{merge:true});} if(did)await updateDoc(doc(db,`users/${currentUser.uid}/logs`,did),d);else await addDoc(collection(db,`users/${currentUser.uid}/logs`),d); closeForm();}catch(e){alert(e.message);} };
+        window.saveRecord = async () => { try{if(!currentUser)throw new Error("请登录");const getV=k=>document.getElementById('f_'+k).value.trim(), getN=k=>parseFloat(getV(k))||0; if(!getV('date')||!getV('dep')||!getV('arr'))throw new Error("必填项为空"); let ov=getV('overnight_city'); if(!ov&&getV('overnight')!=='无')ov=getV('arr'); const d={date:getV('date'),dep:getV('dep'),arr:getV('arr'),category:getV('cat'),crew:getV('crew'),flight_no:getV('flight_no'),ac_type:getV('ac_type'),landings_day:parseInt(getV('landings_day'))||0,landings_night:parseInt(getV('landings_night'))||0,block_off:getV('block_off'),takeoff:getV('takeoff'),landing:getV('landing'),block_on:getV('block_on'),air_time:getN('air'),total_time:getN('total_time'),block_days:getN('block_days'),night1:getN('night1'),night2:getN('night2'),overnight:getV('overnight'),overnight_city:ov,overnight_days:getN('overnight_days'),special_airport:getN('special'),holiday:getN('holiday'),crew_meal_dom:getN('meal_dom'),crew_meal_int:getN('meal_int'),timestamp:new Date()}; const did=document.getElementById('edit_doc_id').value; if(d.overnight.includes('无过夜')&&d.arr.includes('沈阳')){const p=new Date(d.date);p.setDate(p.getDate()-1);await setDoc(doc(db,`users/${currentUser.uid}/calendar_status`,p.toISOString().split('T')[0]),{type:"国内有过夜",city:d.dep},{merge:true});} if(did)await updateDoc(doc(db,`users/${currentUser.uid}/logs`,did),d);else await addDoc(collection(db,`users/${currentUser.uid}/logs`),d); closeForm();}catch(e){alert(e.message);} };
         window.deleteItem = async (id) => { if(confirm("删除?")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
 
-        // === 核心: 日历全屏+旋转 ===
+        // === 日历渲染 (整月固定6行铺满) ===
         window.renderCalendar = () => {
             const grid = document.getElementById('calendarGrid'); if(!grid) return; grid.innerHTML = '';
             const mStr = document.getElementById('reportMonth').value; const [y, m] = mStr.split('-').map(Number);
@@ -506,7 +524,7 @@
                     cell.onclick = () => openStatusModal(dateStr);
                     const routes = flights.map(f => `<div class="cal-route">${f.dep.split(' ')[0]}-${f.arr.split(' ')[0]} ${parseFloat(f.total_time)}h</div>`).join('');
                     const tags = flights.map(f => { const ld=parseInt(f.landings_day)||0, ln=parseInt(f.landings_night)||0; const txt = `${f.ac_type==='G650ER'?'G650':'850'} ${ln>0?`🌙${ln}`:`☀️${ld}`}`; return `<span class="type-tag ${f.ac_type==='G650ER'?'tag-g650':'tag-cl850'}">${txt}</span>`; }).join('');
-                    cell.innerHTML = `<div class="cal-top"><span class="cal-num">${dayNum}</span><span class="cal-status ${stCls}">${disp}</span></div><div class="cal-mid">${routes}</div><div class="cal-bot">${tags}</div>`;
+                    cell.innerHTML = `<div class="cal-top"><span class="cal-num">${dayNum}</span><span class="cal-stay ${stCls}">${disp}</span></div><div class="cal-mid">${routes}</div><div class="cal-bot">${tags}</div>`;
                 } else { cell.className = 'cal-day'; cell.style.background = '#f8fafc'; cell.style.borderRight='1px solid #e2e8f0'; cell.style.borderBottom='1px solid #e2e8f0'; }
                 grid.appendChild(cell);
             }
@@ -541,7 +559,7 @@
                 let fatigueWarn = ''; const d = new Date(r.date); const start7 = new Date(d); start7.setDate(d.getDate()-6);
                 let sum7 = 0; allRecords.forEach(ar => { const ad = new Date(ar.date); if (ad >= start7 && ad <= d) sum7 += (parseFloat(ar.total_time)||0); });
                 if (sum7 > 40) fatigueWarn = `<div class="warn-tag">⚠️ 7天超限 (废弃 ${(sum7-40).toFixed(1)}h)</div>`;
-                return `<div class="log-item"><div class="log-info"><div class="log-header"><div style="font-weight:700;color:#1e293b;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.8rem">${r.date.substring(5)}</span>${r.dep} <span style="color:#cbd5e1">➜</span> ${r.arr} ${r.ac_type?`<span class="ac-badge">${r.ac_type}</span>`:''}</div>${ms.length?`<span class="meal-badge">🍱 ${ms.join('+')}</span>`:''}</div><div style="font-size:0.8rem;color:#64748b;margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="color:var(--primary);font-weight:bold">${r.total_time}h</span> · ${r.category} ${lD||lN?`<span class="landing-tag">🛬 ${lD}日/${lN}夜</span>`:''}</div>${fatigueWarn}</div><div class="log-actions" style="display:flex;gap:5px;margin-left:5px;"><button class="btn btn-edit" onclick="editRecord('${r.id}')">✏️</button><button class="btn btn-danger" onclick="deleteItem('${r.id}')">🗑️</button></div></div>`;
+                return `<div class="log-item"><div class="log-info"><div class="log-header"><div style="font-weight:700;color:#1e293b;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.8rem">${r.date.substring(5)}</span>${r.dep} <span style="color:#cbd5e1">➜</span> ${r.arr} ${r.ac_type?`<span class="ac-badge">${r.ac_type}</span>`:''}</div>${ms.length?`<span class="meal-badge">🍱 ${ms.join('+')}</span>`:''}</div><div style="font-size:0.8rem;color:#64748b;margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="color:var(--primary);font-weight:bold">${r.total_time}h</span> · ${r.category} ${r.flight_no?`· ${r.flight_no}`:''} ${lD||lN?`<span class="landing-tag">🛬 ${lD}日/${lN}夜</span>`:''}</div>${fatigueWarn}</div><div class="log-actions" style="display:flex;gap:5px;margin-left:5px;"><button class="btn btn-edit" onclick="editRecord('${r.id}')">✏️</button><button class="btn btn-danger" onclick="deleteItem('${r.id}')">🗑️</button></div></div>`;
             }).join('');
         };
     </script>
