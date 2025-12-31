@@ -9,6 +9,7 @@
         :root {
             --primary: #2563eb; --primary-dark: #1e40af; 
             --bg: #f8fafc; --text: #334155; --border: #cbd5e1;
+            /* 状态颜色 */
             --dom-stay-bg: #dbeafe; --dom-stay-text: #1e40af;
             --dom-no-bg: #d1fae5; --dom-no-text: #065f46;
             --int-stay-bg: #f3e8ff; --int-stay-text: #6b21a8;
@@ -26,85 +27,42 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg); color: var(--text);
-            height: 100vh; overflow: hidden;
+            height: 100vh; overflow: hidden; /* 全局禁止滚动，由Tab内容接管 */
         }
 
-        /* === 布局容器 === */
+        /* === Tab 页面布局管理 === */
         .tab-content {
-            height: calc(100% - 60px); /* 留出底部导航高度 */
+            height: calc(100% - 60px); /* 减去底部导航高度 */
             overflow-y: auto;
             display: none;
-            padding: 15px;
+            padding: 15px; /* 首页和报表页保留边距 */
         }
         .tab-content.active { display: block; }
 
-        /* === 日历专属全屏容器 (强制横屏逻辑) === */
+        /* === 日历专属全屏容器 (特殊处理) === */
         #tab-calendar {
-            padding: 0; margin: 0;
+            padding: 0; /* 无边距 */
             background: #fff;
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            z-index: 9999; /* 覆盖一切 */
-            display: none;
+            z-index: 6000; /* 覆盖在最上层 */
+            display: none; /* 默认隐藏，由JS切换 */
         }
-        #tab-calendar.active { display: block; }
+        #tab-calendar.active { display: flex; }
 
-        /* 旋转包装器：核心逻辑 */
+        /* 强制旋转逻辑：竖屏时，强制旋转90度，让用户横过来手机看 */
         .calendar-rotate-wrapper {
             width: 100%; height: 100%;
             display: flex; flex-direction: column;
-            background: #fff;
         }
-        
-        /* 竖屏时强制旋转90度，模拟横屏效果 */
         @media screen and (orientation: portrait) {
             .calendar-rotate-wrapper {
-                width: 100vh; /* 宽度取屏幕高度 */
-                height: 100vw; /* 高度取屏幕宽度 */
+                width: 100vh; /* 宽度变成屏幕高度 */
+                height: 100vw; /* 高度变成屏幕宽度 */
                 transform: rotate(90deg);
                 transform-origin: top left;
-                position: absolute; top: 0; left: 100%;
+                position: absolute; top: 0; left: 100%; /* 移回可视区域 */
             }
         }
-
-        /* 日历内部布局 - 绝对填满 */
-        .calendar-controls {
-            flex: 0 0 40px; /* 顶部工具栏高度 */
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
-        }
-        .cal-header-row {
-            flex: 0 0 25px; /* 星期表头高度 */
-            display: grid; grid-template-columns: repeat(7, 1fr);
-            text-align: center; font-weight: bold; color: #64748b; font-size: 0.8rem;
-            background: #fff; border-bottom: 1px solid #e2e8f0; align-items: center;
-        }
-        .cal-grid-area {
-            flex: 1; /* 剩余空间全部给格子 */
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            grid-template-rows: repeat(6, 1fr); /* 强制 6 行均分剩余高度 */
-            border-bottom: 1px solid var(--border);
-        }
-        .cal-day {
-            border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
-            background: #fff; padding: 2px 4px; display: flex; flex-direction: column;
-            position: relative; overflow: hidden;
-        }
-        .cal-day.today { background: #eff6ff; }
-
-        /* 日历格子内容微调 */
-        .cal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1px; }
-        .cal-num { font-size: 0.9rem; font-weight: 800; color: #cbd5e1; }
-        .cal-day.today .cal-num { color: var(--primary); }
-        .cal-stay { font-size: 0.65rem; font-weight: bold; padding: 0 3px; border-radius: 3px; white-space: nowrap; overflow: hidden; }
-        
-        .cal-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
-        .cal-route { font-size: 0.75rem; color: #334155; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.1; }
-        
-        .cal-bot { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 1px; }
-        .type-tag { font-size: 0.6rem; padding: 1px 3px; border-radius: 3px; color: white; display: flex; align-items: center; white-space: nowrap; }
-        .tag-g650 { background: var(--g650-bg); color: var(--g650-text); }
-        .tag-cl850 { background: var(--cl850-bg); color: var(--cl850-text); }
 
         .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 20px; }
 
@@ -139,6 +97,7 @@
         .salary-table td { padding: 12px 8px; border-bottom: 1px dashed #e2e8f0; vertical-align: top; }
         .col-name { width: 25%; font-weight: 600; color: #334155; } .col-proc { width: 50%; font-family: monospace; color: #64748b; font-size: 0.8rem; line-height: 1.5; } .col-amt { width: 25%; text-align: right; font-family: monospace; font-weight: 700; font-size: 0.95rem; color: #0f172a; }
         .calc-tag { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 5px; margin-right: 4px; font-size: 0.75rem; color: #475569; }
+        .tax-highlight { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 2px; font-weight: bold; }
 
         /* 表格通用 */
         .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 15px; }
@@ -152,11 +111,39 @@
         .bg-cl850 { background-color: #faf5ff; color: #581c87; font-weight: bold; }
         .time-dual { line-height: 1.2; } .time-dec { font-weight: bold; font-size: 0.9rem; color: #0f172a; } .time-hm { font-size: 0.7rem; color: #64748b; display: block; margin-top: 2px; font-family: monospace; }
 
-        /* 状态颜色类 */
+        /* === 日历 (横屏全屏版) === */
+        .calendar-controls { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #fff; border-bottom: 1px solid #e2e8f0; z-index: 20; }
+        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.9rem; color: #94a3b8; padding: 8px 0; font-weight: 600; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex: 0 0 auto; }
+        .calendar-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            grid-template-rows: repeat(6, 1fr); /* 强制 6 行均分高度 */
+            flex: 1; /* 撑满剩余空间 */
+            overflow: hidden; 
+        }
+        .cal-day { 
+            background: #fff; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); 
+            padding: 4px; display: flex; flex-direction: column; 
+            cursor: pointer; transition: 0.2s; position: relative; overflow: hidden;
+        }
+        .cal-day.today { background: #eff6ff; }
+        
+        .cal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+        .cal-num { font-size: 1.1rem; font-weight: 800; color: #cbd5e1; }
+        .cal-day.today .cal-num { color: var(--primary); }
+        .cal-status { font-size: 0.8rem; padding: 1px 5px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
         .st-dom-stay { background: var(--dom-stay-bg); color: var(--dom-stay-text); border: 1px solid #bfdbfe; }
         .st-dom-no { background: var(--dom-no-bg); color: var(--dom-no-text); border: 1px solid #a7f3d0; }
         .st-int-stay { background: var(--int-stay-bg); color: var(--int-stay-text); border: 1px solid #e9d5ff; }
         .st-int-no { background: var(--int-no-bg); color: var(--int-no-text); border: 1px solid #fde68a; }
+
+        .cal-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
+        .cal-route { font-size: 0.9rem; font-weight: 600; color: #334155; white-space: nowrap; }
+        
+        .cal-bot { margin-top: auto; display: flex; gap: 3px; flex-wrap: wrap; }
+        .type-tag { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; color: #fff; display: flex; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-weight:bold; }
+        .tag-g650 { background: var(--g650-bg); color: var(--g650-text); }
+        .tag-cl850 { background: var(--cl850-bg); color: var(--cl850-text); }
 
         /* AI & Form */
         .ai-box { position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; background: #f8fafc; }
@@ -168,6 +155,7 @@
         .form-group label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 6px; font-weight: 600; }
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; }
         .time-hint { font-size: 0.75rem; color: var(--primary); font-weight: bold; float: right; }
+        .ai-options { margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #64748b; }
 
         /* Modal & Misc */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 7000; backdrop-filter: blur(2px); }
@@ -175,6 +163,7 @@
         .settings-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 8000; width: 320px; display: none; }
         .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .status-btn { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+        .city-input { width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; font-size: 1rem; text-align: center; outline: none; }
         .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-ghost { background: transparent; color: #64748b; }
@@ -188,7 +177,10 @@
         
         /* 合规监控 */
         .comp-panel { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 15px; }
+        .comp-head { font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .comp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.9rem; }
+        .comp-label { color: #64748b; font-size: 0.8rem; }
+        .comp-val { font-weight: 700; font-family: monospace; }
         .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
         .dot-ok { background: var(--ok-green); box-shadow: 0 0 0 2px #dcfce7; }
         .dot-warn { background: #f59e0b; box-shadow: 0 0 0 2px #fef3c7; }
@@ -198,7 +190,11 @@
         /* 列表 */
         .log-list { max-height: 450px; overflow-y: auto; }
         .log-item { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .log-info { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+        .log-header { display: flex; justify-content: space-between; align-items: center; }
         .ac-badge { font-size: 0.7rem; background: #e0e7ff; color: #3730a3; padding: 1px 5px; border-radius: 3px; font-family: monospace; }
+        .meal-badge { font-size: 0.7rem; background: var(--meal-bg); color: var(--meal-text); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--meal-border); font-weight: bold; margin-left: 5px;}
+        .crew-badge { font-size: 0.75rem; color: #475569; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; display: inline-block; }
         .warn-tag { display: inline-block; background: var(--warn-bg); color: var(--warn-text); font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-top: 4px; }
         .landing-tag { font-family: monospace; font-size: 0.7rem; background: #f1f5f9; color: #475569; padding: 1px 4px; border-radius: 3px; margin-left: 4px; border: 1px solid #cbd5e1; }
     </style>
@@ -239,7 +235,7 @@
     <div id="loginScreen" class="login-screen">
         <div class="login-card">
             <h1 style="font-size: 3rem; margin-bottom: 10px;">✈️</h1>
-            <h2 style="color: #1e40af; margin-bottom: 30px;">CCAR-91 合规版</h2>
+            <h2 style="color: #1e40af; margin-bottom: 30px;">CCAR-91 机长合规版</h2>
             <button class="btn btn-primary" style="width: 100%; padding: 14px;" onclick="loginWithGoogle()">Google 登录</button>
         </div>
     </div>
@@ -272,23 +268,23 @@
                 <div class="card-body">
                     <div class="ai-box">
                         <div id="aiLoading" class="loading-overlay"><div class="spinner"></div></div>
-                        <div class="ai-options"><label><input type="checkbox" id="isUTC" checked> 原数据为UTC (自动转北京时间)</label></div>
+                        <div class="ai-options"><label style="cursor:pointer; display:flex; align-items:center;"><input type="checkbox" id="isUTC" checked style="margin-right:4px;"> 原数据为UTC (自动转北京时间)</label></div>
                         <input type="password" id="innerApiKey" class="key-input" placeholder="DeepSeek API Key">
-                        <textarea id="ocrInput" placeholder="在此粘贴文本..."></textarea>
+                        <textarea id="ocrInput" placeholder="在此粘贴文本...&#10;例：11.9 G650ER 沈阳-曼谷 3起落 国际有过夜&#10;例：10月1日 CL850 训练 4夜间起落"></textarea>
                     </div>
                     <!-- 编辑表单 -->
                     <div id="editForm" class="edit-form" style="display: none;">
                         <div class="form-tag" id="formModeTag">新增</div><input type="hidden" id="edit_doc_id">
                         <div class="form-grid">
                             <div class="form-group"><label>日期</label><input type="date" id="f_date"></div>
-                            <div class="form-group"><label>机型</label><select id="f_ac_type"><option value="G650ER">G650ER</option><option value="CL850">CL850</option></select></div>
-                            <div class="form-group"><label>起飞</label><input type="text" id="f_dep"></div>
-                            <div class="form-group"><label>落地</label><input type="text" id="f_arr"></div>
-                            <div class="form-group"><label>属性</label><select id="f_cat"><option value="国内">国内</option><option value="港澳台">港澳台</option><option value="亚洲国际">亚洲国际</option><option value="洲际">洲际</option></select></div>
-                            <div class="form-group"><label>成员</label><input type="text" id="f_crew"></div>
+                            <div class="form-group"><label>机型(资质赛道)</label><select id="f_ac_type" style="font-weight:bold;color:var(--primary)"><option value="G650ER">G650ER</option><option value="CL850">CL850</option></select></div>
+                            <div class="form-group"><label>起飞地</label><input type="text" id="f_dep"></div>
+                            <div class="form-group"><label>落地地</label><input type="text" id="f_arr"></div>
+                            <div class="form-group"><label>航线属性</label><select id="f_cat"><option value="国内">国内</option><option value="港澳台">港澳台</option><option value="亚洲国际">亚洲国际</option><option value="洲际">洲际</option></select></div>
+                            <div class="form-group"><label>机组成员</label><input type="text" id="f_crew"></div>
                             <div class="form-group"><label>航班号</label><input type="text" id="f_flight_no"></div>
-                            <div class="form-group"><label>日间起落</label><input type="number" id="f_landings_day" value="0"></div>
-                            <div class="form-group"><label>夜间起落</label><input type="number" id="f_landings_night" value="0"></div>
+                            <div class="form-group"><label>日间起落(次)</label><input type="number" id="f_landings_day" value="0"></div>
+                            <div class="form-group"><label>夜间起落(次)</label><input type="number" id="f_landings_night" value="0"></div>
                             <div class="form-full" style="background:#f8fafc; padding:10px; border-radius:8px; display:grid; grid-template-columns:repeat(4,1fr); gap:5px;">
                                 <input type="time" id="f_block_off" oninput="recalcTimes()"><input type="time" id="f_takeoff" oninput="recalcTimes()"><input type="time" id="f_landing" oninput="recalcTimes()"><input type="time" id="f_block_on" oninput="recalcTimes()">
                             </div>
@@ -297,9 +293,9 @@
                             <div class="form-group"><label>滑行天</label><input type="number" id="f_block_days"></div>
                             <div class="form-group"><label>夜(前)</label><input type="number" step="0.1" id="f_night1"></div>
                             <div class="form-group"><label>夜(后)</label><input type="number" step="0.1" id="f_night2"></div>
-                            <div class="form-group"><label>驻外</label><select id="f_overnight"><option value="无">无</option><option value="国内有过夜">国内有过夜</option><option value="国内无过夜">国内无过夜</option><option value="国际有过夜">国际有过夜</option><option value="国际无过夜">国际无过夜</option></select></div>
-                            <div class="form-group"><label>城市</label><input type="text" id="f_overnight_city"></div>
-                            <div class="form-group"><label>天数</label><input type="number" id="f_overnight_days" value="0"></div>
+                            <div class="form-group"><label>驻外类型</label><select id="f_overnight"><option value="无">无</option><option value="国内有过夜">国内有过夜</option><option value="国内无过夜">国内无过夜</option><option value="国际有过夜">国际有过夜</option><option value="国际无过夜">国际无过夜</option></select></div>
+                            <div class="form-group"><label>驻外城市</label><input type="text" id="f_overnight_city"></div>
+                            <div class="form-group"><label>驻外天数</label><input type="number" id="f_overnight_days" value="0"></div>
                             <div class="form-group"><label>节假</label><input type="number" id="f_holiday"></div>
                             <div class="form-group"><label>特殊</label><input type="number" id="f_special" value="0"></div>
                             <div class="form-group"><label>国餐</label><input type="number" id="f_meal_dom" value="0"></div>
@@ -326,8 +322,8 @@
                     <h2 style="font-size:1rem; color:#0f172a;">📅 执勤全景</h2>
                     <div id="calTotal" style="font-size:0.8rem; font-weight:bold; color:#64748b;"></div>
                 </div>
-                <div class="cal-header-row"><div>周日</div><div>周一</div><div>周二</div><div>周三</div><div>周四</div><div>周五</div><div>周六</div></div>
-                <div class="cal-grid-area" id="calendarGrid"></div>
+                <div class="calendar-header"><div>周日</div><div>周一</div><div>周二</div><div>周三</div><div>周四</div><div>周五</div><div>周六</div></div>
+                <div class="calendar-grid" id="calendarGrid"></div>
             </div>
         </div>
 
@@ -370,9 +366,8 @@
         const TAX_BRACKETS = [{limit:36000,rate:0.03,quick:0},{limit:144000,rate:0.10,quick:2520},{limit:300000,rate:0.20,quick:16920},{limit:420000,rate:0.25,quick:31920},{limit:660000,rate:0.30,quick:52920},{limit:960000,rate:0.35,quick:85920},{limit:Infinity,rate:0.45,quick:181920}];
 
         window.switchTab = (id, el) => {
-            // 如果是日历，切换全屏覆盖模式；否则切换普通Tab
             if(id === 'calendar') { document.getElementById('tab-calendar').classList.add('active'); window.renderCalendar(); return; }
-            document.getElementById('tab-calendar').classList.remove('active'); // 退出全屏
+            document.getElementById('tab-calendar').classList.remove('active');
             document.querySelectorAll('.tab-content').forEach(p=>p.classList.remove('active'));
             document.getElementById('tab-'+id).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(t=>t.classList.remove('active'));
@@ -420,7 +415,7 @@
 
         function calculateTax(a) { for (let b of TAX_BRACKETS) { if (a <= b.limit) return a*b.rate - b.quick; } return a*0.45 - 181920; }
 
-        // === 薪资逻辑 (修正：仅国内算夜航) ===
+        // === 薪资逻辑 (已恢复详细展示) ===
         window.renderSalary = () => {
             const rk=document.getElementById('set_rank').value, sg=document.getElementById('set_icao').value==='signed', cfg=FEE_CONFIG[rk]||FEE_CONFIG['机长'];
             const mStr=document.getElementById('reportMonth').value, data=allRecords.filter(r=>r.date.startsWith(mStr));
@@ -431,6 +426,7 @@
                 else { if(r.category==='港澳台'){s.hk+=air;b.hk+=bd;} else if(r.category==='亚洲国际'){s.as+=air;b.as+=bd;} else{s.ou+=air;b.ou+=bd;} }
                 s.sp+=parseFloat(r.special_airport)||0; s.hol+=parseFloat(r.holiday)||0; s.md+=parseFloat(r.crew_meal_dom)||0; s.mi+=parseFloat(r.crew_meal_int)||0;
             });
+            
             let as={}; allRecords.forEach(r=>{if(r.overnight&&!r.overnight.includes('无')&&(parseFloat(r.overnight_days)||0)>0){const d=new Date(r.date);for(let i=1;i<=r.overnight_days;i++){const p=new Date(d);p.setDate(d.getDate()-i);as[p.toISOString().split('T')[0]]=r.overnight.includes('国际')?'国际有过夜':'国内有过夜';}}});
             const [y,m]=mStr.split('-').map(Number), days=new Date(y,m,0).getDate();
             for(let d=1; d<=days; d++){ const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let t=calendarData[ds]?.type; if(!t){ const f=allRecords.filter(r=>r.date===ds), ret=f.find(x=>x.overnight&&x.overnight.includes('无过夜')); t=ret?(ret.overnight.includes('国际')?'国际无过夜':'国内无过夜'):(as[ds]||'沈阳'); } if(t==='国内有过夜')s.ds++;else if(t==='国内无过夜')s.dn++;else if(t==='国际有过夜')s.is++;else if(t==='国际无过夜')s.in++; }
@@ -449,8 +445,19 @@
             if(s.n2>0) add('夜航(后)', `${s.n2.toFixed(1)}h`, s.n2*cfg.n2);
             if(s.mid>0) add('跨零点', `${s.mid}次`, s.mid*200);
             if(s.sp>0) add('特殊', `${s.sp}次`, s.sp*cfg.spec);
-            const allw = (s.md*60)+(s.mi*180)+(s.ds*cfg.dom_stay)+(s.dn*cfg.dom_no)+(s.is*cfg.int_stay)+(s.in*cfg.int_no);
-            if(allw>0) h+=`<tr><td class="col-name" style="color:#16a34a">免税</td><td class="col-proc">补助</td><td class="col-amt" style="color:#16a34a">+${fmt(allw)}</td></tr>`;
+
+            const allowances = (s.md*60)+(s.mi*180)+(s.ds*cfg.dom_stay)+(s.dn*cfg.dom_no)+(s.is*cfg.int_stay)+(s.in*cfg.int_no);
+            if(allowances > 0) {
+                let details = [];
+                if(s.md > 0) details.push(`国内餐: ${s.md}×60=${s.md*60}`);
+                if(s.mi > 0) details.push(`国际餐: ${s.mi}×180=${s.mi*180}`);
+                if(s.ds > 0) details.push(`国内驻: ${s.ds}×${cfg.dom_stay}=${s.ds*cfg.dom_stay}`);
+                if(s.dn > 0) details.push(`国内无: ${s.dn}×${cfg.dom_no}=${s.dn*cfg.dom_no}`);
+                if(s.is > 0) details.push(`国际驻: ${s.is}×${cfg.int_stay}=${s.is*cfg.int_stay}`);
+                if(s.in > 0) details.push(`国际无: ${s.in}×${cfg.int_no}=${s.in*cfg.int_no}`);
+                h += `<tr><td class="col-name" style="color:#16a34a">免税补助</td><td class="col-proc" style="font-size:0.75rem">${details.join('<br>')}</td><td class="col-amt" style="color:#16a34a">+${fmt(allowances)}</td></tr>`;
+            }
+
             const pi=parseFloat(localStorage.getItem('user_cum_income'))||942692, pt=parseFloat(localStorage.getItem('user_cum_tax'))||244022;
             const txNeeded = calculateTax(pi + FIXED_BASE_GROSS - SOCIAL_RATE - 5000 + g);
             const selfTax = Math.max(0, (txNeeded - pt) - (calculateTax(pi + FIXED_BASE_GROSS - SOCIAL_RATE - 5000) - pt));
@@ -459,8 +466,8 @@
             if(selfTax>0) h+=`<tr><td class="col-name" style="color:#dc2626">个税</td><td class="col-proc">补缴</td><td class="col-amt" style="color:#dc2626">-${fmt(selfTax)}</td></tr>`;
             document.getElementById('salaryTableBody').innerHTML = h;
             document.getElementById('disp_net_var').innerText = fmt(g - selfTax);
-            document.getElementById('disp_net_allow').innerText = fmt(allw);
-            document.getElementById('disp_total_bank').innerText = fmt(FIXED_BASE_NET + allw + g - selfTax);
+            document.getElementById('disp_net_allow').innerText = fmt(allowances);
+            document.getElementById('disp_total_bank').innerText = fmt(FIXED_BASE_NET + allowances + g - selfTax);
         };
 
         function formatTimePair(v) { if (!v || isNaN(v)) return `<div class="time-dual"><span class="time-dec">0.00</span></div>`; let h = Math.floor(v), m = Math.round((v - h) * 60); if (m === 60) { h++; m = 0; } return `<div class="time-dual"><div class="time-dec">${v.toFixed(2)}</div><div class="time-hm">(${h}:${String(m).padStart(2, '0')})</div></div>`; }
