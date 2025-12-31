@@ -553,7 +553,8 @@
         }
 
         window.renderSalary = () => {
-            const rank = document.getElementById('set_rank').value; const isSigned = document.getElementById('set_icao').value === 'signed';
+            const rank = document.getElementById('set_rank').value;
+            const isSigned = document.getElementById('set_icao').value === 'signed';
             const cfg = FEE_CONFIG[rank] || FEE_CONFIG['机长'];
             const mStr = document.getElementById('reportMonth').value;
             const data = allRecords.filter(r => r.date.startsWith(mStr));
@@ -562,24 +563,25 @@
             let block = { hk:0, asia:0, out:0 };
 
             data.forEach(r => {
-                const air = parseFloat(r.air_time) || 0; const bDays = parseFloat(r.block_days) || 0;
+                const air = parseFloat(r.air_time) || 0;
+                const bDays = parseFloat(r.block_days) || 0;
                 
-                // 逻辑修正：国内计算夜航费，其他不计算
-                if(r.category==='国内') { 
-                    if(r.takeoff && r.landing && r.landing < r.takeoff) s.midnight++; // 跨零点
-                    s.n1_pay += parseFloat(r.night1)||0; 
-                    s.n2_pay += parseFloat(r.night2)||0;
+                if(r.category === '国内') { 
+                    if(r.takeoff && r.landing && r.landing < r.takeoff) s.midnight++;
+                    s.n1_pay += parseFloat(r.night1) || 0; 
+                    s.n2_pay += parseFloat(r.night2) || 0;
                 } else {
-                    if(r.category==='港澳台') { s.hk_air += air; block.hk += bDays; }
-                    else if(r.category==='亚洲国际') { s.asia_air += air; block.asia += bDays; }
+                    if(r.category === '港澳台') { s.hk_air += air; block.hk += bDays; }
+                    else if(r.category === '亚洲国际') { s.asia_air += air; block.asia += bDays; }
                     else { s.out_air += air; block.out += bDays; }
                 }
-                
-                s.spec_cnt += parseFloat(r.special_airport)||0; s.holiday_days += parseFloat(r.holiday)||0;
-                s.meal_dom_cnt += parseFloat(r.crew_meal_dom)||0; s.meal_int_cnt += parseFloat(r.crew_meal_int)||0;
+                s.spec_cnt += parseFloat(r.special_airport) || 0; 
+                s.holiday_days += parseFloat(r.holiday) || 0;
+                s.meal_dom_cnt += parseFloat(r.crew_meal_dom) || 0; 
+                s.meal_int_cnt += parseFloat(r.crew_meal_int) || 0;
             });
 
-            // 自动计算驻外
+            // 自动计算驻外状态逻辑
             let autoStatus = {};
             allRecords.forEach(r => { 
                 if(r.overnight && !r.overnight.includes('无') && (parseFloat(r.overnight_days)||0) > 0) { 
@@ -591,7 +593,8 @@
                 } 
             });
 
-            const [y, m] = mStr.split('-').map(Number); const daysInMonth = new Date(y, m, 0).getDate();
+            const [y, m] = mStr.split('-').map(Number);
+            const daysInMonth = new Date(y, m, 0).getDate();
             for(let d=1; d<=daysInMonth; d++) { 
                 const dStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; 
                 let type = calendarData[dStr]?.type || null; 
@@ -601,49 +604,65 @@
                     if (hasReturn) type = hasReturn.overnight.includes('国际') ? '国际无过夜' : '国内无过夜'; 
                     else type = autoStatus[dStr] || '沈阳'; 
                 } 
-                if (type === '国内有过夜') s.dom_stay++; else if (type === '国内无过夜') s.dom_no++; 
-                else if (type === '国际有过夜') s.int_stay++; else if (type === '国际无过夜') s.int_no++; 
+                if (type === '国内有过夜') s.dom_stay++; 
+                else if (type === '国内无过夜') s.dom_no++; 
+                else if (type === '国际有过夜') s.int_stay++; 
+                else if (type === '国际无过夜') s.int_no++; 
             }
 
             const fmt = (n) => n.toLocaleString('zh-CN', {style:'currency', currency:'CNY'});
-            let rows = `<tr><td class="col-name">固定工资 (税后)</td><td class="col-proc">公司全额承担个税</td><td class="col-amt">${fmt(FIXED_BASE_NET)}</td></tr>`;
-            let gross_var = 0;
-
-            if(s.hk_air>0) { const r=isSigned?cfg.hk.s:cfg.hk.u; const amt=s.hk_air*r; gross_var+=amt; rows+=`<tr><td class="col-name">港澳台空时</td><td class="col-proc">${s.hk_air.toFixed(1)}h×${r}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
-            if(s.asia_air>0) { const r=isSigned?cfg.asia.s:cfg.asia.u; const amt=s.asia_air*r; gross_var+=amt; rows+=`<tr><td class="col-name">亚洲空时</td><td class="col-proc">${s.asia_air.toFixed(1)}h×${r}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
-            if(s.out_air>0) { const r=isSigned?cfg.out.s:cfg.out.u; const amt=s.out_air*r; gross_var+=amt; rows+=`<tr><td class="col-name">洲际空时</td><td class="col-proc">${s.out_air.toFixed(1)}h×${r}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            let rows = `<tr><td class="col-name">固定工资 (税后)</td><td class="col-proc">公司全额承担个税 (实发基数)</td><td class="col-amt">${fmt(FIXED_BASE_NET)}</td></tr>`;
             
-            if(block.hk>0) { const r=isSigned?cfg.hk.s:cfg.hk.u; const amt=block.hk*r*0.6; gross_var+=amt; rows+=`<tr><td class="col-name">港澳台滑行</td><td class="col-proc">${block.hk}天×${r}×0.6</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
-            if(block.asia>0) { const r=isSigned?cfg.asia.s:cfg.asia.u; const amt=block.asia*r*0.6; gross_var+=amt; rows+=`<tr><td class="col-name">亚洲滑行</td><td class="col-proc">${block.asia}天×${r}×0.6</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
-            if(block.out>0) { const r=isSigned?cfg.out.s:cfg.out.u; const amt=block.out*r*0.6; gross_var+=amt; rows+=`<tr><td class="col-name">洲际滑行</td><td class="col-proc">${block.out}天×${r}×0.6</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            let gross_var = 0; // 变动薪资总额(税前)
 
-            if(s.holiday_days>0) { const amt=s.holiday_days*HOLIDAY_RATE; gross_var+=amt; rows+=`<tr><td class="col-name">节假日加班</td><td class="col-proc">${s.holiday_days}天×${HOLIDAY_RATE}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
-            if(s.n1_pay>0) { const amt=s.n1_pay*cfg.n1; gross_var+=amt; rows+=`<tr><td class="col-name">国内夜航(前)</td><td class="col-proc">${s.n1_pay.toFixed(1)}h×${cfg.n1}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
-            if(s.n2_pay>0) { const amt=s.n2_pay*cfg.n2; gross_var+=amt; rows+=`<tr><td class="col-name">国内夜航(后)</td><td class="col-proc">${s.n2_pay.toFixed(1)}h×${cfg.n2}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
-            if(s.midnight>0) { const amt=s.midnight*200; gross_var+=amt; rows+=`<tr><td class="col-name">国内跨零点</td><td class="col-proc">${s.midnight}次×200</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
-            if(s.spec_cnt>0) { const amt=s.spec_cnt*cfg.spec; gross_var+=amt; rows+=`<tr><td class="col-name">特殊机场</td><td class="col-proc">${s.spec_cnt}次×${cfg.spec}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            // 1. 飞行变动薪资明细
+            if(s.hk_air>0) { const r=isSigned?cfg.hk.s:cfg.hk.u; const amt=s.hk_air*r; gross_var+=amt; rows+=`<tr><td class="col-name">港澳台空时</td><td class="col-proc">${s.hk_air.toFixed(1)}h × ${r}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            if(s.asia_air>0) { const r=isSigned?cfg.asia.s:cfg.asia.u; const amt=s.asia_air*r; gross_var+=amt; rows+=`<tr><td class="col-name">亚洲空时</td><td class="col-proc">${s.asia_air.toFixed(1)}h × ${r}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            if(s.out_air>0) { const r=isSigned?cfg.out.s:cfg.out.u; const amt=s.out_air*r; gross_var+=amt; rows+=`<tr><td class="col-name">洲际空时</td><td class="col-proc">${s.out_air.toFixed(1)}h × ${r}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            if(block.hk>0) { const r=isSigned?cfg.hk.s:cfg.hk.u; const amt=block.hk*r*0.6; gross_var+=amt; rows+=`<tr><td class="col-name">港澳台滑行</td><td class="col-proc">${block.hk}天 × (${r}×0.6)</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            if(block.asia>0) { const r=isSigned?cfg.asia.s:cfg.asia.u; const amt=block.asia*r*0.6; gross_var+=amt; rows+=`<tr><td class="col-name">亚洲滑行</td><td class="col-proc">${block.asia}天 × (${r}×0.6)</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            if(block.out>0) { const r=isSigned?cfg.out.s:cfg.out.u; const amt=block.out*r*0.6; gross_var+=amt; rows+=`<tr><td class="col-name">洲际滑行</td><td class="col-proc">${block.out}天 × (${r}×0.6)</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            if(s.holiday_days>0) { const amt=s.holiday_days*HOLIDAY_RATE; gross_var+=amt; rows+=`<tr><td class="col-name">节假日加班</td><td class="col-proc">${s.holiday_days}天 × ${HOLIDAY_RATE}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            if(s.n1_pay>0) { const amt=s.n1_pay*cfg.n1; gross_var+=amt; rows+=`<tr><td class="col-name">国内夜航(前)</td><td class="col-proc">${s.n1_pay.toFixed(1)}h × ${cfg.n1}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            if(s.n2_pay>0) { const amt=s.n2_pay*cfg.n2; gross_var+=amt; rows+=`<tr><td class="col-name">国内夜航(后)</td><td class="col-proc">${s.n2_pay.toFixed(1)}h × ${cfg.n2}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            if(s.midnight>0) { const amt=s.midnight*200; gross_var+=amt; rows+=`<tr><td class="col-name">国内跨零点</td><td class="col-proc">${s.midnight}次 × 200</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
+            if(s.spec_cnt>0) { const amt=s.spec_cnt*cfg.spec; gross_var+=amt; rows+=`<tr><td class="col-name">特殊机场</td><td class="col-proc">${s.spec_cnt}次 × ${cfg.spec}</td><td class="col-amt">${fmt(amt)}</td></tr>`; }
 
-            const allowances = (s.meal_dom_cnt*60) + (s.meal_int_cnt*180) + (s.dom_stay*cfg.dom_stay) + (s.dom_no*cfg.dom_no) + (s.int_stay*cfg.int_stay) + (s.int_no*cfg.int_no);
-            if(allowances>0) rows+=`<tr><td class="col-name" style="color:#16a34a">免税补助</td><td class="col-proc" style="font-size:0.75rem">餐/驻外/无过夜补贴</td><td class="col-amt" style="color:#16a34a">+${fmt(allowances)}</td></tr>`;
+            // 2. 补助明细的具体显示
+            let total_allowances = 0;
+            if(s.meal_dom_cnt > 0) { const a = s.meal_dom_cnt * 60; total_allowances += a; rows += `<tr><td class="col-name" style="color:#16a34a">国内机组餐贴</td><td class="col-proc">${s.meal_dom_cnt}顿 × 60 (免税)</td><td class="col-amt" style="color:#16a34a">${fmt(a)}</td></tr>`; }
+            if(s.meal_int_cnt > 0) { const a = s.meal_int_cnt * 180; total_allowances += a; rows += `<tr><td class="col-name" style="color:#16a34a">国际机组餐贴</td><td class="col-proc">${s.meal_int_cnt}顿 × 180 (免税)</td><td class="col-amt" style="color:#16a34a">${fmt(a)}</td></tr>`; }
+            if(s.dom_stay > 0) { const a = s.dom_stay * cfg.dom_stay; total_allowances += a; rows += `<tr><td class="col-name" style="color:#16a34a">国内过夜补助</td><td class="col-proc">${s.dom_stay}天 × ${cfg.dom_stay}</td><td class="col-amt" style="color:#16a34a">${fmt(a)}</td></tr>`; }
+            if(s.dom_no > 0) { const a = s.dom_no * cfg.dom_no; total_allowances += a; rows += `<tr><td class="col-name" style="color:#16a34a">国内无过夜补</td><td class="col-proc">${s.dom_no}次 × ${cfg.dom_no}</td><td class="col-amt" style="color:#16a34a">${fmt(a)}</td></tr>`; }
+            if(s.int_stay > 0) { const a = s.int_stay * cfg.int_stay; total_allowances += a; rows += `<tr><td class="col-name" style="color:#16a34a">国际过夜补助</td><td class="col-proc">${s.int_stay}天 × ${cfg.int_stay}</td><td class="col-amt" style="color:#16a34a">${fmt(a)}</td></tr>`; }
+            if(s.int_no > 0) { const a = s.int_no * cfg.int_no; total_allowances += a; rows += `<tr><td class="col-name" style="color:#16a34a">国际无过夜补</td><td class="col-proc">${s.int_no}次 × ${cfg.int_no}</td><td class="col-amt" style="color:#16a34a">${fmt(a)}</td></tr>`; }
 
+            // 3. 税务深度计算
             const prevCumIncome = parseFloat(localStorage.getItem('user_cum_income'))||942692;
             const prevCumTax = parseFloat(localStorage.getItem('user_cum_tax'))||244022;
-            const month_taxable = FIXED_BASE_GROSS - SOCIAL_RATE - 5000 + gross_var;
-            const total_new_income = prevCumIncome + month_taxable;
-            const total_tax_needed = calculateTax(total_new_income);
+            
+            // 本月总应纳税所得额 = 固定应纳税 + 变动应纳税
+            const month_taxable = (FIXED_BASE_GROSS - SOCIAL_RATE - 5000) + gross_var;
+            const total_new_cum_income = prevCumIncome + month_taxable;
+            const total_tax_needed = calculateTax(total_new_cum_income);
             const month_total_tax = total_tax_needed - prevCumTax;
-            const company_share = calculateTax(prevCumIncome + FIXED_BASE_GROSS - SOCIAL_RATE - 5000) - prevCumTax;
+            
+            // 公司负担部分：仅对固定部分计算出的税额
+            const company_share = calculateTax(prevCumIncome + (FIXED_BASE_GROSS - SOCIAL_RATE - 5000)) - prevCumTax;
             let self_share = Math.max(0, month_total_tax - company_share);
 
-            const currentRate = total_new_income>960000?0.45:(total_new_income>660000?0.35:0.30);
+            const currentRate = total_new_cum_income>960000?0.45:(total_new_cum_income>660000?0.35:0.30);
             document.getElementById('taxRateDisplay').innerText = `当前税率 ${(currentRate*100).toFixed(0)}%`;
-            if(self_share>0) rows+=`<tr><td class="col-name" style="color:#dc2626">个人承担个税</td><td class="col-proc">变动薪资个税+补缴</td><td class="col-amt" style="color:#dc2626">-${fmt(self_share)}</td></tr>`;
+            
+            if(self_share>0) {
+                rows+=`<tr><td class="col-name" style="color:#dc2626">个人承担个税</td><td class="col-proc">变动额 ${fmt(gross_var)} 的个税部分</td><td class="col-amt" style="color:#dc2626">-${fmt(self_share)}</td></tr>`;
+            }
 
             const net_var = gross_var - self_share;
             document.getElementById('salaryTableBody').innerHTML = rows;
             document.getElementById('disp_net_var').innerText = fmt(net_var);
-            document.getElementById('disp_net_allow').innerText = fmt(allowances);
-            document.getElementById('disp_total_bank').innerText = fmt(FIXED_BASE_NET + allowances + net_var);
+            document.getElementById('disp_net_allow').innerText = fmt(total_allowances);
+            document.getElementById('disp_total_bank').innerText = fmt(FIXED_BASE_NET + total_allowances + net_var);
         };
 
         function formatTimePair(decimal) {
@@ -832,9 +851,9 @@
                 s.meal_d+=parseFloat(r.crew_meal_dom)||0; s.meal_i+=parseFloat(r.crew_meal_int)||0; s.spec+=parseFloat(r.special_airport)||0; s.hol+=parseFloat(r.holiday)||0;
             });
             
-            // 驻外统计略 (为节省长度沿用Salary中的计算逻辑，仅展示结果)
+            // 驻外统计略
             const [y, m] = mStr.split('-').map(Number); const daysInMonth = new Date(y, m, 0).getDate();
-            let autoStatus = {}; /* ... 略去重复代码，复用逻辑 ... */
+            let autoStatus = {}; 
             allRecords.forEach(r => { if(r.overnight && !r.overnight.includes('无') && (parseFloat(r.overnight_days)||0)>0) { const d = new Date(r.date); for(let i=1; i<=r.overnight_days; i++) { const p = new Date(d); p.setDate(d.getDate()-i); autoStatus[p.toISOString().split('T')[0]] = r.overnight.includes('国际')?'国际有过夜':'国内有过夜'; } } });
             for(let d=1; d<=daysInMonth; d++) { const dStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let type=calendarData[dStr]?.type; if(!type) { const fl=allRecords.filter(r=>r.date===dStr); const ret=fl.find(f=>f.overnight&&f.overnight.includes('无过夜')); type=ret?(ret.overnight.includes('国际')?'国际无过夜':'国内无过夜'):(autoStatus[dStr]||'沈阳'); } if(type==='国内有过夜')s.cal_dom_stay++; else if(type==='国内无过夜')s.cal_dom_no++; else if(type==='国际有过夜')s.cal_int_stay++; else if(type==='国际无过夜')s.cal_int_no++; }
 
