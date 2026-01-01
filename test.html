@@ -114,6 +114,9 @@
         .md-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 10px; }
         .md-date { font-size: 1.1rem; font-weight: 800; color: #0f172a; }
         .md-status-btn { font-size: 0.8rem; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; border: none; font-weight: bold; }
+        
+        .md-status-banner { text-align: center; padding: 8px; border-radius: 6px; margin-bottom: 10px; font-size: 0.9rem; font-weight: bold; }
+        
         .md-list { display: flex; flex-direction: column; gap: 8px; }
         .md-item { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 4px solid #cbd5e1; }
         .md-item.type-dom { border-left-color: #3b82f6; }
@@ -478,7 +481,7 @@
         window.deleteItem = async (id) => { if(confirm("删除?")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
 
         // === 响应式日历 (月视图 + 详情卡) ===
-        window.selectDate = (dateStr, flights) => {
+        window.selectDate = (dateStr, flights, statusText, statusClass) => {
             // UI Selection
             document.querySelectorAll('.cal-day').forEach(el => el.classList.remove('selected-mobile'));
             const cell = document.getElementById(`cell-${dateStr}`);
@@ -493,12 +496,18 @@
             title.dataset.raw = dateStr;
             list.innerHTML = '';
 
-            let raw = calendarData[dateStr] || {};
-            let displayText = raw.city || (raw.type||'');
-            if(!flights.length && !displayText) displayText = '无记录 / 休息';
+            // 1. 显示状态横幅 (无论有无飞行)
+            if(statusText && statusText !== 'null') {
+                let bannerClass = 'st-base';
+                if(statusClass) bannerClass = statusClass;
+                list.innerHTML += `<div class="md-status-banner ${bannerClass}">${statusText}</div>`;
+            }
 
+            // 2. 显示飞行记录
             if(flights.length === 0) {
-                list.innerHTML = `<div style="text-align:center;color:#94a3b8;padding:10px;">${displayText}</div>`;
+                if(!statusText || statusText === 'null' || statusText === '沈阳') {
+                    list.innerHTML += `<div style="text-align:center;color:#94a3b8;padding:10px;">🏡 无飞行记录 / 休息</div>`;
+                }
             } else {
                 flights.forEach(f => {
                     let typeClass = (f.category.includes('国际')||f.category.includes('洲际')) ? 'type-int' : 'type-dom';
@@ -527,14 +536,10 @@
 
             let autoStatus = {}; allRecords.forEach(r => { if(r.overnight && !r.overnight.includes('无') && (parseFloat(r.overnight_days) || 0) > 0) { const d = new Date(r.date); for(let i=1; i<=r.overnight_days; i++) { const p = new Date(d); p.setDate(d.getDate()-i); autoStatus[p.toISOString().split('T')[0]] = { type: r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜', city: r.overnight_city }; } } });
 
-            // Desktop filler (Only on desktop)
             if (window.innerWidth > 768) { for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="cal-day" style="border:none;background:transparent"></div>`; }
+            if (window.innerWidth <= 768) { for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="cal-day" style="border:none;background:transparent;min-height:50px"></div>`; }
             
             let totalHours = 0;
-            // On mobile, just fill empty cells to align grid if needed, or handle in CSS. Here we keep simple loop.
-            // Actually for mobile grid (7 cols), we DO need empty cells for alignment too!
-            if (window.innerWidth <= 768) { for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="cal-day" style="border:none;background:transparent;min-height:50px"></div>`; }
-
             for(let d=1; d<=daysInMonth; d++) {
                 const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const currDate = new Date(y, m-1, d);
@@ -549,19 +554,17 @@
                 const isToday = dateStr === todayStr; 
                 const cell = document.createElement('div'); 
                 cell.className = `cal-day ${isToday ? 'today' : ''}`;
-                cell.id = `cell-${dateStr}`; // ID for selection
+                cell.id = `cell-${dateStr}`; 
                 
-                // Click Logic: Mobile selects date; Desktop opens modal (via checking flight-tag click)
                 cell.onclick = (e) => { 
                     if (window.innerWidth <= 768) {
-                        selectDate(dateStr, flights);
+                        selectDate(dateStr, flights, displayText, stClass); // Pass display text & class
                     } else {
                         if(e.target.closest('.flight-tag')) return; 
                         openStatusModal(dateStr); 
                     }
                 };
                 
-                // Desktop Content
                 let fHtml = flights.map(f => {
                     let c = (f.category.includes('国际')||f.category.includes('洲际'))?'tag-int':'tag-dom'; if(parseFloat(f.total_time)===0) c='tag-dh';
                     let nightHours = (parseFloat(f.night1)||0) + (parseFloat(f.night2)||0);
@@ -570,7 +573,6 @@
                     return `<div class="flight-tag ${c}"><span>${f.dep.split(' ')[0]}-${f.arr.split(' ')[0]}</span><div style="display:flex;align-items:center"><span>${parseFloat(f.total_time)||'DH'}</span>${nightInd}${midInd}</div></div>`;
                 }).join('');
 
-                // Mobile Dots
                 let dotsHtml = `<div class="mobile-dots">`;
                 flights.forEach(f => {
                     let colorClass = (f.category.includes('国际')||f.category.includes('洲际')) ? 'bg-purple' : 'bg-blue';
@@ -581,17 +583,14 @@
                 
                 cell.innerHTML = `
                     <div class="cal-num">${d} ${isToday?'<span style="color:var(--primary);font-size:0.7rem">今</span>':''}</div>
-                    <!-- Desktop View -->
                     <div class="cal-flights">${fHtml}</div>
                     <div class="cal-status ${stClass}">${displayText}</div>
-                    <!-- Mobile View -->
                     ${dotsHtml}
                 `;
                 grid.appendChild(cell);
 
-                // Auto-select today on mobile
                 if (isToday && window.innerWidth <= 768) {
-                    setTimeout(() => selectDate(dateStr, flights), 100);
+                    setTimeout(() => selectDate(dateStr, flights, displayText, stClass), 100);
                 }
             }
             document.getElementById('calTotal').textContent = `本月: ${totalHours.toFixed(1)}h`;
