@@ -112,13 +112,13 @@
         .cal-day.today .cal-num { color: var(--primary); }
         .cal-flights { flex: 1; display: flex; flex-direction: column; gap: 2px; overflow: hidden; margin-bottom: 4px; }
         
-        /* 飞行条 */
+        /* 飞行条与图标 */
         .flight-tag { padding: 3px 4px; border-radius: 3px; font-size: 0.65rem; color: #fff; display: flex; justify-content: space-between; align-items: center; line-height: 1.2; position: relative;}
         .tag-dom { background: #3b82f6; } .tag-int { background: #8b5cf6; } .tag-dh { background: #64748b; }
         
         .night-indicator { display: inline-flex; align-items: center; background: rgba(0,0,0,0.2); border-radius: 3px; padding: 0 3px; font-weight: bold; color: #fcd34d; margin-left: 4px; font-size: 0.65rem; }
-        
-        .night-tag { background: var(--night-bg); color: var(--night-text); font-size: 0.65rem; padding: 2px; border-radius: 3px; text-align: center; font-weight: bold; margin-top: 2px; display: flex; justify-content: center; align-items: center; gap: 4px; }
+        .mid-indicator { display: inline-flex; align-items: center; background: rgba(0,0,0,0.2); border-radius: 3px; padding: 0 3px; font-weight: bold; color: #e9d5ff; margin-left: 2px; font-size: 0.65rem; }
+
         .cal-status { font-size: 0.65rem; padding: 2px 4px; border-radius: 4px; text-align: center; margin-top: auto; font-weight: 700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .st-dom-stay { background: var(--dom-stay-bg); color: var(--dom-stay-text); border: 1px solid #bfdbfe; }
         .st-dom-no { background: var(--dom-no-bg); color: var(--dom-no-text); border: 1px solid #a7f3d0; }
@@ -151,6 +151,7 @@
         .night-badge-money { color: #d97706; background: #fef3c7; border: 1px solid #fcd34d; font-size: 0.7rem; padding: 1px 5px; border-radius: 4px; font-weight: bold; }
         .night-badge-gray { color: #94a3b8; background: #f1f5f9; border: 1px solid #e2e8f0; font-size: 0.7rem; padding: 1px 5px; border-radius: 4px; text-decoration: line-through; }
         .midnight-tag { color: #6b21a8; background: #f3e8ff; border: 1px solid #d8b4fe; font-size: 0.7rem; padding: 1px 5px; border-radius: 4px; font-weight: bold; }
+        .reset-tag { color: #fff; background: linear-gradient(90deg, #ec4899, #8b5cf6); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; margin-left: 10px; display: inline-block;}
 
         .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
         .btn-primary { background: var(--primary); color: white; }
@@ -175,7 +176,7 @@
             <h3 style="margin-bottom:15px; text-align:center; color:#0f172a;">⚙️ 薪资与税务配置</h3>
             
             <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:15px;">
-                <p style="font-size:0.75rem; color:#64748b; margin-bottom:5px;">请填入个税APP中<b>截至上个月</b>的数据，用于精准计算补税：</p>
+                <p style="font-size:0.75rem; color:#64748b; margin-bottom:5px;">请填入个税APP中<b>截至上个月</b>的数据：</p>
                 <div class="form-group">
                     <label>年初至今累计应纳税所得额</label>
                     <input type="number" id="set_cum_income" placeholder="例: 942692" style="font-family:monospace; font-weight:bold;">
@@ -259,7 +260,10 @@
         <!-- 💰 薪资核算 -->
         <section class="card">
             <div class="card-header">
-                <h2>💰 本月实发结算单</h2>
+                <div style="display:flex;align-items:center;">
+                    <h2>💰 本月实发结算单</h2>
+                    <span id="resetBadge" style="display:none;" class="reset-tag">📅 新税年重置 (Jan)</span>
+                </div>
                 <span id="taxRateDisplay" style="font-size:0.75rem; background:#f3e8ff; color:#6b21a8; padding:2px 6px; border-radius:4px; font-weight:bold;">当前税率 --%</span>
             </div>
             <div class="card-body">
@@ -309,9 +313,10 @@
             <div class="card-body calendar-wrapper">
                 <div class="calendar-header"><div>周日</div><div>周一</div><div>周二</div><div>周三</div><div>周四</div><div>周五</div><div>周六</div></div>
                 <div class="calendar-grid" id="calendarGrid"></div>
-                <div style="margin-top:10px; font-size:0.75rem; color:#64748b; display:flex; gap:15px; justify-content:center;">
+                <div style="margin-top:10px; font-size:0.75rem; color:#64748b; display:flex; gap:15px; justify-content:center; flex-wrap:wrap;">
                     <span style="display:flex;align-items:center"><span style="color:#fcd34d;margin-right:4px;">🌙</span> 计薪夜航(国内)</span>
-                    <span style="display:flex;align-items:center"><span class="tag-int" style="width:10px;height:10px;display:inline-block;margin-right:4px;border-radius:2px;"></span> 国际/港澳台(小时费)</span>
+                    <span style="display:flex;align-items:center"><span style="color:#e9d5ff;margin-right:4px;">🟣</span> 跨零点(+200)</span>
+                    <span style="display:flex;align-items:center"><span class="tag-int" style="width:10px;height:10px;display:inline-block;margin-right:4px;border-radius:2px;"></span> 国际(无夜航/有小时费)</span>
                 </div>
             </div>
         </section>
@@ -600,10 +605,22 @@
             const isSigned = document.getElementById('set_icao').value === 'signed';
             const cfg = FEE_CONFIG[rank] || FEE_CONFIG['机长'];
             
-            const prevCumIncome = parseFloat(localStorage.getItem('user_cum_income')) || 942692;
-            const prevCumTax = parseFloat(localStorage.getItem('user_cum_tax')) || 244022;
-
             const mStr = document.getElementById('reportMonth').value;
+            
+            // === 智能税务模式：如果是1月，强制重置累计数据 ===
+            const isJan = mStr.endsWith('-01');
+            let prevCumIncome = parseFloat(localStorage.getItem('user_cum_income')) || 942692;
+            let prevCumTax = parseFloat(localStorage.getItem('user_cum_tax')) || 244022;
+            
+            const resetBadge = document.getElementById('resetBadge');
+            if (isJan) {
+                prevCumIncome = 0;
+                prevCumTax = 0;
+                resetBadge.style.display = 'inline-block';
+            } else {
+                resetBadge.style.display = 'none';
+            }
+
             const data = allRecords.filter(r => r.date.startsWith(mStr));
             
             let s = { dom_air:0, hk_air:0, asia_air:0, out_air:0, n1:0, n2:0, spec_cnt:0, holiday_days:0, dom_stay:0, dom_no:0, int_stay:0, int_no:0, meal_dom_cnt:0, meal_int_cnt:0 };
@@ -1020,15 +1037,18 @@
                     let c = (f.category.includes('国际')||f.category.includes('洲际'))?'tag-int':'tag-dom'; 
                     if(parseFloat(f.total_time)===0) c='tag-dh';
                     
-                    // === 新增逻辑：计算该航班是否有“计薪夜航” ===
+                    // === 新增逻辑：计算该航班是否有“计薪夜航”与“跨零点” ===
                     let isBillableNight = (f.category === '国内');
                     let nightHours = (parseFloat(f.night1)||0) + (parseFloat(f.night2)||0);
                     let nightIndicator = '';
+                    let midIndicator = '';
                     
-                    if(nightHours > 0) {
-                        if(isBillableNight) {
-                            nightIndicator = `<span class="night-indicator">🌙${nightHours.toFixed(1)}</span>`;
-                        }
+                    if(nightHours > 0 && isBillableNight) {
+                        nightIndicator = `<span class="night-indicator">🌙${nightHours.toFixed(1)}</span>`;
+                    }
+
+                    if(f.category === '国内' && f.takeoff && f.landing && f.landing < f.takeoff) {
+                        midIndicator = `<span class="mid-indicator">🟣</span>`;
                     }
 
                     return `<div class="flight-tag ${c}">
@@ -1036,6 +1056,7 @@
                         <div style="display:flex;align-items:center">
                             <span>${parseFloat(f.total_time)||'DH'}</span>
                             ${nightIndicator}
+                            ${midIndicator}
                         </div>
                     </div>`;
                 }).join('');
@@ -1096,8 +1117,7 @@
             }
             
             // 报表底部拆分显示
-            document.getElementById('reportTable').innerHTML = `<thead><tr><th rowspan="2">类别</th><th colspan="2">国内</th><th colspan="2">港澳台</th><th colspan="2">亚洲</th><th colspan="2">洲际</th></tr><tr><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th></tr></thead><tbody><tr><td style="font-weight:bold">合计</td><td>${formatTimePair(s.d_a)}</td><td>${s.d_b}</td><td>${formatTimePair(s.h_a)}</td><td>${s.h_b}</td><td>${formatTimePair(s.a_a)}</td><td>${s.a_b}</td><td>${formatTimePair(s.i_a)}</td><td>${s.i_b}</td></tr><tr><td colspan="9" style="height:8px;border:none;background:white"></td></tr><tr><th rowspan="2">补贴</th><th colspan="2">机组餐(份)</th><th colspan="2">驻外-国内</th><th colspan="2">驻外-国际</th><th colspan="2">其他</th></tr><tr><th class="bg-meal">国内</th><th class="bg-meal">国际</th><th class="bg-cal-stat">国有(天)</th><th class="bg-cal-stat">国无(次)</th><th class="bg-cal-stat">外有(天)</th><th class="bg-cal-stat">外无(次)</th><th class="bg-sub">特殊</th><th class="bg-sub">节日</th></tr><tr><td style="font-weight:bold">统计</td><td class="bg-meal">${s.meal_d}</td><td class="bg-meal">${s.meal_i}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_no}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_no}</td><td class="bg-sub">${s.spec}</td><td class="bg-sub">${s.hol}</td></tr><tr><td colspan="9" style="font-size:0.75rem;color:#475569;text-align:right;padding:6px;border:none;line-height:1.6">
-                <span style="color:#d97706;font-weight:bold;margin-right:15px">🌙 跨零点: ${s.mid_cnt}次</span>
+            document.getElementById('reportTable').innerHTML = `<thead><tr><th rowspan="2">类别</th><th colspan="2">国内</th><th colspan="2">港澳台</th><th colspan="2">亚洲</th><th colspan="2">洲际</th></tr><tr><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th></tr></thead><tbody><tr><td style="font-weight:bold">合计</td><td>${formatTimePair(s.d_a)}</td><td>${s.d_b}</td><td>${formatTimePair(s.h_a)}</td><td>${s.h_b}</td><td>${formatTimePair(s.a_a)}</td><td>${s.a_b}</td><td>${formatTimePair(s.i_a)}</td><td>${s.i_b}</td></tr><tr><td colspan="9" style="height:8px;border:none;background:white"></td></tr><tr><th rowspan="2">补贴</th><th colspan="2">机组餐(份)</th><th colspan="2">驻外-国内</th><th colspan="2">驻外-国际</th><th colspan="2">其他</th></tr><tr><th class="bg-meal">国内</th><th class="bg-meal">国际</th><th class="bg-cal-stat">国有(天)</th><th class="bg-cal-stat">国无(次)</th><th class="bg-cal-stat">外有(天)</th><th class="bg-cal-stat">外无(次)</th><th class="bg-sub">特殊</th><th class="bg-sub">跨零点</th></tr><tr><td style="font-weight:bold">统计</td><td class="bg-meal">${s.meal_d}</td><td class="bg-meal">${s.meal_i}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_no}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_no}</td><td class="bg-sub">${s.spec}</td><td class="bg-sub" style="color:#d97706;font-weight:bold">${s.mid_cnt}次</td></tr><tr><td colspan="9" style="font-size:0.75rem;color:#475569;text-align:right;padding:6px;border:none;line-height:1.6">
                 <span style="color:#d97706;font-weight:bold;margin-right:15px">💰 计薪夜航(国内): ${s.n1_dom.toFixed(1)} / ${s.n2_dom.toFixed(1)}</span>
                 <span style="color:#94a3b8;text-decoration:line-through">🚫 国际夜航(含在小时费): ${s.n1_int.toFixed(1)} / ${s.n2_int.toFixed(1)}</span>
             </td></tr></tbody>`;
