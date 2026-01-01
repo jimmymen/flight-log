@@ -124,6 +124,8 @@
         .mobile-dots { display: none; justify-content: center; gap: 3px; margin-top: 4px; }
         .m-dot { width: 6px; height: 6px; border-radius: 50%; }
         .bg-blue { background: #3b82f6; } .bg-purple { background: #8b5cf6; } .bg-yellow { background: #fcd34d; }
+        /* 新增状态点颜色 */
+        .bg-green { background: #10b981; }
 
         /* AI & Form */
         .ai-box { position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; background: #f8fafc; transition: border-color 0.3s; }
@@ -583,11 +585,19 @@
                 }).join('');
 
                 let dotsHtml = `<div class="mobile-dots">`;
-                flights.forEach(f => {
-                    let colorClass = (f.category.includes('国际')||f.category.includes('洲际')) ? 'bg-purple' : 'bg-blue';
-                    dotsHtml += `<div class="m-dot ${colorClass}"></div>`;
-                    if((parseFloat(f.night1)||0) + (parseFloat(f.night2)||0) > 0) dotsHtml += `<div class="m-dot bg-yellow"></div>`;
-                });
+                // 1. 如果有飞行，显示飞行点
+                if(flights.length > 0) {
+                    flights.forEach(f => {
+                        let colorClass = (f.category.includes('国际')||f.category.includes('洲际')) ? 'bg-purple' : 'bg-blue';
+                        dotsHtml += `<div class="m-dot ${colorClass}"></div>`;
+                        if((parseFloat(f.night1)||0) + (parseFloat(f.night2)||0) > 0) dotsHtml += `<div class="m-dot bg-yellow"></div>`;
+                    });
+                } 
+                // 2. 如果没飞行，但有驻外状态，显示状态点
+                else if(finalStatus.type && finalStatus.type !== '沈阳' && finalStatus.type !== 'null') {
+                    if(finalStatus.type.includes('国内')) dotsHtml += `<div class="m-dot bg-green"></div>`;
+                    else if(finalStatus.type.includes('国际')) dotsHtml += `<div class="m-dot bg-purple"></div>`;
+                }
                 dotsHtml += `</div>`;
                 
                 cell.innerHTML = `
@@ -605,6 +615,7 @@
             document.getElementById('calTotal').textContent = `本月: ${totalHours.toFixed(1)}h`;
         };
 
+        // === 优化的月度统计 (响应式) ===
         window.renderReport = () => {
             const mStr = document.getElementById('reportMonth').value; 
             const data = allRecords.filter(r => r.date.startsWith(mStr));
