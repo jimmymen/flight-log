@@ -482,13 +482,10 @@
 
         // === 响应式日历 (月视图 + 详情卡) ===
         window.selectDate = (dateStr, flights, statusText, statusClass) => {
-            // UI Selection
             document.querySelectorAll('.cal-day').forEach(el => el.classList.remove('selected-mobile'));
             const cell = document.getElementById(`cell-${dateStr}`);
             if(cell) cell.classList.add('selected-mobile');
 
-            // Populate Card
-            const card = document.getElementById('mobileDetailContainer');
             const list = document.getElementById('mdFlightList');
             const title = document.getElementById('mdDateStr');
             
@@ -511,17 +508,29 @@
             } else {
                 flights.forEach(f => {
                     let typeClass = (f.category.includes('国际')||f.category.includes('洲际')) ? 'type-int' : 'type-dom';
-                    let nightHours = (parseFloat(f.night1)||0) + (parseFloat(f.night2)||0);
-                    let nightTag = nightHours > 0 ? `<span style="font-size:0.7rem;color:#f59e0b;font-weight:bold;margin-left:5px">🌙${nightHours}</span>` : '';
+                    
+                    // 起落显示逻辑
+                    let lDay = parseInt(f.landings_day) || 0;
+                    let lNight = parseInt(f.landings_night) || 0;
+                    let landingHtml = '';
+                    if (lDay > 0 || lNight > 0) {
+                        landingHtml = `<div style="margin-top:4px;display:flex;gap:5px;font-size:0.7rem;">`;
+                        if (lDay > 0) landingHtml += `<span style="background:#e0f2fe;color:#0369a1;padding:1px 5px;border-radius:3px;">☀️ ${lDay}</span>`;
+                        if (lNight > 0) landingHtml += `<span style="background:#1e293b;color:#fcd34d;padding:1px 5px;border-radius:3px;">🌑 ${lNight}</span>`;
+                        landingHtml += `</div>`;
+                    }
+
                     list.innerHTML += `
                         <div class="md-item ${typeClass}">
                             <div>
                                 <div style="font-weight:bold;color:#334155">${f.dep} ➝ ${f.arr}</div>
-                                <div style="font-size:0.75rem;color:#64748b">${f.flight_no} · ${f.ac_type}</div>
+                                <div style="font-size:0.75rem;color:#64748b">
+                                    ${f.flight_no} · <span style="font-weight:bold;color:#334155">${f.ac_type}</span>
+                                </div>
+                                ${landingHtml}
                             </div>
                             <div style="text-align:right">
                                 <div style="font-weight:bold;color:var(--primary)">${parseFloat(f.total_time)}h</div>
-                                ${nightTag}
                             </div>
                         </div>`;
                 });
@@ -558,7 +567,7 @@
                 
                 cell.onclick = (e) => { 
                     if (window.innerWidth <= 768) {
-                        selectDate(dateStr, flights, displayText, stClass); // Pass display text & class
+                        selectDate(dateStr, flights, displayText, stClass); 
                     } else {
                         if(e.target.closest('.flight-tag')) return; 
                         openStatusModal(dateStr); 
@@ -596,7 +605,6 @@
             document.getElementById('calTotal').textContent = `本月: ${totalHours.toFixed(1)}h`;
         };
 
-        // === 优化的月度统计 (响应式) ===
         window.renderReport = () => {
             const mStr = document.getElementById('reportMonth').value; 
             const data = allRecords.filter(r => r.date.startsWith(mStr));
