@@ -9,6 +9,7 @@
         :root {
             --primary: #2563eb; --primary-dark: #1e40af; 
             --bg: #f8fafc; --text: #334155; --border: #cbd5e1;
+            /* 状态颜色 */
             --dom-stay-bg: #dbeafe; --dom-stay-text: #1e40af;
             --dom-no-bg: #d1fae5; --dom-no-text: #065f46;
             --int-stay-bg: #f3e8ff; --int-stay-text: #6b21a8;
@@ -20,10 +21,14 @@
             --ok-green: #16a34a;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); padding: 15px; min-height: 100vh; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg); color: var(--text);
+            padding: 15px; min-height: 100vh;
+        }
         .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 60px; }
 
-        /* 组件样式 */
+        /* 通用组件 */
         .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid var(--border); overflow: hidden; }
         .card-header { padding: 15px 20px; background: #fff; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
         .card-header h2 { font-size: 1.1rem; font-weight: 700; color: #0f172a; }
@@ -32,7 +37,7 @@
         .top-bar { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: 16px 24px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(37,99,235,0.3); margin-bottom: 10px; }
         .user-pill { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; backdrop-filter: blur(4px); margin-top: 5px; display: inline-block; }
 
-        /* 仪表盘 */
+        /* === 仪表盘 === */
         .comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
         .comp-panel { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 15px; }
         .comp-head { font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
@@ -46,7 +51,7 @@
         .progress-track { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 5px; }
         .progress-bar { height: 100%; transition: width 0.3s; }
 
-        /* 薪资 */
+        /* === 薪资 === */
         .salary-summary-box { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 12px; border: 1px solid #bfdbfe; }
         .ss-item { text-align: center; }
         .ss-label { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
@@ -61,7 +66,7 @@
         .calc-tag { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 5px; margin-right: 4px; font-size: 0.75rem; color: #475569; }
         .tax-highlight { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 2px; font-weight: bold; }
 
-        /* 表格与响应式卡片 */
+        /* === 报表 === */
         .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); -webkit-overflow-scrolling: touch; }
         .excel-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 900px; }
         .excel-table th, .excel-table td { border: 1px solid var(--border); padding: 8px 6px; text-align: center; vertical-align: middle; }
@@ -69,6 +74,9 @@
         .bg-cal-stat { background-color: #ecfdf5; color: #047857; font-weight: bold; }
         .bg-sub { background-color: #fdf4ff; color: #86198f; font-weight: bold; }
         .bg-meal { background-color: var(--meal-bg); color: var(--meal-text); font-weight: bold; }
+        .time-dual { line-height: 1.2; }
+        .time-dec { font-weight: bold; font-size: 0.9rem; color: #0f172a; }
+        .time-hm { font-size: 0.7rem; color: #64748b; display: block; margin-top: 2px; font-family: monospace; }
         
         .mobile-report-view { display: none; gap: 10px; }
         .m-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
@@ -78,7 +86,7 @@
         .m-label { color: #64748b; }
         .m-val { font-weight: 700; font-family: monospace; color: #0f172a; }
 
-        /* 日历 */
+        /* === 日历 (核心修改) === */
         .calendar-wrapper { user-select: none; }
         .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.8rem; color: #94a3b8; padding: 10px 0; font-weight: 600; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
@@ -86,18 +94,33 @@
         .cal-day:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); z-index: 10; }
         .cal-day.today { border: 2px solid var(--primary); background: #eff6ff; }
         .cal-num { font-size: 0.85rem; font-weight: 700; color: #cbd5e1; margin-bottom: 4px; display: flex; justify-content: space-between; }
-        .cal-week-name { display: none; }
+        .cal-day.today .cal-num { color: var(--primary); }
         .cal-flights { flex: 1; display: flex; flex-direction: column; gap: 2px; overflow: hidden; margin-bottom: 4px; }
+        
         .flight-tag { padding: 3px 4px; border-radius: 3px; font-size: 0.65rem; color: #fff; display: flex; justify-content: space-between; align-items: center; line-height: 1.2; position: relative;}
         .tag-dom { background: #3b82f6; } .tag-int { background: #8b5cf6; } .tag-dh { background: #64748b; }
         .night-indicator { display: inline-flex; align-items: center; background: rgba(0,0,0,0.2); border-radius: 3px; padding: 0 3px; font-weight: bold; color: #fcd34d; margin-left: 4px; font-size: 0.65rem; }
         .mid-indicator { display: inline-flex; align-items: center; background: rgba(0,0,0,0.2); border-radius: 3px; padding: 0 3px; font-weight: bold; color: #e9d5ff; margin-left: 2px; font-size: 0.65rem; }
         .cal-status { font-size: 0.65rem; padding: 2px 4px; border-radius: 4px; text-align: center; margin-top: auto; font-weight: 700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        
         .st-dom-stay { background: var(--dom-stay-bg); color: var(--dom-stay-text); border: 1px solid #bfdbfe; }
         .st-dom-no { background: var(--dom-no-bg); color: var(--dom-no-text); border: 1px solid #a7f3d0; }
         .st-int-stay { background: var(--int-stay-bg); color: var(--int-stay-text); border: 1px solid #e9d5ff; }
         .st-int-no { background: var(--int-no-bg); color: var(--int-no-text); border: 1px solid #fde68a; }
         .st-base { color: #cbd5e1; font-weight: normal; }
+
+        /* 手机端日历详情卡片 */
+        .mobile-detail-card { display: none; margin-top: 15px; background: white; border-radius: 12px; border: 1px solid var(--primary); padding: 15px; box-shadow: 0 4px 15px rgba(37,99,235,0.15); animation: fadeIn 0.3s ease; }
+        .md-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 10px; }
+        .md-date { font-size: 1.1rem; font-weight: 800; color: #0f172a; }
+        .md-status-btn { font-size: 0.8rem; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; border: none; font-weight: bold; }
+        .md-list { display: flex; flex-direction: column; gap: 8px; }
+        .md-item { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 4px solid #cbd5e1; }
+        .md-item.type-dom { border-left-color: #3b82f6; }
+        .md-item.type-int { border-left-color: #8b5cf6; }
+        .mobile-dots { display: none; justify-content: center; gap: 3px; margin-top: 4px; }
+        .m-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .bg-blue { background: #3b82f6; } .bg-purple { background: #8b5cf6; } .bg-yellow { background: #fcd34d; }
 
         /* AI & Form */
         .ai-box { position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; background: #f8fafc; transition: border-color 0.3s; }
@@ -107,6 +130,7 @@
         .ai-options { margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #64748b; }
         .edit-form { background: #fff; padding: 20px; border-radius: 12px; margin-top: 20px; border: 1px solid var(--primary); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); position: relative; animation: slideIn 0.3s ease; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .form-tag { position: absolute; top: -10px; left: 20px; background: var(--primary); color: white; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; }
         .form-full { grid-column: 1 / -1; }
@@ -150,23 +174,29 @@
         .spinner { width: 30px; height: 30px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* === 手机端适配 (Mobile Layout) === */
+        /* === 媒体查询 (Scheme A: Grid + Detail) === */
         @media (max-width: 768px) {
-            .calendar-header { display: none; }
-            .calendar-grid { display: flex; flex-direction: column; gap: 8px; }
-            .cal-day { flex-direction: row; align-items: center; min-height: auto; padding: 10px 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;}
-            .cal-num { 
-                width: 70px; margin-bottom: 0; margin-right: 15px; border-right: 2px solid #f1f5f9; 
-                display: flex; flex-direction: column; align-items: center; justify-content: center;
-                font-size: 1.1rem; line-height: 1.1;
-            }
-            .cal-week-name { display: block; font-size: 0.7rem; color: #94a3b8; font-weight: normal; margin-top: 2px;}
-            .cal-flights { flex-direction: row; flex-wrap: wrap; gap: 5px; }
-            .cal-status { margin-top: 0; margin-left: auto; font-size: 0.75rem; padding: 3px 8px; }
+            /* 压缩日历 */
+            .cal-day { min-height: 50px; flex-direction: column; justify-content: flex-start; align-items: center; padding: 4px; border-radius: 8px;}
+            .cal-num { margin-bottom: 2px; font-size: 0.9rem; color: #64748b; font-weight: normal; }
+            .cal-day.today .cal-num { background: var(--primary); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.75rem; }
+            .cal-day.today span { display: none; } /* hide '今' text */
             
-            .table-wrapper { display: none; } /* Hide Excel Table */
-            .mobile-report-view { display: grid; } /* Show Cards */
+            /* 选中状态 */
+            .cal-day.selected-mobile { border: 2px solid var(--primary); background: #eff6ff; }
+
+            /* 隐藏详情，只显示圆点 */
+            .cal-flights, .cal-status { display: none; }
+            .mobile-dots { display: flex; } /* Show dots */
+
+            /* 显示下方详情卡片 */
+            .mobile-detail-card { display: block; }
+
+            /* 报表切换 */
+            .table-wrapper { display: none; }
+            .mobile-report-view { display: grid; }
             
+            /* 薪资 */
             .col-name { width: 30%; font-size: 0.8rem; }
             .col-proc { font-size: 0.7rem; }
             .col-amt { font-size: 0.85rem; }
@@ -256,10 +286,13 @@
             <div class="card-body calendar-wrapper">
                 <div class="calendar-header"><div>周日</div><div>周一</div><div>周二</div><div>周三</div><div>周四</div><div>周五</div><div>周六</div></div>
                 <div class="calendar-grid" id="calendarGrid"></div>
-                <div style="margin-top:10px; font-size:0.75rem; color:#64748b; display:flex; gap:15px; justify-content:center; flex-wrap:wrap;">
-                    <span style="display:flex;align-items:center"><span style="color:#fcd34d;margin-right:4px;">🌙</span> 计薪夜航(国内)</span>
-                    <span style="display:flex;align-items:center"><span style="color:#e9d5ff;margin-right:4px;">🟣</span> 跨零点(+200)</span>
-                    <span style="display:flex;align-items:center"><span class="tag-int" style="width:10px;height:10px;display:inline-block;margin-right:4px;border-radius:2px;"></span> 国际(小时费)</span>
+                <!-- 手机端详情卡片容器 -->
+                <div id="mobileDetailContainer" class="mobile-detail-card">
+                    <div class="md-header">
+                        <div class="md-date" id="mdDateStr">选择日期</div>
+                        <button class="md-status-btn" onclick="openStatusModal(document.getElementById('mdDateStr').dataset.raw)">✎ 修改状态</button>
+                    </div>
+                    <div class="md-list" id="mdFlightList"></div>
                 </div>
             </div>
         </section>
@@ -320,14 +353,11 @@
         </section>
     </div>
 
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, setDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-        // ⚠️ 重要提示：请在此处填入您自己的 Firebase 配置！
-        // 下面这个配置可能已经失效，导致一直“加载中”
         const firebaseConfig = { 
             apiKey: "AIzaSyCFk4f7bKUHlb3d1Cg1jyS1EM-SPC4pr40", 
             authDomain: "myflightlog-1f4cb.firebaseapp.com", 
@@ -338,70 +368,29 @@
         };
 
         let app, db, auth, provider;
-        try {
-            app = initializeApp(firebaseConfig); 
-            db = getFirestore(app); 
-            auth = getAuth(app); 
-            provider = new GoogleAuthProvider();
-        } catch(e) {
-            alert("Firebase 初始化失败: " + e.message + "\n可能是网络原因(需要VPN)或配置错误");
-        }
+        try { app = initializeApp(firebaseConfig); db = getFirestore(app); auth = getAuth(app); provider = new GoogleAuthProvider(); } catch(e) { alert("Firebase Error: " + e.message); }
         
-        let currentUser = null; 
-        let allRecords = []; 
-        let calendarData = {}; 
-        let currentModalDate = '';
-
-        const HOLIDAY_RATE = 7262; 
-        const FIXED_BASE_NET = 96080.65; 
-        const FIXED_BASE_GROSS = 101740.00; 
-        const SOCIAL_RATE = 5217.09;
+        let currentUser = null; let allRecords = []; let calendarData = {}; let currentModalDate = '';
+        const HOLIDAY_RATE = 7262; const FIXED_BASE_NET = 96080.65; const FIXED_BASE_GROSS = 101740.00; const SOCIAL_RATE = 5217.09;
         const FEE_CONFIG = { "教员": { dom: 0, hk:{s:720, u:518}, asia:{s:720, u:540}, out:{s:810, u:540}, n1:80, n2:200, dom_no:200, dom_stay:500, int_no:400, int_stay:900, spec:1000 }, "机长": { dom: 0, hk:{s:640, u:460}, asia:{s:640, u:480}, out:{s:720, u:480}, n1:80, n2:200, dom_no:200, dom_stay:500, int_no:400, int_stay:900, spec:1000 }, "副驾驶": { dom: 200, hk:{s:320, u:230}, asia:{s:320, u:240}, out:{s:360, u:240}, n1:25, n2:60, dom_no:200, dom_stay:400, int_no:400, int_stay:700, spec:500 } };
         const TAX_BRACKETS = [ { limit: 36000, rate: 0.03, quick: 0 }, { limit: 144000, rate: 0.10, quick: 2520 }, { limit: 300000, rate: 0.20, quick: 16920 }, { limit: 420000, rate: 0.25, quick: 31920 }, { limit: 660000, rate: 0.30, quick: 52920 }, { limit: 960000, rate: 0.35, quick: 85920 }, { limit: Infinity, rate: 0.45, quick: 181920 } ];
 
-        window.loginWithGoogle = async () => { try { await signInWithPopup(auth, provider); } catch (e) { alert("登录失败: " + e.message + "\n请检查 VPN 是否开启"); } };
+        window.loginWithGoogle = async () => { try { await signInWithPopup(auth, provider); } catch (e) { alert("登录失败: " + e.message); } };
         window.doLogout = async () => { await signOut(auth); window.location.reload(); };
         window.saveSettings = () => { localStorage.setItem('user_rank', document.getElementById('set_rank').value); localStorage.setItem('user_icao', document.getElementById('set_icao').value); localStorage.setItem('user_cum_income', document.getElementById('set_cum_income').value); localStorage.setItem('user_cum_tax', document.getElementById('set_cum_tax').value); document.getElementById('settingsModal').style.display = 'none'; refreshAll(); };
         const initSettings = () => { document.getElementById('set_rank').value = localStorage.getItem('user_rank') || '机长'; document.getElementById('set_icao').value = localStorage.getItem('user_icao') || 'signed'; document.getElementById('set_cum_income').value = localStorage.getItem('user_cum_income') || '942692'; document.getElementById('set_cum_tax').value = localStorage.getItem('user_cum_tax') || '244022'; };
 
         onAuthStateChanged(auth, (user) => { 
             if (user) { 
-                currentUser = user; 
-                document.getElementById('userInfo').textContent = user.displayName; 
-                document.getElementById('loginScreen').style.display = 'none'; 
-                document.getElementById('app').style.display = 'flex'; 
+                currentUser = user; document.getElementById('userInfo').textContent = user.displayName; document.getElementById('loginScreen').style.display = 'none'; document.getElementById('app').style.display = 'flex'; 
                 document.getElementById('reportMonth').value = new Date().toISOString().slice(0, 7); 
-                if(localStorage.getItem("openai_key")) document.getElementById("innerApiKey").value = localStorage.getItem("openai_key"); 
-                initSettings(); 
-                
-                // 数据监听
-                onSnapshot(query(collection(db, `users/${user.uid}/logs`), orderBy("date", "desc")), (snap) => { 
-                    allRecords = snap.docs.map(d => ({id: d.id, ...d.data()})); 
-                    refreshAll(); 
-                }, (error) => {
-                    // 🔴 错误捕捉：如果这里报错，说明数据库连不上
-                    alert("数据加载失败: " + error.message + "\n原因可能为：\n1. VPN未开启(无法连接Google)\n2. Firebase配置失效\n3. 权限不足");
-                    document.getElementById('complianceDashboard').innerHTML = '<div style="color:red">数据加载失败</div>';
-                }); 
-                
-                onSnapshot(collection(db, `users/${user.uid}/calendar_status`), (snap) => { 
-                    calendarData = {}; 
-                    snap.docs.forEach(d => calendarData[d.id] = d.data()); 
-                    refreshAll(); 
-                }); 
-            } else { 
-                document.getElementById('loginScreen').style.display = 'flex'; 
-                document.getElementById('app').style.display = 'none'; 
-            } 
+                if(localStorage.getItem("openai_key")) document.getElementById("innerApiKey").value = localStorage.getItem("openai_key"); initSettings(); 
+                onSnapshot(query(collection(db, `users/${user.uid}/logs`), orderBy("date", "desc")), (snap) => { allRecords = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshAll(); }, (e)=>alert("数据加载失败:"+e.message)); 
+                onSnapshot(collection(db, `users/${user.uid}/calendar_status`), (snap) => { calendarData = {}; snap.docs.forEach(d => calendarData[d.id] = d.data()); refreshAll(); }); 
+            } else { document.getElementById('loginScreen').style.display = 'flex'; document.getElementById('app').style.display = 'none'; } 
         });
 
-        window.refreshAll = () => { 
-            try {
-                renderList(); renderReport(); renderCalendar(); renderSalary(); renderCompliance(); 
-            } catch(e) {
-                console.error("渲染错误", e);
-            }
-        };
+        window.refreshAll = () => { try { renderList(); renderReport(); renderCalendar(); renderSalary(); renderCompliance(); } catch(e) { console.error(e); } };
 
         function checkCompliance(records) {
             const now = new Date(); const start90 = new Date(); start90.setDate(now.getDate() - 90); const start7 = new Date(); start7.setDate(now.getDate() - 6);
@@ -443,7 +432,6 @@
                 s.spec_cnt += parseFloat(r.special_airport)||0; s.holiday_days += parseFloat(r.holiday)||0; s.meal_dom_cnt += parseFloat(r.crew_meal_dom)||0; s.meal_int_cnt += parseFloat(r.crew_meal_int)||0;
             });
 
-            // 自动驻外
             let autoStatus = {}; allRecords.forEach(r => { if(r.overnight && !r.overnight.includes('无') && (parseFloat(r.overnight_days) || 0) > 0) { const d = new Date(r.date); for(let i=1; i<=r.overnight_days; i++) { const p = new Date(d); p.setDate(d.getDate()-i); autoStatus[p.toISOString().split('T')[0]] = r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜'; } } });
             const [y, m] = mStr.split('-').map(Number); const daysInMonth = new Date(y, m, 0).getDate();
             for(let d=1; d<=daysInMonth; d++) { const dStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let type = null; let raw = calendarData[dStr] || {}; if (raw.type) type = raw.type; else { const flights = allRecords.filter(r => r.date === dStr); const hasReturn = flights.find(f => f.overnight && f.overnight.includes('无过夜')); if (hasReturn) type = hasReturn.overnight.includes('国际') ? '国际无过夜' : '国内无过夜'; else type = autoStatus[dStr] || '沈阳'; } if (type === '国内有过夜') s.dom_stay++; else if (type === '国内无过夜') s.dom_no++; else if (type === '国际有过夜') s.int_stay++; else if (type === '国际无过夜') s.int_no++; }
@@ -489,7 +477,48 @@
         window.saveRecord = async () => { try { if (!currentUser) throw new Error("请先登录"); const getV = (k) => document.getElementById('f_'+k).value.trim(); const getN = (k) => parseFloat(getV(k))||0; const getI = (k) => parseInt(getV(k))||0; if (!getV('date')) throw new Error("日期为空"); const d = { date: getV('date'), dep: getV('dep'), arr: getV('arr'), category: getV('cat'), crew: getV('crew'), flight_no: getV('flight_no'), ac_type: getV('ac_type'), landings_day: getI('landings_day'), landings_night: getI('landings_night'), block_off: getV('block_off'), takeoff: getV('takeoff'), landing: getV('landing'), block_on: getV('block_on'), air_time: getN('air'), total_time: getN('total_time'), block_days: getN('block_days'), night1: getN('night1'), night2: getN('night2'), overnight: getV('overnight'), overnight_city: getV('overnight_city')||getV('arr'), overnight_days: getN('overnight_days'), special_airport: getN('special'), holiday: getN('holiday'), crew_meal_dom: getN('meal_dom'), crew_meal_int: getN('meal_int'), timestamp: new Date() }; const did = document.getElementById('edit_doc_id').value; if(d.overnight.includes('无过夜') && d.arr.includes('沈阳')) { const prev = new Date(d.date); prev.setDate(prev.getDate()-1); const pStr = prev.toISOString().split('T')[0]; if(!calendarData[pStr]) await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, pStr), { type: "国内有过夜", city: d.dep }, {merge:true}); } if(did) await updateDoc(doc(db, `users/${currentUser.uid}/logs`, did), d); else await addDoc(collection(db, `users/${currentUser.uid}/logs`), d); closeForm(); } catch(e){ alert(e.message); } };
         window.deleteItem = async (id) => { if(confirm("删除?")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
 
-        // === 响应式日历 (List + Grid) ===
+        // === 响应式日历 (月视图 + 详情卡) ===
+        window.selectDate = (dateStr, flights) => {
+            // UI Selection
+            document.querySelectorAll('.cal-day').forEach(el => el.classList.remove('selected-mobile'));
+            const cell = document.getElementById(`cell-${dateStr}`);
+            if(cell) cell.classList.add('selected-mobile');
+
+            // Populate Card
+            const card = document.getElementById('mobileDetailContainer');
+            const list = document.getElementById('mdFlightList');
+            const title = document.getElementById('mdDateStr');
+            
+            title.innerText = dateStr;
+            title.dataset.raw = dateStr;
+            list.innerHTML = '';
+
+            let raw = calendarData[dateStr] || {};
+            let displayText = raw.city || (raw.type||'');
+            if(!flights.length && !displayText) displayText = '无记录 / 休息';
+
+            if(flights.length === 0) {
+                list.innerHTML = `<div style="text-align:center;color:#94a3b8;padding:10px;">${displayText}</div>`;
+            } else {
+                flights.forEach(f => {
+                    let typeClass = (f.category.includes('国际')||f.category.includes('洲际')) ? 'type-int' : 'type-dom';
+                    let nightHours = (parseFloat(f.night1)||0) + (parseFloat(f.night2)||0);
+                    let nightTag = nightHours > 0 ? `<span style="font-size:0.7rem;color:#f59e0b;font-weight:bold;margin-left:5px">🌙${nightHours}</span>` : '';
+                    list.innerHTML += `
+                        <div class="md-item ${typeClass}">
+                            <div>
+                                <div style="font-weight:bold;color:#334155">${f.dep} ➝ ${f.arr}</div>
+                                <div style="font-size:0.75rem;color:#64748b">${f.flight_no} · ${f.ac_type}</div>
+                            </div>
+                            <div style="text-align:right">
+                                <div style="font-weight:bold;color:var(--primary)">${parseFloat(f.total_time)}h</div>
+                                ${nightTag}
+                            </div>
+                        </div>`;
+                });
+            }
+        };
+
         window.renderCalendar = () => {
             const grid = document.getElementById('calendarGrid'); if(!grid) return; grid.innerHTML = '';
             const [y, m] = document.getElementById('reportMonth').value.split('-').map(Number);
@@ -498,9 +527,14 @@
 
             let autoStatus = {}; allRecords.forEach(r => { if(r.overnight && !r.overnight.includes('无') && (parseFloat(r.overnight_days) || 0) > 0) { const d = new Date(r.date); for(let i=1; i<=r.overnight_days; i++) { const p = new Date(d); p.setDate(d.getDate()-i); autoStatus[p.toISOString().split('T')[0]] = { type: r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜', city: r.overnight_city }; } } });
 
+            // Desktop filler (Only on desktop)
             if (window.innerWidth > 768) { for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="cal-day" style="border:none;background:transparent"></div>`; }
             
             let totalHours = 0;
+            // On mobile, just fill empty cells to align grid if needed, or handle in CSS. Here we keep simple loop.
+            // Actually for mobile grid (7 cols), we DO need empty cells for alignment too!
+            if (window.innerWidth <= 768) { for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="cal-day" style="border:none;background:transparent;min-height:50px"></div>`; }
+
             for(let d=1; d<=daysInMonth; d++) {
                 const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const currDate = new Date(y, m-1, d);
@@ -513,9 +547,21 @@
                 let stClass = 'st-base'; if(finalStatus.type === '国内有过夜') stClass = 'st-dom-stay'; else if(finalStatus.type === '国内无过夜') stClass = 'st-dom-no'; else if(finalStatus.type === '国际有过夜') stClass = 'st-int-stay'; else if(finalStatus.type === '国际无过夜') stClass = 'st-int-no';
                 
                 const isToday = dateStr === todayStr; 
-                const cell = document.createElement('div'); cell.className = `cal-day ${isToday ? 'today' : ''}`;
-                cell.onclick = (e) => { if(e.target.closest('.flight-tag')) return; openStatusModal(dateStr); };
+                const cell = document.createElement('div'); 
+                cell.className = `cal-day ${isToday ? 'today' : ''}`;
+                cell.id = `cell-${dateStr}`; // ID for selection
                 
+                // Click Logic: Mobile selects date; Desktop opens modal (via checking flight-tag click)
+                cell.onclick = (e) => { 
+                    if (window.innerWidth <= 768) {
+                        selectDate(dateStr, flights);
+                    } else {
+                        if(e.target.closest('.flight-tag')) return; 
+                        openStatusModal(dateStr); 
+                    }
+                };
+                
+                // Desktop Content
                 let fHtml = flights.map(f => {
                     let c = (f.category.includes('国际')||f.category.includes('洲际'))?'tag-int':'tag-dom'; if(parseFloat(f.total_time)===0) c='tag-dh';
                     let nightHours = (parseFloat(f.night1)||0) + (parseFloat(f.night2)||0);
@@ -523,14 +569,35 @@
                     let midInd = (f.category === '国内' && f.takeoff && f.landing && f.landing < f.takeoff) ? `<span class="mid-indicator">🟣</span>` : '';
                     return `<div class="flight-tag ${c}"><span>${f.dep.split(' ')[0]}-${f.arr.split(' ')[0]}</span><div style="display:flex;align-items:center"><span>${parseFloat(f.total_time)||'DH'}</span>${nightInd}${midInd}</div></div>`;
                 }).join('');
+
+                // Mobile Dots
+                let dotsHtml = `<div class="mobile-dots">`;
+                flights.forEach(f => {
+                    let colorClass = (f.category.includes('国际')||f.category.includes('洲际')) ? 'bg-purple' : 'bg-blue';
+                    dotsHtml += `<div class="m-dot ${colorClass}"></div>`;
+                    if((parseFloat(f.night1)||0) + (parseFloat(f.night2)||0) > 0) dotsHtml += `<div class="m-dot bg-yellow"></div>`;
+                });
+                dotsHtml += `</div>`;
                 
-                cell.innerHTML = `<div class="cal-num">${d} ${isToday?'<span style="color:var(--primary);font-size:0.7rem">今</span>':''}<div class="cal-week-name">${weekNames[currDate.getDay()]}</div></div><div class="cal-flights">${fHtml}</div><div class="cal-status ${stClass}">${displayText}</div>`;
+                cell.innerHTML = `
+                    <div class="cal-num">${d} ${isToday?'<span style="color:var(--primary);font-size:0.7rem">今</span>':''}</div>
+                    <!-- Desktop View -->
+                    <div class="cal-flights">${fHtml}</div>
+                    <div class="cal-status ${stClass}">${displayText}</div>
+                    <!-- Mobile View -->
+                    ${dotsHtml}
+                `;
                 grid.appendChild(cell);
+
+                // Auto-select today on mobile
+                if (isToday && window.innerWidth <= 768) {
+                    setTimeout(() => selectDate(dateStr, flights), 100);
+                }
             }
             document.getElementById('calTotal').textContent = `本月: ${totalHours.toFixed(1)}h`;
         };
 
-        // === 响应式报表 (Table + Card) ===
+        // === 优化的月度统计 (响应式) ===
         window.renderReport = () => {
             const mStr = document.getElementById('reportMonth').value; 
             const data = allRecords.filter(r => r.date.startsWith(mStr));
