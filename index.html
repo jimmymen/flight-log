@@ -51,6 +51,16 @@
         .progress-track { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 5px; }
         .progress-bar { height: 100%; transition: width 0.3s; }
 
+        /* === 资质详情增强样式 (新增) === */
+        .q-detail-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; border-top: 1px dashed #cbd5e1; padding-top: 10px; }
+        .q-box { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; position: relative; }
+        .q-box-title { font-size: 0.65rem; color: #64748b; font-weight: bold; margin-bottom: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 3px; }
+        .q-history-list { font-size: 0.7rem; color: #334155; }
+        .q-history-item { display: flex; justify-content: space-between; margin-bottom: 2px; font-family: monospace; }
+        .q-expiry-tag { margin-top: 8px; padding: 4px; border-radius: 4px; text-align: center; }
+        .q-expiry-date { font-size: 0.85rem; font-weight: 800; font-family: monospace; display: block; }
+        .q-expiry-days { font-size: 0.65rem; font-weight: bold; }
+
         /* === 薪资 === */
         .salary-summary-box { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 12px; border: 1px solid #bfdbfe; }
         .ss-item { text-align: center; }
@@ -408,13 +418,79 @@
             return { recency: stats, fatigue: fatigue7 };
         }
 
+        // --- 资质追踪工具函数 ---
+        function getQualDetail(records, acType, isNightOnly) {
+            const history = records
+                .filter(r => r.ac_type === acType && (isNightOnly ? (parseInt(r.landings_night) > 0) : ((parseInt(r.landings_day)||0) + (parseInt(r.landings_night)||0) > 0)))
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .slice(0, 3);
+            
+            let expiryStr = "记录不足";
+            let daysLeft = null;
+            let statusColor = "var(--border)";
+
+            if (history.length >= 3) {
+                const thirdDate = new Date(history[2].date);
+                const expiry = new Date(thirdDate);
+                expiry.setDate(thirdDate.getDate() + 90);
+                expiryStr = expiry.toISOString().split('T')[0];
+                daysLeft = Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24));
+                statusColor = daysLeft <= 7 ? 'var(--tax-red)' : (daysLeft <= 15 ? '#f59e0b' : 'var(--ok-green)');
+            }
+
+            let listHtml = history.map(h => `<div class="q-history-item"><span>${h.date.substring(5)}</span><span>${h.arr}</span></div>`).join('') || '<div style="color:#cbd5e1;text-align:center">无记录</div>';
+            
+            return `
+                <div class="q-box">
+                    <div class="q-box-title">${isNightOnly ? '🌙 最近夜航' : '🛬 最近起落'}</div>
+                    <div class="q-history-list">${listHtml}</div>
+                    <div class="q-expiry-tag" style="background:${statusColor}15; border:1px solid ${statusColor}40;">
+                        <span class="q-expiry-date" style="color:${statusColor}">${expiryStr}</span>
+                        <span class="q-expiry-days" style="color:${statusColor}">${daysLeft !== null ? (daysLeft > 0 ? '剩 ' + daysLeft + ' 天' : '已失效') : '--'}</span>
+                    </div>
+                </div>`;
+        }
+
         window.renderCompliance = () => {
             const data = checkCompliance(allRecords); const r = data.recency;
             const getStatus = (val, target, isFatigue=false) => { if(isFatigue) return val > target ? 'dot-err' : (val > target*0.8 ? 'dot-warn' : 'dot-ok'); return val >= target ? 'dot-ok' : (val > 0 ? 'dot-warn' : 'dot-err'); };
+            
             document.getElementById('complianceDashboard').innerHTML = `
-                <div class="comp-panel"><div class="comp-head"><span>👨‍✈️ 疲劳监控 (7天)</span><span class="${getStatus(data.fatigue, 40, true)} status-dot"></span></div><div class="comp-row"><span class="comp-label">执勤时间</span><span class="comp-val" style="color:${data.fatigue>40?'#ef4444':'#0f172a'}">${data.fatigue.toFixed(1)} / 40h</span></div><div class="progress-track"><div class="progress-bar" style="width:${Math.min((data.fatigue/40)*100, 100)}%; background:${data.fatigue>40?'#ef4444':'var(--primary)'}"></div></div></div>
-                <div class="comp-panel"><div class="comp-head"><span>✈️ G650ER 资质</span></div><div class="comp-row"><span class="comp-label">90天载客</span><span class="comp-val"><span class="${getStatus(r.g650.total, 3)} status-dot"></span>${r.g650.total}</span></div><div class="comp-row"><span class="comp-label">90天夜航</span><span class="comp-val"><span class="${getStatus(r.g650.night, 3)} status-dot"></span>${r.g650.night}</span></div></div>
-                <div class="comp-panel"><div class="comp-head"><span>🛩️ CL850 资质</span></div><div class="comp-row"><span class="comp-label">90天载客</span><span class="comp-val"><span class="${getStatus(r.cl850.total, 3)} status-dot"></span>${r.cl850.total}</span></div><div class="comp-row"><span class="comp-label">90天夜航</span><span class="comp-val"><span class="${getStatus(r.cl850.night, 3)} status-dot"></span>${r.cl850.night}</span></div></div>`;
+                <div class="comp-panel" style="grid-column: 1/-1">
+                    <div class="comp-head"><span>👨‍✈️ 疲劳监控 (7天)</span><span class="${getStatus(data.fatigue, 40, true)} status-dot"></span></div>
+                    <div class="comp-row"><span class="comp-label">执勤时间</span><span class="comp-val" style="color:${data.fatigue>40?'#ef4444':'#0f172a'}">${data.fatigue.toFixed(1)} / 40h</span></div>
+                    <div class="progress-track"><div class="progress-bar" style="width:${Math.min((data.fatigue/40)*100, 100)}%; background:${data.fatigue>40?'#ef4444':'var(--primary)'}"></div></div>
+                </div>
+                
+                <!-- G650ER 详细资质 -->
+                <div class="comp-panel">
+                    <div class="comp-head">
+                        <span>✈️ G650ER 资质</span>
+                        <div>
+                            <span class="calc-tag">总:${r.g650.total}</span>
+                            <span class="calc-tag">夜:${r.g650.night}</span>
+                        </div>
+                    </div>
+                    <div class="q-detail-container">
+                        ${getQualDetail(allRecords, 'G650ER', false)}
+                        ${getQualDetail(allRecords, 'G650ER', true)}
+                    </div>
+                </div>
+
+                <!-- CL850 详细资质 -->
+                <div class="comp-panel">
+                    <div class="comp-head">
+                        <span>🛩️ CL850 资质</span>
+                        <div>
+                            <span class="calc-tag">总:${r.cl850.total}</span>
+                            <span class="calc-tag">夜:${r.cl850.night}</span>
+                        </div>
+                    </div>
+                    <div class="q-detail-container">
+                        ${getQualDetail(allRecords, 'CL850', false)}
+                        ${getQualDetail(allRecords, 'CL850', true)}
+                    </div>
+                </div>`;
         };
 
         function calculateTax(amount) { for (let b of TAX_BRACKETS) { if (amount <= b.limit) return amount * b.rate - b.quick; } return amount * 0.45 - 181920; }
@@ -633,7 +709,7 @@
             
             const [y, m] = mStr.split('-').map(Number); const daysInMonth = new Date(y, m, 0).getDate();
             let autoStatus = {}; allRecords.forEach(r => { if(r.overnight && !r.overnight.includes('无') && (parseFloat(r.overnight_days) || 0) > 0) { const d = new Date(r.date); for(let i=1; i<=r.overnight_days; i++) { const p = new Date(d); p.setDate(d.getDate()-i); autoStatus[p.toISOString().split('T')[0]] = r.overnight.includes('国际') ? '国际有过夜' : '国内有过夜'; } } });
-            for(let d=1; d<=daysInMonth; d++) { const dStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let type = null; let raw = calendarData[dStr] || {}; if (raw.type) type = raw.type; else { const flights = allRecords.filter(r => r.date === dStr); const hasReturn = flights.find(f => f.overnight && f.overnight.includes('无过夜')); if (hasReturn) type = hasReturn.overnight.includes('国际') ? '国际无过夜' : '国内无过夜'; else type = autoStatus[dStr] || '沈阳'; } if (type === '国内有过夜') s.cal_dom_stay++; else if (type === '国内无过夜') s.cal_dom_no++; else if (type === '国际有过夜') s.cal_int_stay++; else if (type === '国际无过夜') s.cal_int_no++; }
+            for(let d=1; d<=daysInMonth; d++) { const dStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let type = null; let raw = calendarData[dStr] || {}; if (raw.type) type = raw.type; else { const flights = allRecords.filter(r => r.date === dStr); const hasReturn = flights.find(f => f.overnight && f.overnight.includes('无过夜')); if (hasReturn) type = hasReturn.overnight.includes('国际') ? '国际无过夜' : '国内无过夜'; else type = autoStatus[dStr] || '沈阳'; } if (type === '国内有过夜') s.cal_dom_stay++; else if (type === '国内无过夜') s.cal_dom_no++; else if (type === '国际有过夜') s.int_stay++; else if (type === '国际无过夜') s.int_no++; }
 
             document.getElementById('reportTable').innerHTML = `<thead><tr><th rowspan="2">类别</th><th colspan="2">国内</th><th colspan="2">港澳台</th><th colspan="2">亚洲</th><th colspan="2">洲际</th></tr><tr><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th><th>空时</th><th>滑行</th></tr></thead><tbody><tr><td style="font-weight:bold">合计</td><td>${formatTimePair(s.d_a)}</td><td>${s.d_b}</td><td>${formatTimePair(s.h_a)}</td><td>${s.h_b}</td><td>${formatTimePair(s.a_a)}</td><td>${s.a_b}</td><td>${formatTimePair(s.i_a)}</td><td>${s.i_b}</td></tr><tr><td colspan="9" style="height:8px;border:none;background:white"></td></tr><tr><th rowspan="2">补贴</th><th colspan="2">机组餐(份)</th><th colspan="2">驻外-国内</th><th colspan="2">驻外-国际</th><th colspan="2">其他</th></tr><tr><th class="bg-meal">国内</th><th class="bg-meal">国际</th><th class="bg-cal-stat">国有(天)</th><th class="bg-cal-stat">国无(次)</th><th class="bg-cal-stat">外有(天)</th><th class="bg-cal-stat">外无(次)</th><th class="bg-sub">特殊</th><th class="bg-sub">跨零点</th></tr><tr><td style="font-weight:bold">统计</td><td class="bg-meal">${s.meal_d}</td><td class="bg-meal">${s.meal_i}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_dom_no}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_stay}</td><td class="bg-cal-stat" style="font-size:1.1rem">${s.cal_int_no}</td><td class="bg-sub">${s.spec}</td><td class="bg-sub" style="color:#d97706;font-weight:bold">${s.mid_cnt}次</td></tr><tr><td colspan="9" style="font-size:0.75rem;color:#475569;text-align:right;padding:6px;border:none;line-height:1.6"><span style="color:#d97706;font-weight:bold;margin-right:15px">🌙 计薪夜航(国内): ${s.n1_dom.toFixed(1)} / ${s.n2_dom.toFixed(1)}</span> <span style="color:#94a3b8;text-decoration:line-through">🚫 国际夜航(含在小时费): ${s.n1_int.toFixed(1)} / ${s.n2_int.toFixed(1)}</span></td></tr></tbody>`;
 
