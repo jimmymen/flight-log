@@ -51,6 +51,16 @@
         .progress-track { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 5px; }
         .progress-bar { height: 100%; transition: width 0.3s; }
 
+        /* === 资质详情增强样式 (新增) === */
+        .q-detail-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; border-top: 1px dashed #cbd5e1; padding-top: 10px; }
+        .q-box { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; position: relative; }
+        .q-box-title { font-size: 0.65rem; color: #64748b; font-weight: bold; margin-bottom: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 3px; }
+        .q-history-list { font-size: 0.7rem; color: #334155; }
+        .q-history-item { display: flex; justify-content: space-between; margin-bottom: 2px; font-family: monospace; }
+        .q-expiry-tag { margin-top: 8px; padding: 4px; border-radius: 4px; text-align: center; }
+        .q-expiry-date { font-size: 0.85rem; font-weight: 800; font-family: monospace; display: block; }
+        .q-expiry-days { font-size: 0.65rem; font-weight: bold; }
+
         /* === 薪资 === */
         .salary-summary-box { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 12px; border: 1px solid #bfdbfe; }
         .ss-item { text-align: center; }
@@ -408,58 +418,79 @@
             return { recency: stats, fatigue: fatigue7 };
         }
 
+        // --- 资质追踪工具函数 ---
+        function getQualDetail(records, acType, isNightOnly) {
+            const history = records
+                .filter(r => r.ac_type === acType && (isNightOnly ? (parseInt(r.landings_night) > 0) : ((parseInt(r.landings_day)||0) + (parseInt(r.landings_night)||0) > 0)))
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .slice(0, 3);
+            
+            let expiryStr = "记录不足";
+            let daysLeft = null;
+            let statusColor = "var(--border)";
+
+            if (history.length >= 3) {
+                const thirdDate = new Date(history[2].date);
+                const expiry = new Date(thirdDate);
+                expiry.setDate(thirdDate.getDate() + 90);
+                expiryStr = expiry.toISOString().split('T')[0];
+                daysLeft = Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24));
+                statusColor = daysLeft <= 7 ? 'var(--tax-red)' : (daysLeft <= 15 ? '#f59e0b' : 'var(--ok-green)');
+            }
+
+            let listHtml = history.map(h => `<div class="q-history-item"><span>${h.date.substring(5)}</span><span>${h.arr}</span></div>`).join('') || '<div style="color:#cbd5e1;text-align:center">无记录</div>';
+            
+            return `
+                <div class="q-box">
+                    <div class="q-box-title">${isNightOnly ? '🌙 最近夜航' : '🛬 最近起落'}</div>
+                    <div class="q-history-list">${listHtml}</div>
+                    <div class="q-expiry-tag" style="background:${statusColor}15; border:1px solid ${statusColor}40;">
+                        <span class="q-expiry-date" style="color:${statusColor}">${expiryStr}</span>
+                        <span class="q-expiry-days" style="color:${statusColor}">${daysLeft !== null ? (daysLeft > 0 ? '剩 ' + daysLeft + ' 天' : '已失效') : '--'}</span>
+                    </div>
+                </div>`;
+        }
+
         window.renderCompliance = () => {
             const data = checkCompliance(allRecords); const r = data.recency;
             const getStatus = (val, target, isFatigue=false) => { if(isFatigue) return val > target ? 'dot-err' : (val > target*0.8 ? 'dot-warn' : 'dot-ok'); return val >= target ? 'dot-ok' : (val > 0 ? 'dot-warn' : 'dot-err'); };
             
-            // --- 注入逻辑：提取最后 3 个起落并预测失效 ---
-            const landingHistory = allRecords
-                .filter(rec => (parseInt(rec.landings_day)||0) + (parseInt(rec.landings_night)||0) > 0)
-                .sort((a,b) => b.date.localeCompare(a.date))
-                .slice(0, 3);
-            
-            let qualificationPanel = "";
-            if (landingHistory.length >= 3) {
-                const thirdLandingDate = new Date(landingHistory[2].date);
-                const expiryDate = new Date(thirdLandingDate);
-                expiryDate.setDate(thirdLandingDate.getDate() + 90);
-                const today = new Date();
-                const daysLeft = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
-                const statusColor = daysLeft <= 7 ? 'var(--tax-red)' : (daysLeft <= 15 ? '#f59e0b' : 'var(--ok-green)');
-                
-                qualificationPanel = `
-                    <div class="comp-panel" style="grid-column: 1 / -1; border-top: 3px solid var(--primary); background: #fff;">
-                        <div class="comp-head"><span>📅 落地资历追踪与资质预测 (最后3次落地)</span></div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-bottom: 12px;">
-                            ${landingHistory.map((l, idx) => `
-                                <div style="background:#f8fafc; border:1px solid var(--border); padding:8px; border-radius:8px; font-size:0.75rem;">
-                                    <div style="color:#64748b; font-size:0.65rem;">No.${idx+1} 记录</div>
-                                    <div style="font-weight:700; color:#0f172a;">${l.date.split('-').slice(1).join('/')}</div>
-                                    <div style="color:var(--primary); font-weight:bold;">${l.arr}</div>
-                                    <div style="font-family:monospace; color:#475569;">${l.ac_type}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                        <div style="background:${statusColor}10; border:1px solid ${statusColor}40; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <div style="font-size:0.7rem; color:#64748b; font-weight:bold;">资质预计失效日期</div>
-                                <div style="font-size:1.1rem; font-weight:800; color:${statusColor}">${expiryDate.toISOString().split('T')[0]}</div>
-                            </div>
-                            <div style="text-align:right;">
-                                <div style="font-size:0.7rem; color:#64748b; font-weight:bold;">剩余天数</div>
-                                <div style="font-size:1.4rem; font-weight:900; color:${statusColor}">${daysLeft > 0 ? daysLeft : '已失效'}</div>
-                            </div>
-                        </div>
-                    </div>`;
-            } else {
-                qualificationPanel = `<div class="comp-panel" style="grid-column: 1 / -1;"><div style="text-align:center; color:#94a3b8; font-size:0.8rem; padding:10px;">落地记录不足 3 次，无法生成资质预测</div></div>`;
-            }
-
             document.getElementById('complianceDashboard').innerHTML = `
-                <div class="comp-panel"><div class="comp-head"><span>👨‍✈️ 疲劳监控 (7天)</span><span class="${getStatus(data.fatigue, 40, true)} status-dot"></span></div><div class="comp-row"><span class="comp-label">执勤时间</span><span class="comp-val" style="color:${data.fatigue>40?'#ef4444':'#0f172a'}">${data.fatigue.toFixed(1)} / 40h</span></div><div class="progress-track"><div class="progress-bar" style="width:${Math.min((data.fatigue/40)*100, 100)}%; background:${data.fatigue>40?'#ef4444':'var(--primary)'}"></div></div></div>
-                <div class="comp-panel"><div class="comp-head"><span>✈️ G650ER 资质</span></div><div class="comp-row"><span class="comp-label">90天载客</span><span class="comp-val"><span class="${getStatus(r.g650.total, 3)} status-dot"></span>${r.g650.total}</span></div><div class="comp-row"><span class="comp-label">90天夜航</span><span class="comp-val"><span class="${getStatus(r.g650.night, 3)} status-dot"></span>${r.g650.night}</span></div></div>
-                <div class="comp-panel"><div class="comp-head"><span>🛩️ CL850 资质</span></div><div class="comp-row"><span class="comp-label">90天载客</span><span class="comp-val"><span class="${getStatus(r.cl850.total, 3)} status-dot"></span>${r.cl850.total}</span></div><div class="comp-row"><span class="comp-label">90天夜航</span><span class="comp-val"><span class="${getStatus(r.cl850.night, 3)} status-dot"></span>${r.cl850.night}</span></div></div>
-                ${qualificationPanel}`;
+                <div class="comp-panel" style="grid-column: 1/-1">
+                    <div class="comp-head"><span>👨‍✈️ 疲劳监控 (7天)</span><span class="${getStatus(data.fatigue, 40, true)} status-dot"></span></div>
+                    <div class="comp-row"><span class="comp-label">执勤时间</span><span class="comp-val" style="color:${data.fatigue>40?'#ef4444':'#0f172a'}">${data.fatigue.toFixed(1)} / 40h</span></div>
+                    <div class="progress-track"><div class="progress-bar" style="width:${Math.min((data.fatigue/40)*100, 100)}%; background:${data.fatigue>40?'#ef4444':'var(--primary)'}"></div></div>
+                </div>
+                
+                <!-- G650ER 详细资质 -->
+                <div class="comp-panel">
+                    <div class="comp-head">
+                        <span>✈️ G650ER 资质</span>
+                        <div>
+                            <span class="calc-tag">总:${r.g650.total}</span>
+                            <span class="calc-tag">夜:${r.g650.night}</span>
+                        </div>
+                    </div>
+                    <div class="q-detail-container">
+                        ${getQualDetail(allRecords, 'G650ER', false)}
+                        ${getQualDetail(allRecords, 'G650ER', true)}
+                    </div>
+                </div>
+
+                <!-- CL850 详细资质 -->
+                <div class="comp-panel">
+                    <div class="comp-head">
+                        <span>🛩️ CL850 资质</span>
+                        <div>
+                            <span class="calc-tag">总:${r.cl850.total}</span>
+                            <span class="calc-tag">夜:${r.cl850.night}</span>
+                        </div>
+                    </div>
+                    <div class="q-detail-container">
+                        ${getQualDetail(allRecords, 'CL850', false)}
+                        ${getQualDetail(allRecords, 'CL850', true)}
+                    </div>
+                </div>`;
         };
 
         function calculateTax(amount) { for (let b of TAX_BRACKETS) { if (amount <= b.limit) return amount * b.rate - b.quick; } return amount * 0.45 - 181920; }
