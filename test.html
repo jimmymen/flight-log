@@ -1,3 +1,5 @@
+--- START OF FILE Paste February 20, 2026 - 2:55PM ---
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -493,7 +495,10 @@
                 </div>`;
         };
 
-        function calculateTax(amount) { for (let b of TAX_BRACKETS) { if (amount <= b.limit) return amount * b.rate - b.quick; } return amount * 0.45 - 181920; }
+        // --- 修改点：全年统一 45% 税率 ---
+        function calculateTax(amount) { 
+            return amount * 0.45; 
+        }
 
         window.renderSalary = () => {
             const rank = document.getElementById('set_rank').value; const isSigned = document.getElementById('set_icao').value === 'signed'; const cfg = FEE_CONFIG[rank] || FEE_CONFIG['机长'];
@@ -534,7 +539,9 @@
             if(allowances > 0) { let details = []; if(s.meal_dom_cnt > 0) details.push(`国餐${s.meal_dom_cnt}×60`); if(s.meal_int_cnt > 0) details.push(`外餐${s.meal_int_cnt}×180`); if(s.dom_stay > 0) details.push(`国驻${s.dom_stay}×${cfg.dom_stay}`); if(s.dom_no > 0) details.push(`国无${s.dom_no}×${cfg.dom_no}`); if(s.int_stay > 0) details.push(`外驻${s.int_stay}×${cfg.int_stay}`); if(s.int_no > 0) details.push(`外无${s.int_no}×${cfg.int_no}`); rows += `<tr><td class="col-name" style="color:#16a34a">免税补助</td><td class="col-proc" style="font-size:0.75rem">${details.join(', ')}</td><td class="col-amt" style="color:#16a34a">+${fmt(allowances)}</td></tr>`; }
 
             const month_taxable_base = FIXED_BASE_GROSS - SOCIAL_RATE - 5000; const month_taxable_var = gross_var; const total_new_income = prevCumIncome + month_taxable_base + month_taxable_var; const total_tax_needed = calculateTax(total_new_income); const month_tax_total = total_tax_needed - prevCumTax; const base_income_cum = prevCumIncome + month_taxable_base; const base_tax_needed = calculateTax(base_income_cum); const company_tax_share = base_tax_needed - prevCumTax; let self_tax_share = month_tax_total - company_tax_share; if(self_tax_share < 0) self_tax_share = 0;
-            const currentRate = total_new_income > 960000 ? 0.45 : (total_new_income > 660000 ? 0.35 : (total_new_income > 420000 ? 0.30 : (total_new_income > 300000 ? 0.25 : (total_new_income > 144000 ? 0.20 : 0.10))));
+            
+            // --- 修改点：税率显示始终为 45% ---
+            const currentRate = 0.45;
             const rateEl = document.getElementById('taxRateDisplay'); rateEl.innerText = `当前税率 ${(currentRate*100).toFixed(0)}%`;
             if(self_tax_share > 0) { rows += `<tr><td class="col-name" style="color:#dc2626">个人承担个税</td><td class="col-proc">累计收入: ${(total_new_income/10000).toFixed(1)}万<br>税率 ${(currentRate*100).toFixed(0)}%</td><td class="col-amt" style="color:#dc2626">-${fmt(self_tax_share)}</td></tr>`; }
             const net_var = gross_var - self_tax_share; const final_net = FIXED_BASE_NET + allowances + net_var;
