@@ -392,7 +392,16 @@
         const FEE_CONFIG = { "教员": { dom: 0, hk:{s:720, u:518}, asia:{s:720, u:540}, out:{s:810, u:540}, n1:80, n2:200, dom_no:200, dom_stay:500, int_no:400, int_stay:900, spec:1000 }, "机长": { dom: 0, hk:{s:640, u:460}, asia:{s:640, u:480}, out:{s:720, u:480}, n1:80, n2:200, dom_no:200, dom_stay:500, int_no:400, int_stay:900, spec:1000 }, "副驾驶": { dom: 200, hk:{s:320, u:230}, asia:{s:320, u:240}, out:{s:360, u:240}, n1:25, n2:60, dom_no:200, dom_stay:400, int_no:400, int_stay:700, spec:500 } };
         const TAX_BRACKETS = [ { limit: 36000, rate: 0.03, quick: 0 }, { limit: 144000, rate: 0.10, quick: 2520 }, { limit: 300000, rate: 0.20, quick: 16920 }, { limit: 420000, rate: 0.25, quick: 31920 }, { limit: 660000, rate: 0.30, quick: 52920 }, { limit: 960000, rate: 0.35, quick: 85920 }, { limit: Infinity, rate: 0.45, quick: 181920 } ];
 
-        window.loginWithGoogle = async () => { try { await signInWithPopup(auth, provider); } catch (e) { alert("登录失败: " + e.message); } };
+        window.loginWithGoogle = async () => { 
+    try { 
+        // 关键改动：从 Popup 改为 Redirect
+        // 这会解决所有控制台报 COOP 错误导致的保存失败问题
+        const { signInWithRedirect } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        await signInWithRedirect(auth, provider); 
+    } catch (e) { 
+        alert("登录发起失败: " + e.message); 
+    } 
+};
         window.doLogout = async () => { await signOut(auth); window.location.reload(); };
         window.saveSettings = () => { localStorage.setItem('user_rank', document.getElementById('set_rank').value); localStorage.setItem('user_icao', document.getElementById('set_icao').value); localStorage.setItem('user_cum_income', document.getElementById('set_cum_income').value); localStorage.setItem('user_cum_tax', document.getElementById('set_cum_tax').value); document.getElementById('settingsModal').style.display = 'none'; refreshAll(); };
         const initSettings = () => { document.getElementById('set_rank').value = localStorage.getItem('user_rank') || '机长'; document.getElementById('set_icao').value = localStorage.getItem('user_icao') || 'signed'; document.getElementById('set_cum_income').value = localStorage.getItem('user_cum_income') || '942692'; document.getElementById('set_cum_tax').value = localStorage.getItem('user_cum_tax') || '244022'; };
