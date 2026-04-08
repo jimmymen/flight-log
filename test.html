@@ -186,7 +186,9 @@
         .spinner { width: 30px; height: 30px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* === 媒体查询 === */
+        /* 全局加载遮罩 */
+        #globalLoader { position: fixed; inset: 0; background: white; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+
         @media (max-width: 768px) {
             .cal-day { min-height: 50px; flex-direction: column; justify-content: flex-start; align-items: center; padding: 4px; border-radius: 8px;}
             .cal-num { margin-bottom: 2px; font-size: 0.9rem; color: #64748b; font-weight: normal; }
@@ -205,6 +207,12 @@
     </style>
 </head>
 <body>
+
+    <!-- 全局加载器，解决“闪现到登录页”的问题 -->
+    <div id="globalLoader">
+        <div class="spinner"></div>
+        <p style="margin-top:20px; color:#64748b; font-weight:bold;">验证登录状态中...</p>
+    </div>
 
     <div id="settingsModal" class="modal-overlay" onclick="if(event.target===this) document.getElementById('settingsModal').style.display='none'">
         <div class="settings-modal" onclick="event.stopPropagation()">
@@ -236,12 +244,12 @@
         </div>
     </div>
 
-    <div id="loginScreen" class="login-screen">
+    <div id="loginScreen" class="login-screen" style="display: none;">
         <div class="login-card">
             <h1 style="font-size: 3rem; margin-bottom: 10px;">✈️</h1>
             <h2 style="color: #1e40af; margin-bottom: 30px;">飞行日志 Pro<br><span style="font-size:0.9rem;color:#64748b;font-weight:normal">CCAR-91 机长合规版</span></h2>
-            <p id="loginWaitMsg" style="display:none; color:var(--primary); font-size:0.8rem; margin-bottom:10px;">正在处理登录结果，请稍候...</p>
             <button class="btn btn-primary" style="width: 100%; padding: 14px;" onclick="loginWithGoogle()">Google 登录</button>
+            <p style="margin-top:20px; font-size:0.7rem; color:#94a3b8; line-height:1.4;">提示：如果登录后一直返回此页面，请尝试在浏览器设置中“允许第三方 Cookie”或点击 [设置-隐私-允许跨网站追踪]。</p>
         </div>
     </div>
 
@@ -357,7 +365,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, setDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
         const firebaseConfig = { 
             apiKey: "AIzaSyCFk4f7bKUHlb3d1Cg1jyS1EM-SPC4pr40", 
@@ -382,6 +390,15 @@
         const HOLIDAY_RATE = 7262; const FIXED_BASE_NET = 96080.65; const FIXED_BASE_GROSS = 101740.00; const SOCIAL_RATE = 5217.09;
         const FEE_CONFIG = { "教员": { dom: 0, hk:{s:720, u:518}, asia:{s:720, u:540}, out:{s:810, u:540}, n1:80, n2:200, dom_no:200, dom_stay:500, int_no:400, int_stay:900, spec:1000 }, "机长": { dom: 0, hk:{s:640, u:460}, asia:{s:640, u:480}, out:{s:720, u:480}, n1:80, n2:200, dom_no:200, dom_stay:500, int_no:400, int_stay:900, spec:1000 }, "副驾驶": { dom: 200, hk:{s:320, u:230}, asia:{s:320, u:240}, out:{s:360, u:240}, n1:25, n2:60, dom_no:200, dom_stay:400, int_no:400, int_stay:700, spec:500 } };
 
+        // 强力修复：强制设置持久性为 Local，防止 Chrome 删除状态
+        setPersistence(auth, browserLocalPersistence)
+            .then(() => {
+                console.log("Auth persistence set to LOCAL");
+            })
+            .catch((error) => {
+                console.error("Persistence error:", error);
+            });
+
         window.loginWithGoogle = async () => { 
             try { 
                 await signInWithRedirect(auth, provider); 
@@ -390,18 +407,30 @@
             } 
         };
 
-        window.doLogout = async () => { await signOut(auth); window.location.reload(); };
+        window.doLogout = async () => { 
+            await signOut(auth); 
+            // 彻底清理本地缓存
+            localStorage.clear();
+            window.location.reload(); 
+        };
 
-        // 核心修复：处理从 Google 跳转回来的结果
+        // 处理从 Google 跳转回来的结果
         getRedirectResult(auth).then((result) => {
             if (result?.user) {
-                console.log("Redirect login success:", result.user.displayName);
+                console.log("Redirect success for:", result.user.displayName);
             }
         }).catch((error) => {
             console.error("Redirect error:", error);
+            if(error.code === 'auth/internal-error') {
+                alert("登录内部错误，请检查是否在浏览器设置中禁用了第三方 Cookie。");
+            }
         });
 
         onAuthStateChanged(auth, (user) => { 
+            // 只要收到状态回调，就移除加载遮罩
+            const loader = document.getElementById('globalLoader');
+            if(loader) loader.style.display = 'none';
+
             if (user) { 
                 currentUser = user; 
                 document.getElementById('userInfo').textContent = user.displayName; 
@@ -417,7 +446,7 @@
                     refreshAll(); 
                 }, (e) => {
                     console.error("Firestore loading error:", e.message);
-                    if(e.message.includes("permission")) alert("数据库权限不足，请确认 Firebase Rules 已更新且您已授权域名。");
+                    if(e.message.includes("permission")) alert("数据库权限不足，请确认 Firebase Rules 已更新。");
                 }); 
 
                 onSnapshot(collection(db, `users/${user.uid}/calendar_status`), (snap) => { 
