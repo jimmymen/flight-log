@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>飞行日志 Pro - CCAR-91 机长合规版</title>
     <style>
-        /* === 基础变量 === */
+        /* === 样式保持不变 === */
         :root {
             --primary: #2563eb; --primary-dark: #1e40af; 
             --bg: #f8fafc; --text: #334155; --border: #cbd5e1;
-            /* 状态颜色 */
             --dom-stay-bg: #dbeafe; --dom-stay-text: #1e40af;
             --dom-no-bg: #d1fae5; --dom-no-text: #065f46;
             --int-stay-bg: #f3e8ff; --int-stay-text: #6b21a8;
@@ -21,23 +20,14 @@
             --ok-green: #16a34a;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: var(--bg); color: var(--text);
-            padding: 15px; min-height: 100vh;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); padding: 15px; min-height: 100vh; }
         .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 60px; }
-
-        /* 通用组件 */
         .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid var(--border); overflow: hidden; }
         .card-header { padding: 15px 20px; background: #fff; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
         .card-header h2 { font-size: 1.1rem; font-weight: 700; color: #0f172a; }
         .card-body { padding: 20px; }
-        
         .top-bar { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: 16px 24px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(37,99,235,0.3); margin-bottom: 10px; }
         .user-pill { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; backdrop-filter: blur(4px); margin-top: 5px; display: inline-block; }
-
-        /* === 仪表盘 === */
         .comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
         .comp-panel { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 15px; }
         .comp-head { font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
@@ -50,8 +40,6 @@
         .dot-err { background: var(--warn-text); box-shadow: 0 0 0 2px #fee2e2; }
         .progress-track { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 5px; }
         .progress-bar { height: 100%; transition: width 0.3s; }
-
-        /* === 资质详情增强样式 === */
         .q-detail-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; border-top: 1px dashed #cbd5e1; padding-top: 10px; }
         .q-box { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; position: relative; }
         .q-box-title { font-size: 0.65rem; color: #64748b; font-weight: bold; margin-bottom: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 3px; }
@@ -60,8 +48,6 @@
         .q-expiry-tag { margin-top: 8px; padding: 4px; border-radius: 4px; text-align: center; }
         .q-expiry-date { font-size: 0.85rem; font-weight: 800; font-family: monospace; display: block; }
         .q-expiry-days { font-size: 0.65rem; font-weight: bold; }
-
-        /* === 薪资 === */
         .salary-summary-box { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 12px; border: 1px solid #bfdbfe; }
         .ss-item { text-align: center; }
         .ss-label { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
@@ -74,9 +60,6 @@
         .col-proc { width: 50%; font-family: monospace; color: #64748b; font-size: 0.8rem; line-height: 1.5; }
         .col-amt { width: 25%; text-align: right; font-family: monospace; font-weight: 700; font-size: 0.95rem; color: #0f172a; }
         .calc-tag { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 5px; margin-right: 4px; font-size: 0.75rem; color: #475569; }
-        .tax-highlight { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 2px; font-weight: bold; }
-
-        /* === 报表 === */
         .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); -webkit-overflow-scrolling: touch; }
         .excel-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 900px; }
         .excel-table th, .excel-table td { border: 1px solid var(--border); padding: 8px 6px; text-align: center; vertical-align: middle; }
@@ -87,7 +70,6 @@
         .time-dual { line-height: 1.2; }
         .time-dec { font-weight: bold; font-size: 0.9rem; color: #0f172a; }
         .time-hm { font-size: 0.7rem; color: #64748b; display: block; margin-top: 2px; font-family: monospace; }
-        
         .mobile-report-view { display: none; gap: 10px; }
         .m-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
         .m-card-title { font-weight: 700; color: #334155; margin-bottom: 8px; font-size: 0.9rem; border-left: 3px solid var(--primary); padding-left: 8px; display: flex; justify-content: space-between; }
@@ -95,8 +77,6 @@
         .m-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #e2e8f0; padding-bottom: 4px; margin-bottom: 4px; }
         .m-label { color: #64748b; }
         .m-val { font-weight: 700; font-family: monospace; color: #0f172a; }
-
-        /* === 日历 === */
         .calendar-wrapper { user-select: none; }
         .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.8rem; color: #94a3b8; padding: 10px 0; font-weight: 600; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
@@ -106,20 +86,16 @@
         .cal-num { font-size: 0.85rem; font-weight: 700; color: #cbd5e1; margin-bottom: 4px; display: flex; justify-content: space-between; }
         .cal-day.today .cal-num { color: var(--primary); }
         .cal-flights { flex: 1; display: flex; flex-direction: column; gap: 2px; overflow: hidden; margin-bottom: 4px; }
-        
         .flight-tag { padding: 3px 4px; border-radius: 3px; font-size: 0.65rem; color: #fff; display: flex; justify-content: space-between; align-items: center; line-height: 1.2; position: relative;}
         .tag-dom { background: #3b82f6; } .tag-int { background: #8b5cf6; } .tag-dh { background: #64748b; }
         .night-indicator { display: inline-flex; align-items: center; background: rgba(0,0,0,0.2); border-radius: 3px; padding: 0 3px; font-weight: bold; color: #fcd34d; margin-left: 4px; font-size: 0.65rem; }
         .mid-indicator { display: inline-flex; align-items: center; background: rgba(0,0,0,0.2); border-radius: 3px; padding: 0 3px; font-weight: bold; color: #e9d5ff; margin-left: 2px; font-size: 0.65rem; }
         .cal-status { font-size: 0.65rem; padding: 2px 4px; border-radius: 4px; text-align: center; margin-top: auto; font-weight: 700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        
         .st-dom-stay { background: var(--dom-stay-bg); color: var(--dom-stay-text); border: 1px solid #bfdbfe; }
         .st-dom-no { background: var(--dom-no-bg); color: var(--dom-no-text); border: 1px solid #a7f3d0; }
         .st-int-stay { background: var(--int-stay-bg); color: var(--int-stay-text); border: 1px solid #e9d5ff; }
         .st-int-no { background: var(--int-no-bg); color: var(--int-no-text); border: 1px solid #fde68a; }
         .st-base { color: #cbd5e1; font-weight: normal; }
-
-        /* 手机端日历详情卡片 */
         .mobile-detail-card { display: none; margin-top: 15px; background: white; border-radius: 12px; border: 1px solid var(--primary); padding: 15px; box-shadow: 0 4px 15px rgba(37,99,235,0.15); animation: fadeIn 0.3s ease; }
         .md-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 10px; }
         .md-date { font-size: 1.1rem; font-weight: 800; color: #0f172a; }
@@ -133,8 +109,6 @@
         .m-dot { width: 6px; height: 6px; border-radius: 50%; }
         .bg-blue { background: #3b82f6; } .bg-purple { background: #8b5cf6; } .bg-yellow { background: #fcd34d; }
         .bg-green { background: #10b981; }
-
-        /* AI & Form */
         .ai-box { position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; background: #f8fafc; transition: border-color 0.3s; }
         .ai-box:focus-within { border-color: var(--primary); }
         .key-input { position: absolute; top: 10px; right: 10px; padding: 6px; border-radius: 6px; border: 1px solid var(--border); width: 120px; font-size: 0.75rem; background: rgba(255,255,255,0.9); }
@@ -149,8 +123,6 @@
         .form-group label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 6px; font-weight: 600; }
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; outline: none; transition: 0.2s; font-size: 0.9rem; background: #fff; }
         .time-hint { font-size: 0.75rem; color: var(--primary); font-weight: bold; float: right; }
-
-        /* Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000; backdrop-filter: blur(2px); }
         .modal-content { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 25px; animation: slideUp 0.3s ease; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
         .settings-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 2000; width: 320px; display: none; }
@@ -160,8 +132,6 @@
         .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .status-btn { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
         .btn-cancel { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; background: white; color: #64748b; font-weight: bold; cursor: pointer; }
-
-        /* List & Utils */
         .log-list { max-height: 450px; overflow-y: auto; padding-right: 5px; }
         .log-item { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
         .log-info { display: flex; flex-direction: column; gap: 4px; width: 100%; }
@@ -185,10 +155,6 @@
         .loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: none; justify-content: center; align-items: center; z-index: 20; backdrop-filter: blur(1px); border-radius: 12px; }
         .spinner { width: 30px; height: 30px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* 全局加载遮罩 */
-        #globalLoader { position: fixed; inset: 0; background: white; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-
         @media (max-width: 768px) {
             .cal-day { min-height: 50px; flex-direction: column; justify-content: flex-start; align-items: center; padding: 4px; border-radius: 8px;}
             .cal-num { margin-bottom: 2px; font-size: 0.9rem; color: #64748b; font-weight: normal; }
@@ -207,12 +173,6 @@
     </style>
 </head>
 <body>
-
-    <!-- 全局加载器，解决“闪现到登录页”的问题 -->
-    <div id="globalLoader">
-        <div class="spinner"></div>
-        <p style="margin-top:20px; color:#64748b; font-weight:bold;">验证登录状态中...</p>
-    </div>
 
     <div id="settingsModal" class="modal-overlay" onclick="if(event.target===this) document.getElementById('settingsModal').style.display='none'">
         <div class="settings-modal" onclick="event.stopPropagation()">
@@ -244,12 +204,12 @@
         </div>
     </div>
 
-    <div id="loginScreen" class="login-screen" style="display: none;">
+    <div id="loginScreen" class="login-screen">
         <div class="login-card">
             <h1 style="font-size: 3rem; margin-bottom: 10px;">✈️</h1>
             <h2 style="color: #1e40af; margin-bottom: 30px;">飞行日志 Pro<br><span style="font-size:0.9rem;color:#64748b;font-weight:normal">CCAR-91 机长合规版</span></h2>
             <button class="btn btn-primary" style="width: 100%; padding: 14px;" onclick="loginWithGoogle()">Google 登录</button>
-            <p style="margin-top:20px; font-size:0.7rem; color:#94a3b8; line-height:1.4;">提示：如果登录后一直返回此页面，请尝试在浏览器设置中“允许第三方 Cookie”或点击 [设置-隐私-允许跨网站追踪]。</p>
+            <p style="margin-top:20px; font-size:0.7rem; color:#94a3b8;">如果无法保存，请尝试在浏览器设置中开启“允许第三方 Cookie”。</p>
         </div>
     </div>
 
@@ -364,7 +324,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, setDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, setDoc, updateDoc, enableIndexedDbPersistence } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
         const firebaseConfig = { 
@@ -382,82 +342,33 @@
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
 
-        let currentUser = null; 
-        let allRecords = []; 
-        let calendarData = {}; 
-        let currentModalDate = '';
+        // 强力修复：开启本地持久化，防止 Chrome 删除状态
+        setPersistence(auth, browserLocalPersistence).catch(e => console.error(e));
+        
+        // 开启 Firestore 离线持久化 (增强同步稳定性)
+        enableIndexedDbPersistence(db).catch((err) => {
+            if (err.code == 'failed-precondition') console.warn("离线持久化多窗口冲突");
+            else if (err.code == 'unimplemented') console.warn("当前浏览器不支持离线持久化");
+        });
 
+        let currentUser = null; let allRecords = []; let calendarData = {}; let currentModalDate = '';
         const HOLIDAY_RATE = 7262; const FIXED_BASE_NET = 96080.65; const FIXED_BASE_GROSS = 101740.00; const SOCIAL_RATE = 5217.09;
         const FEE_CONFIG = { "教员": { dom: 0, hk:{s:720, u:518}, asia:{s:720, u:540}, out:{s:810, u:540}, n1:80, n2:200, dom_no:200, dom_stay:500, int_no:400, int_stay:900, spec:1000 }, "机长": { dom: 0, hk:{s:640, u:460}, asia:{s:640, u:480}, out:{s:720, u:480}, n1:80, n2:200, dom_no:200, dom_stay:500, int_no:400, int_stay:900, spec:1000 }, "副驾驶": { dom: 200, hk:{s:320, u:230}, asia:{s:320, u:240}, out:{s:360, u:240}, n1:25, n2:60, dom_no:200, dom_stay:400, int_no:400, int_stay:700, spec:500 } };
 
-        // 强力修复：强制设置持久性为 Local，防止 Chrome 删除状态
-        setPersistence(auth, browserLocalPersistence)
-            .then(() => {
-                console.log("Auth persistence set to LOCAL");
-            })
-            .catch((error) => {
-                console.error("Persistence error:", error);
-            });
+        window.loginWithGoogle = async () => { try { await signInWithRedirect(auth, provider); } catch (e) { alert("登录发起失败: " + e.message); } };
+        window.doLogout = async () => { await signOut(auth); localStorage.clear(); window.location.reload(); };
 
-        window.loginWithGoogle = async () => { 
-            try { 
-                await signInWithRedirect(auth, provider); 
-            } catch (e) { 
-                alert("登录发起失败: " + e.message); 
-            } 
-        };
-
-        window.doLogout = async () => { 
-            await signOut(auth); 
-            // 彻底清理本地缓存
-            localStorage.clear();
-            window.location.reload(); 
-        };
-
-        // 处理从 Google 跳转回来的结果
-        getRedirectResult(auth).then((result) => {
-            if (result?.user) {
-                console.log("Redirect success for:", result.user.displayName);
-            }
-        }).catch((error) => {
-            console.error("Redirect error:", error);
-            if(error.code === 'auth/internal-error') {
-                alert("登录内部错误，请检查是否在浏览器设置中禁用了第三方 Cookie。");
-            }
-        });
+        // 核心修复：捕获跳转回来的身份
+        getRedirectResult(auth).then((res) => { if(res?.user) console.log("Login captured:", res.user.displayName); }).catch(e => console.error(e));
 
         onAuthStateChanged(auth, (user) => { 
-            // 只要收到状态回调，就移除加载遮罩
-            const loader = document.getElementById('globalLoader');
-            if(loader) loader.style.display = 'none';
-
             if (user) { 
-                currentUser = user; 
-                document.getElementById('userInfo').textContent = user.displayName; 
-                document.getElementById('loginScreen').style.display = 'none'; 
-                document.getElementById('app').style.display = 'flex'; 
-                
+                currentUser = user; document.getElementById('userInfo').textContent = user.displayName; document.getElementById('loginScreen').style.display = 'none'; document.getElementById('app').style.display = 'flex'; 
                 document.getElementById('reportMonth').value = new Date().toISOString().slice(0, 7); 
-                if(localStorage.getItem("openai_key")) document.getElementById("innerApiKey").value = localStorage.getItem("openai_key"); 
-                initSettings(); 
-
-                onSnapshot(query(collection(db, `users/${user.uid}/logs`), orderBy("date", "desc")), (snap) => { 
-                    allRecords = snap.docs.map(d => ({id: d.id, ...d.data()})); 
-                    refreshAll(); 
-                }, (e) => {
-                    console.error("Firestore loading error:", e.message);
-                    if(e.message.includes("permission")) alert("数据库权限不足，请确认 Firebase Rules 已更新。");
-                }); 
-
-                onSnapshot(collection(db, `users/${user.uid}/calendar_status`), (snap) => { 
-                    calendarData = {}; 
-                    snap.docs.forEach(d => calendarData[d.id] = d.data()); 
-                    refreshAll(); 
-                }); 
-            } else { 
-                document.getElementById('loginScreen').style.display = 'flex'; 
-                document.getElementById('app').style.display = 'none'; 
-            } 
+                if(localStorage.getItem("openai_key")) document.getElementById("innerApiKey").value = localStorage.getItem("openai_key"); initSettings(); 
+                onSnapshot(query(collection(db, `users/${user.uid}/logs`), orderBy("date", "desc")), (snap) => { allRecords = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshAll(); }, (e)=>console.error(e)); 
+                onSnapshot(collection(db, `users/${user.uid}/calendar_status`), (snap) => { calendarData = {}; snap.docs.forEach(d => calendarData[d.id] = d.data()); refreshAll(); }); 
+            } else { document.getElementById('loginScreen').style.display = 'flex'; document.getElementById('app').style.display = 'none'; } 
         });
 
         window.saveSettings = () => { localStorage.setItem('user_rank', document.getElementById('set_rank').value); localStorage.setItem('user_icao', document.getElementById('set_icao').value); localStorage.setItem('user_cum_income', document.getElementById('set_cum_income').value); localStorage.setItem('user_cum_tax', document.getElementById('set_cum_tax').value); document.getElementById('settingsModal').style.display = 'none'; refreshAll(); };
