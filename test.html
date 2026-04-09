@@ -562,7 +562,84 @@
         function setFormValues(d) { const set = (k, v) => { const el=document.getElementById('f_'+k); if(el) el.value = v!==undefined?v:''; }; set('date',d.date); set('dep',d.dep); set('arr',d.arr); set('cat',d.category); set('crew',d.crew); set('flight_no',d.flight_no); set('ac_type',d.ac_type); set('landings_day',d.landings_day); set('landings_night',d.landings_night); set('block_off',d.time_off||d.block_off); set('takeoff',d.time_takeoff||d.takeoff); set('landing',d.time_landing||d.landing); set('block_on',d.time_on||d.block_on); set('air',d.air_time); set('total_time',d.total_time); set('night1',d.night1); set('night2',d.night2); set('overnight',d.overnight||'无'); set('overnight_city',d.overnight_city); set('overnight_days',d.overnight_days); set('special',d.special_airport); set('holiday',d.holiday); set('block_days',d.block_days); set('meal_dom',d.crew_meal_dom); set('meal_int',d.crew_meal_int); }
         function resetForm() { document.getElementById('edit_doc_id').value=''; document.querySelectorAll('.edit-form input, .edit-form select').forEach(i=>i.value=''); document.getElementById('f_block_days').value=''; document.getElementById('f_landings_day').value = '0'; document.getElementById('f_landings_night').value = '0'; document.getElementById('f_ac_type').value = 'G650ER'; document.getElementById('hint_air').innerText=''; document.getElementById('hint_total').innerText=''; }
         window.closeForm = () => document.getElementById('editForm').style.display='none'; function showForm() { document.getElementById('editForm').style.display='block'; document.getElementById('editForm').scrollIntoView({behavior:"smooth"}); } window.editRecord = (id) => { const rec = allRecords.find(r=>r.id===id); if(rec){ resetForm(); document.getElementById('edit_doc_id').value=id; setFormValues(rec); recalcTimes(); showForm(); } };
-        window.saveRecord = async () => { try { if (!currentUser) throw new Error("请先登录"); const getV = (k) => document.getElementById('f_'+k).value.trim(); const getN = (k) => parseFloat(getV(k))||0; const getI = (k) => parseInt(getV(k))||0; if (!getV('date')) throw new Error("日期为空"); const d = { date: getV('date'), dep: getV('dep'), arr: getV('arr'), category: getV('cat'), crew: getV('crew'), flight_no: getV('flight_no'), ac_type: getV('ac_type'), landings_day: getI('landings_day'), landings_night: getI('landings_night'), block_off: getV('block_off'), takeoff: getV('takeoff'), landing: getV('landing'), block_on: getV('block_on'), air_time: getN('air'), total_time: getN('total_time'), block_days: getN('block_days'), night1: getN('night1'), night2: getN('night2'), overnight: getV('overnight'), overnight_city: getV('overnight_city')||getV('arr'), overnight_days: getN('overnight_days'), special_airport: getN('special'), holiday: getN('holiday'), crew_meal_dom: getN('meal_dom'), crew_meal_int: getN('meal_int'), timestamp: new Date() }; const did = document.getElementById('edit_doc_id').value; if(d.overnight.includes('无过夜') && d.arr.includes('沈阳')) { const prev = new Date(d.date); prev.setDate(prev.getDate()-1); const pStr = prev.toISOString().split('T')[0]; if(!calendarData[pStr]) await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, pStr), { type: "国内有过夜", city: d.dep }, {merge:true}); } if(did) await updateDoc(doc(db, `users/${currentUser.uid}/logs`, did), d); else await addDoc(collection(db, `users/${currentUser.uid}/logs`), d); closeForm(); } catch(e){ alert(e.message); } };
+        window.saveRecord = async () => {
+    try {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (!user) throw new Error("登录已失效，请重新登录");
+
+        // 健壮的取值函数：如果找不到元素，返回空字符串或0，而不是崩溃
+        const getV = (k) => {
+            const el = document.getElementById('f_' + k);
+            return el ? el.value.trim() : "";
+        };
+        const getN = (k) => parseFloat(getV(k)) || 0;
+        const getI = (k) => parseInt(getV(k)) || 0;
+
+        if (!getV('date')) throw new Error("日期是必填项");
+
+        // 构造数据对象
+        const d = {
+            date: getV('date'),
+            dep: getV('dep'),
+            arr: getV('arr'),
+            category: getV('cat'),
+            crew: getV('crew'),
+            flight_no: getV('flight_no'),
+            ac_type: getV('ac_type'),
+            landings_day: getI('landings_day'),
+            landings_night: getI('landings_night'),
+            block_off: getV('block_off'),
+            takeoff: getV('takeoff'),
+            landing: getV('landing'),
+            block_on: getV('block_on'),
+            air_time: getN('air'),
+            total_time: getN('total_time'),
+            block_days: getN('block_days'),
+            night1: getN('night1'),
+            night2: getN('night2'),
+            overnight: getV('overnight') || "无",
+            overnight_city: getV('overnight_city') || getV('arr'),
+            overnight_days: getN('overnight_days'),
+            special_airport: getN('special'),
+            holiday: getN('holiday'),
+            crew_meal_dom: getN('meal_dom'),
+            crew_meal_int: getN('meal_int'),
+            timestamp: new Date()
+        };
+
+        const did = document.getElementById('edit_doc_id').value;
+
+        // 特殊逻辑：回溯处理（沈阳无过夜自动变前一天有过夜）
+        // 增加容错保护 ?. 确保不会因为数据空而崩溃
+        if (d.overnight?.includes('无过夜') && d.arr?.includes('沈阳')) {
+            try {
+                const prev = new Date(d.date);
+                prev.setDate(prev.getDate() - 1);
+                const pStr = prev.toISOString().split('T')[0];
+                if (!calendarData[pStr]) {
+                    await setDoc(doc(db, `users/${user.uid}/calendar_status`, pStr), 
+                        { type: "国内有过夜", city: d.dep }, { merge: true });
+                }
+            } catch (e) { console.warn("回溯逻辑执行失败，但不影响主记录保存", e); }
+        }
+
+        // 执行保存
+        if (did) {
+            await updateDoc(doc(db, `users/${user.uid}/logs`, did), d);
+        } else {
+            await addDoc(collection(db, `users/${user.uid}/logs`), d);
+        }
+
+        console.log("✅ 保存成功");
+        closeForm();
+        // 提示并刷新
+        alert("记录已保存成功！");
+    } catch (e) {
+        console.error("❌ 保存失败:", e);
+        alert("保存出错: " + e.message);
+    }
+};
         window.deleteItem = async (id) => { if(confirm("删除?")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
 
         // === 响应式日历 (月视图 + 详情卡) ===
