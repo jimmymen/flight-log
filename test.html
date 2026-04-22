@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>飞行日志 Pro - CCAR-91 机长合规版</title>
+    <title>飞行日志 Pro - 硅基流动多模态版</title>
     <style>
-        /* === 1. 基础变量与样式 (完全保留原始，确保样式与图2一致) === */
+        /* === 核心样式 (保留原有变量) === */
         :root {
             --primary: #2563eb; --primary-dark: #1e40af; 
             --bg: #f8fafc; --text: #334155; --border: #cbd5e1;
@@ -14,16 +14,13 @@
             --int-stay-bg: #f3e8ff; --int-stay-text: #6b21a8;
             --int-no-bg: #fef3c7; --int-no-text: #92400e;
             --meal-bg: #fff7ed; --meal-text: #c2410c; --meal-border: #ffedd5;
-            --night-bg: #0f172a; --night-text: #fcd34d;
             --tax-red: #dc2626; --income-green: #16a34a;
             --warn-bg: #fee2e2; --warn-text: #991b1b;
             --ok-green: #16a34a;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); padding: 15px; min-height: 100vh; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 15px; min-height: 100vh; }
         .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 60px; }
-
-        /* 通用组件 */
         .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid var(--border); overflow: hidden; }
         .card-header { padding: 15px 20px; background: #fff; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
         .card-header h2 { font-size: 1.1rem; font-weight: 700; color: #0f172a; }
@@ -32,316 +29,483 @@
         .top-bar { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: 16px 24px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(37,99,235,0.3); margin-bottom: 10px; }
         .user-pill { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; backdrop-filter: blur(4px); margin-top: 5px; display: inline-block; }
 
-        /* === 仪表盘 === */
-        .comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
-        .comp-panel { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 15px; }
-        .comp-head { font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .comp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.9rem; }
-        .comp-label { color: #64748b; font-size: 0.8rem; }
-        .comp-val { font-weight: 700; font-family: monospace; }
-        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-        .dot-ok { background: var(--ok-green); box-shadow: 0 0 0 2px #dcfce7; }
-        .dot-warn { background: #f59e0b; box-shadow: 0 0 0 2px #fef3c7; }
-        .dot-err { background: var(--warn-text); box-shadow: 0 0 0 2px #fee2e2; }
-        .progress-track { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 5px; }
-        .progress-bar { height: 100%; transition: width 0.3s; }
+        /* AI 输入框增强 */
+        .ai-box { position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 15px; background: #f8fafc; transition: 0.3s; }
+        .ai-box:focus-within { border-color: var(--primary); }
+        .key-input { position: absolute; top: 10px; right: 10px; padding: 6px; border-radius: 6px; border: 1px solid var(--border); width: 140px; font-size: 0.75rem; background: rgba(255,255,255,0.9); z-index: 10; }
+        textarea { width: 100%; height: 100px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; resize: none; outline: none; margin-top: 10px; }
+        
+        .image-upload-zone { margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .btn-upload { background: #fff; border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; }
+        .img-preview-box { width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px; overflow: hidden; border: 1px solid #e2e8f0; display: none; position: relative; }
+        .img-preview-box img { width: 100%; height: 100%; object-fit: contain; background: #000; }
+        .remove-img { position: absolute; top: 5px; right: 5px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; }
 
-        /* 资质卡片详情样式 (图2核心) */
-        .q-detail-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; border-top: 1px dashed #cbd5e1; padding-top: 10px; }
-        .q-box { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; position: relative; }
-        .q-box-title { font-size: 0.65rem; color: #64748b; font-weight: bold; margin-bottom: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 3px; }
-        .q-history-list { font-size: 0.7rem; color: #334155; }
-        .q-history-item { display: flex; justify-content: space-between; margin-bottom: 2px; font-family: monospace; }
-        .q-expiry-tag { margin-top: 8px; padding: 4px; border-radius: 4px; text-align: center; }
-        .q-expiry-date { font-size: 0.85rem; font-weight: 800; font-family: monospace; display: block; }
-        .q-expiry-days { font-size: 0.65rem; font-weight: bold; }
-
-        /* === 薪资与报表 (完全保留原始样式) === */
+        /* 薪资表格与统计样式 */
         .salary-summary-box { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; background: #eff6ff; padding: 15px; border-radius: 12px; border: 1px solid #bfdbfe; }
         .ss-item { text-align: center; }
-        .ss-label { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
+        .ss-label { font-size: 0.75rem; color: #64748b; }
         .ss-val { font-size: 1.1rem; font-weight: 800; font-family: monospace; }
-        .ss-total { grid-column: 1/-1; border-top: 1px dashed #bfdbfe; padding-top: 10px; margin-top: 5px; }
         .salary-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        .salary-table th { text-align: left; padding: 10px 8px; border-bottom: 2px solid #e2e8f0; color: #64748b; font-size: 0.8rem; background: #f8fafc; }
-        .salary-table td { padding: 12px 8px; border-bottom: 1px dashed #e2e8f0; vertical-align: top; }
-        .col-name { width: 25%; font-weight: 600; color: #334155; }
-        .col-proc { width: 50%; font-family: monospace; color: #64748b; font-size: 0.8rem; line-height: 1.5; }
-        .col-amt { width: 25%; text-align: right; font-family: monospace; font-weight: 700; font-size: 0.95rem; color: #0f172a; }
-        .calc-tag { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 5px; margin-right: 4px; font-size: 0.75rem; color: #475569; }
+        .salary-table th { text-align: left; padding: 10px 8px; border-bottom: 2px solid #e2e8f0; color: #64748b; }
+        .salary-table td { padding: 12px 8px; border-bottom: 1px dashed #e2e8f0; }
+        .col-amt { text-align: right; font-weight: 700; font-family: monospace; }
 
-        .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); -webkit-overflow-scrolling: touch; }
-        .excel-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 900px; }
-        .excel-table th, .excel-table td { border: 1px solid var(--border); padding: 8px 6px; text-align: center; vertical-align: middle; }
-        .excel-table th { background: #f1f5f9; font-weight: 600; color: #475569; }
-        
-        /* === 日历样式 === */
+        /* 其他原有样式... */
+        .comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .comp-panel { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 15px; }
+        .progress-track { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 5px; }
+        .progress-bar { height: 100%; transition: width 0.3s; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-        .cal-day { background: #fff; border: 1px solid var(--border); border-radius: 10px; min-height: 90px; padding: 4px; display: flex; flex-direction: column; cursor: pointer; transition: 0.2s; position: relative; }
-        .flight-tag { padding: 3px 4px; border-radius: 3px; font-size: 0.65rem; color: #fff; display: flex; justify-content: space-between; align-items: center; line-height: 1.2; margin-bottom: 2px; }
-        .tag-dom { background: #3b82f6; } .tag-int { background: #8b5cf6; } .tag-dh { background: #64748b; }
-        .cal-status { font-size: 0.65rem; padding: 2px 4px; border-radius: 4px; text-align: center; margin-top: auto; font-weight: 700; }
-        
-        /* === 2. 新增：视觉识别 UI 增强 (仅在此处添加外挂样式) === */
-        .img-preview-area { display: none; padding: 10px; border-top: 1px solid #e2e8f0; align-items: center; gap: 12px; background: #fff; }
-        .img-preview-box { width: 60px; height: 60px; border-radius: 8px; border: 2px solid var(--primary); overflow: hidden; }
-        .img-preview-box img { width: 100%; height: 100%; object-fit: cover; }
-        .ai-box { position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; background: #f8fafc; }
-        .key-input { position: absolute; top: 10px; right: 10px; padding: 6px; border-radius: 6px; border: 1px solid var(--border); width: 120px; font-size: 0.75rem; background: rgba(255,255,255,0.9); }
-        textarea { width: 100%; height: 100px; padding: 15px; border: none; background: transparent; resize: none; outline: none; font-size: 1rem; }
-        
+        .cal-day { background: #fff; border: 1px solid var(--border); border-radius: 10px; min-height: 90px; padding: 4px; position: relative; cursor: pointer; }
+        .flight-tag { padding: 3px 4px; border-radius: 3px; font-size: 0.65rem; color: #fff; margin-bottom: 2px; }
+        .tag-dom { background: #3b82f6; } .tag-int { background: #8b5cf6; }
+
+        .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
         .loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: none; justify-content: center; align-items: center; z-index: 20; border-radius: 12px; }
         .spinner { width: 30px; height: 30px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .settings-modal { background: white; padding: 25px; border-radius: 16px; width: 320px; }
+        .edit-form { background: #fff; padding: 20px; border-radius: 12px; margin-top: 20px; border: 1px solid var(--primary); }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; }
+        .form-full { grid-column: 1 / -1; }
 
-        /* 移动端适配 */
         @media (max-width: 768px) {
-            .cal-day { min-height: 50px; flex-direction: column; align-items: center; }
+            .cal-day { min-height: 55px; }
             .cal-flights, .cal-status { display: none; }
-            .mobile-dots { display: flex; justify-content: center; gap: 3px; margin-top: 4px; }
-            .m-dot { width: 6px; height: 6px; border-radius: 50%; }
-            .table-wrapper { display: none; }
             .mobile-report-view { display: grid; gap: 10px; }
+            .table-wrapper { display: none; }
         }
     </style>
 </head>
 <body>
 
-    <!-- 弹窗组件 (完全保留原始) -->
-    <div id="settingsModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000;">
-        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:25px; border-radius:16px; width:320px;">
+    <!-- 设置模态框 -->
+    <div id="settingsModal" class="modal-overlay">
+        <div class="settings-modal">
             <h3 style="margin-bottom:15px; text-align:center;">⚙️ 配置</h3>
-            <div style="margin-bottom:10px;"><label style="font-size:0.75rem;">累计应纳税所得额</label><input type="number" id="set_cum_income" style="width:100%; padding:8px;"></div>
-            <div style="margin-bottom:10px;"><label style="font-size:0.75rem;">累计已申报税额</label><input type="number" id="set_cum_tax" style="width:100%; padding:8px;"></div>
-            <div style="margin-bottom:10px;"><label style="font-size:0.75rem;">职级</label><select id="set_rank" style="width:100%; padding:8px;"><option value="机长">机长</option><option value="教员">教员</option><option value="副驾驶">副驾驶</option></select></div>
-            <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="saveSettings()">保存</button>
+            <div class="form-group" style="margin-bottom:10px;">
+                <label style="font-size:0.75rem;">职级</label>
+                <select id="set_rank" style="width:100%; padding:8px; border-radius:6px;"><option value="教员">教员</option><option value="机长" selected>机长</option><option value="副驾驶">副驾驶</option></select>
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+                <label style="font-size:0.75rem;">英语等级</label>
+                <select id="set_icao" style="width:100%; padding:8px; border-radius:6px;"><option value="signed">已签署</option><option value="unsigned">未签署</option></select>
+            </div>
+            <button class="btn btn-primary" style="width:100%; margin-top:15px;" onclick="saveSettings()">保存</button>
+            <button class="btn" style="width:100%; margin-top:5px; background:none; color:#64748b;" onclick="document.getElementById('settingsModal').style.display='none'">取消</button>
         </div>
     </div>
 
-    <div id="loginScreen" class="login-screen">
-        <div class="login-card"><h1>✈️</h1><h2 style="color: #1e40af; margin-bottom: 30px;">飞行日志 Pro</h2><button class="btn btn-primary" style="width:100%" onclick="loginWithGoogle()">Google 登录</button></div>
+    <!-- 登录屏幕 -->
+    <div id="loginScreen" class="login-screen" style="height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#1e3a8a; color:white;">
+        <h1 style="font-size:3rem; margin-bottom:10px;">✈️</h1>
+        <h2 style="margin-bottom:30px;">飞行日志 Pro</h2>
+        <button class="btn" style="background:white; color:#1e3a8a; padding:15px 40px;" onclick="loginWithGoogle()">Google 登录</button>
     </div>
 
     <div id="app" class="container" style="display: none;">
-        <!-- 顶部条 -->
         <div class="top-bar">
-            <div><h1 style="font-size: 1.3rem;">控制台</h1><div id="userInfo" class="user-pill">未登录</div></div>
+            <div><h1 style="font-size: 1.3rem;">控制台</h1><div id="userInfo" class="user-pill">加载中...</div></div>
             <div>
-                <button class="btn" style="background:rgba(255,255,255,0.2); color:white; margin-right:5px;" onclick="document.getElementById('settingsModal').style.display='block'">⚙️ 设置</button>
+                <button class="btn" style="background:rgba(255,255,255,0.2); color:white;" onclick="document.getElementById('settingsModal').style.display='flex'">⚙️</button>
                 <button class="btn" style="background:rgba(255,255,255,0.2); color:white;" onclick="doLogout()">退出</button>
             </div>
         </div>
 
-        <!-- 1. 资质监控 (保全) -->
-        <section class="card"><div class="card-header"><h2>🛡️ 合规与资质监控</h2></div><div class="card-body"><div class="comp-grid" id="complianceDashboard"></div></div></section>
-
-        <!-- 2. 薪资结算 (保全，含45%税率计算) -->
+        <!-- 合规仪表盘 -->
         <section class="card">
-            <div class="card-header"><h2>💰 本月实发结算单</h2><span style="font-size:0.75rem; background:#f3e8ff; color:#6b21a8; padding:2px 6px; border-radius:4px;">当前税率 45%</span></div>
+            <div class="card-header"><h2>🛡️ 合规监控</h2></div>
+            <div class="card-body"><div class="comp-grid" id="complianceDashboard"></div></div>
+        </section>
+
+        <!-- 薪资结算 -->
+        <section class="card">
+            <div class="card-header"><h2>💰 结算预估</h2><span id="taxRateDisplay" style="font-size:0.75rem; background:#f3e8ff; color:#6b21a8; padding:2px 6px; border-radius:4px;">税率 45%</span></div>
             <div class="card-body">
                 <div class="salary-summary-box">
                     <div class="ss-item"><div class="ss-label">固定实发</div><div class="ss-val">96,080</div></div>
-                    <div class="ss-item"><div class="ss-label">变动实发(税后)</div><div class="ss-val" id="disp_net_var" style="color:var(--tax-red)">0</div></div>
-                    <div class="ss-item"><div class="ss-label">补助实发(免税)</div><div class="ss-val" id="disp_net_allow" style="color:var(--income-green)">0</div></div>
-                    <div class="ss-item ss-total"><div class="ss-label">本月银行卡合计</div><div class="ss-val" style="font-size:1.5rem; color:#1e40af;" id="disp_total_bank">¥0.00</div></div>
+                    <div class="ss-item"><div class="ss-label">变动(税后)</div><div class="ss-val" id="disp_net_var">0</div></div>
+                    <div class="ss-item"><div class="ss-label">合计实发</div><div class="ss-val" id="disp_total_bank" style="color:var(--primary)">¥0</div></div>
                 </div>
-                <table class="salary-table"><tbody id="salaryTableBody"></tbody></table>
+                <table class="salary-table"><thead><tr><th>项目</th><th>计算</th><th class="col-amt">金额</th></tr></thead><tbody id="salaryTableBody"></tbody></table>
             </div>
         </section>
 
-        <!-- 3. 月度统计 (保全) -->
-        <section class="card"><div class="card-header"><h2>📊 月度统计</h2><input type="month" id="reportMonth" onchange="refreshAll()"></div><div class="card-body"><div class="table-wrapper"><table class="excel-table" id="reportTable"></table></div><div class="mobile-report-view" id="mobileReportCards"></div></div></section>
-
-        <!-- 4. 日历 (保全) -->
-        <section class="card"><div class="card-header"><h2>📅 执勤日历</h2><span id="calTotal" style="font-size:0.8rem;"></span></div><div class="card-body"><div class="calendar-header"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div><div class="calendar-grid" id="calendarGrid"></div></div></section>
-
-        <!-- 5. 智能录入 (核心升级点：外挂视觉识别) -->
+        <!-- 统计 -->
         <section class="card">
-            <div class="card-header"><h2>📝 智能录入 (支持图片识别)</h2></div>
+            <div class="card-header"><h2>📊 月度统计</h2><input type="month" id="reportMonth" onchange="refreshAll()" style="padding:5px; border-radius:5px; border:1px solid #ddd;"></div>
+            <div class="card-body">
+                <div class="table-wrapper"><table class="excel-table" id="reportTable"></table></div>
+                <div class="mobile-report-view" id="mobileReportCards"></div>
+            </div>
+        </section>
+
+        <!-- 日历 -->
+        <section class="card">
+            <div class="card-header"><h2>📅 执勤日历</h2><span id="calTotal" style="font-size:0.8rem; color:#64748b;"></span></div>
+            <div class="card-body"><div class="calendar-grid" id="calendarGrid"></div></div>
+        </section>
+
+        <!-- 智能录入 (硅基流动 Vision) -->
+        <section class="card">
+            <div class="card-header"><h2>📝 智能录入 (SiliconFlow)</h2><button class="btn btn-primary" id="aiBtn" onclick="processAI()">✨ 开始识别</button></div>
             <div class="card-body">
                 <div class="ai-box">
                     <div id="aiLoading" class="loading-overlay"><div class="spinner"></div></div>
-                    <input type="password" id="innerApiKey" class="key-input" placeholder="Silicon Flow API Key">
-                    <textarea id="ocrInput" placeholder="在此粘贴文本或上传任务书图片..."></textarea>
+                    <input type="password" id="innerApiKey" class="key-input" placeholder="SiliconFlow API Key">
                     
-                    <!-- 图片预览区 -->
-                    <div id="imgPreviewArea" class="img-preview-area">
-                        <div class="img-preview-box"><img id="imgPreview"></div>
-                        <div style="flex:1;"><div style="font-size:0.85rem; font-weight:bold;">任务书图片已就绪</div><div style="font-size:0.75rem; color:#dc2626; cursor:pointer;" onclick="clearImage()">移除图片 ×</div></div>
+                    <div class="image-upload-zone">
+                        <button class="btn-upload" onclick="document.getElementById('imgInput').click()">📸 上传任务书图片</button>
+                        <input type="file" id="imgInput" accept="image/*" style="display:none;" onchange="handleImagePreview(this)">
+                        <span id="imgNameLabel" style="font-size:0.75rem; color:#94a3b8;">未选择图片</span>
+                        <label style="font-size:0.75rem; cursor:pointer;"><input type="checkbox" id="isUTC" checked> 原数据 UTC</label>
                     </div>
 
-                    <div style="padding:10px; display:flex; gap:8px; border-top:1px solid #f1f5f9; align-items:center;">
-                        <label style="font-size:0.8rem; cursor:pointer;"><input type="checkbox" id="isUTC" checked> UTC转北京</label>
-                        <div style="flex:1"></div>
-                        <button class="btn" style="background:#8b5cf6; color:white;" onclick="document.getElementById('imageInput').click()">📸 上传任务书</button>
-                        <input type="file" id="imageInput" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
-                        <button class="btn btn-primary" id="aiBtn" onclick="processAI()">✨ 开始识别</button>
+                    <div id="imgPreviewBox" class="img-preview-box">
+                        <button class="remove-img" onclick="clearImage()">✕</button>
+                        <img id="imgPreview" src="">
                     </div>
+
+                    <textarea id="ocrInput" placeholder="或者直接粘贴任务文本..."></textarea>
                 </div>
 
-                <!-- 录入表单 (保全原始字段) -->
-                <div id="editForm" class="edit-form" style="display:none; background:#fff; padding:20px; border:1px solid var(--primary); border-radius:12px; margin-top:20px;">
-                    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:15px;">
-                        <input type="hidden" id="edit_doc_id">
+                <!-- 编辑表单 -->
+                <div id="editForm" class="edit-form">
+                    <input type="hidden" id="edit_doc_id">
+                    <div class="form-grid">
                         <div class="form-group"><label>日期</label><input type="date" id="f_date"></div>
                         <div class="form-group"><label>机型</label><select id="f_ac_type"><option value="G650ER">G650ER</option><option value="CL850">CL850</option></select></div>
-                        <div class="form-group"><label>起飞地</label><input type="text" id="f_dep"></div>
-                        <div class="form-group"><label>落地地</label><input type="text" id="f_arr"></div>
-                        <div class="form-group"><label>航班号</label><input type="text" id="f_flight_no"></div>
-                        <div class="form-group"><label>性质</label><select id="f_cat"><option value="国内">国内</option><option value="港澳台">港澳台</option><option value="亚洲国际">亚洲国际</option><option value="洲际">洲际</option></select></div>
-                        <div class="form-group"><label>开车</label><input type="time" id="f_block_off" oninput="recalcTimes()"></div>
-                        <div class="form-group"><label>起飞</label><input type="time" id="f_takeoff" oninput="recalcTimes()"></div>
-                        <div class="form-group"><label>落地</label><input type="time" id="f_landing" oninput="recalcTimes()"></div>
-                        <div class="form-group"><label>关车</label><input type="time" id="f_block_on" oninput="recalcTimes()"></div>
-                        <div class="form-group"><label>空时</label><input type="number" step="0.01" id="f_air"></div>
-                        <div class="form-group"><label>总时</label><input type="number" step="0.01" id="f_total_time"></div>
-                        <div class="form-group"><label>机组</label><input type="text" id="f_crew"></div>
-                        <div class="form-group"><label>日间起落</label><input type="number" id="f_landings_day"></div>
-                        <div class="form-group"><label>夜间起落</label><input type="number" id="f_landings_night"></div>
+                        <div class="form-group"><label>起飞/落地</label><div style="display:flex; gap:5px;"><input type="text" id="f_dep" placeholder="沈阳"><input type="text" id="f_arr" placeholder="上海"></div></div>
+                        <div class="form-group"><label>航线</label><select id="f_cat"><option value="国内">国内</option><option value="亚洲国际">亚洲国际</option><option value="洲际">洲际</option></select></div>
+                        <div class="form-group"><label>起落(日/夜)</label><div style="display:flex; gap:5px;"><input type="number" id="f_landings_day" value="0"><input type="number" id="f_landings_night" value="0"></div></div>
+                        <div class="form-group"><label>总时间(h)</label><input type="number" step="0.01" id="f_total_time"></div>
+                        <div class="form-group"><label>滑行天数</label><input type="number" id="f_block_days"></div>
+                        <div class="form-group"><label>夜航(前/后)</label><div style="display:flex; gap:5px;"><input type="number" step="0.1" id="f_night1" value="0"><input type="number" step="0.1" id="f_night2" value="0"></div></div>
+                        <div class="form-group"><label>驻外类型</label><select id="f_overnight"><option value="无">无</option><option value="国内有过夜">国内有过夜</option><option value="国际有过夜">国际有过夜</option></select></div>
+                        <div class="form-group"><label>国内/外餐</label><div style="display:flex; gap:5px;"><input type="number" id="f_meal_dom" value="0"><input type="number" id="f_meal_int" value="0"></div></div>
                     </div>
-                    <div style="margin-top:15px; text-align:right;"><button class="btn btn-ghost" onclick="closeForm()">取消</button><button class="btn btn-primary" onclick="saveRecord()">💾 保存记录</button></div>
+                    <div style="margin-top:15px; text-align:right;">
+                        <button class="btn" style="background:#f1f5f9;" onclick="document.getElementById('editForm').style.display='none'">取消</button>
+                        <button class="btn btn-primary" onclick="saveRecord()">💾 保存</button>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- 6. 记录明细 (保全) -->
-        <section class="card"><div class="card-header"><h2>📋 记录明细</h2></div><div class="card-body"><div id="logList"></div></div></section>
+        <!-- 明细列表 -->
+        <section class="card">
+            <div class="card-header"><h2>📋 明细</h2></div>
+            <div class="card-body"><div id="logList"></div></div>
+        </section>
     </div>
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, setDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-        const firebaseConfig = { apiKey: "AIzaSyCFk4f7bKUHlb3d1Cg1jyS1EM-SPC4pr40", authDomain: "myflightlog-1f4cb.firebaseapp.com", projectId: "myflightlog-1f4cb", storageBucket: "myflightlog-1f4cb.firebasestorage.app", messagingSenderId: "181072044112", appId: "1:181072044112:web:ca312da2d4780227cef155" };
-        const app = initializeApp(firebaseConfig); const db = getFirestore(app); const auth = getAuth(app); const provider = new GoogleAuthProvider();
-
-        let currentUser = null; let allRecords = []; let calendarData = {};
-        const FIXED_BASE_NET = 96080.65; const FIXED_BASE_GROSS = 101740.00; const SOCIAL_RATE = 5217.09;
-        const FEE_CONFIG = { "教员": {hk:{s:720, u:518}, asia:{s:720, u:540}, out:{s:810, u:540}, n1:80, n2:200}, "机长": {hk:{s:640, u:460}, asia:{s:640, u:480}, out:{s:720, u:480}, n1:80, n2:200}, "副驾驶": {hk:{s:320, u:230}, asia:{s:320, u:240}, out:{s:360, u:240}, n1:25, n2:60} };
-
-        // === 新增：视觉识别脚本 (仅在此处外挂逻辑) ===
-        window.handleImageUpload = (event) => {
-            const file = event.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let w = img.width, h = img.height;
-                    const max = 1200;
-                    if (w > h && w > max) { h *= max/w; w = max; } else if (h > max) { w *= max/h; h = max; }
-                    canvas.width = w; canvas.height = h;
-                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                    window.pendingImageData = canvas.toDataURL('image/jpeg', 0.8);
-                    document.getElementById('imgPreview').src = window.pendingImageData;
-                    document.getElementById('imgPreviewArea').style.display = 'flex';
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
+        const firebaseConfig = { 
+            apiKey: "AIzaSyCFk4f7bKUHlb3d1Cg1jyS1EM-SPC4pr40", 
+            authDomain: "myflightlog-1f4cb.firebaseapp.com", 
+            projectId: "myflightlog-1f4cb", 
+            storageBucket: "myflightlog-1f4cb.firebasestorage.app", 
+            messagingSenderId: "181072044112", 
+            appId: "1:181072044112:web:ca312da2d4780227cef155" 
         };
 
-        window.clearImage = () => { window.pendingImageData = null; document.getElementById('imgPreviewArea').style.display = 'none'; document.getElementById('imageInput').value = ''; };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
 
+        let currentUser = null;
+        let allRecords = [];
+
+        // --- 核心薪资配置 (保持 45% 税率原则) ---
+        const FIXED_BASE_NET = 96080.65;
+        const FEE_CONFIG = {
+            "机长": { hk:640, asia:640, out:720, n1:80, n2:200, stay_dom:500, stay_int:900 },
+            "教员": { hk:720, asia:720, out:810, n1:80, n2:200, stay_dom:500, stay_int:900 },
+            "副驾驶": { hk:320, asia:320, out:360, n1:25, n2:60, stay_dom:400, stay_int:700 }
+        };
+
+        // --- 登录逻辑 ---
+        window.loginWithGoogle = () => signInWithPopup(auth, provider);
+        window.doLogout = () => signOut(auth).then(() => location.reload());
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('app').style.display = 'flex';
+                document.getElementById('userInfo').textContent = user.displayName;
+                document.getElementById('reportMonth').value = new Date().toISOString().slice(0, 7);
+                const savedKey = localStorage.getItem("sf_api_key");
+                if(savedKey) document.getElementById("innerApiKey").value = savedKey;
+
+                onSnapshot(query(collection(db, `users/${user.uid}/logs`), orderBy("date", "desc")), (snap) => {
+                    allRecords = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    refreshAll();
+                });
+            } else {
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('app').style.display = 'none';
+            }
+        });
+
+        // --- 图片预览处理 ---
+        window.handleImagePreview = (input) => {
+            const file = input.files[0];
+            if (file) {
+                document.getElementById('imgNameLabel').textContent = file.name;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('imgPreview').src = e.target.result;
+                    document.getElementById('imgPreviewBox').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        window.clearImage = () => {
+            document.getElementById('imgInput').value = '';
+            document.getElementById('imgPreview').src = '';
+            document.getElementById('imgPreviewBox').style.display = 'none';
+            document.getElementById('imgNameLabel').textContent = '未选择图片';
+        };
+
+        // --- 硅基流动 AI 识别 (多模态) ---
         window.processAI = async () => {
-            const text = document.getElementById('ocrInput').value.trim();
             const apiKey = document.getElementById('innerApiKey').value.trim();
-            const imageData = window.pendingImageData;
-            if (!text && !imageData) return alert("请先粘贴文本或上传任务书图片");
-            if (!apiKey) return alert("请输入 API Key");
-
-            localStorage.setItem("openai_key", apiKey);
-            const btn = document.getElementById('aiBtn'); const loader = document.getElementById('aiLoading');
-            btn.innerHTML = "⏳ 分析中..."; btn.disabled = true; loader.style.display = "flex";
-
+            const text = document.getElementById('ocrInput').value.trim();
+            const previewImg = document.getElementById('imgPreview').src;
             const isUTC = document.getElementById('isUTC').checked;
-            const prompt = `你是一个专业的飞行解析助手。请识别任务书中的日期, 起飞地, 落地地, 性质(国内/港澳台/亚洲国际/洲际), 航班号, 机型(G650ER或CL850), 起落次数, 机组, 开车, 起飞, 落地, 关车。
-            ${isUTC ? "时间均为UTC，请转为北京时间输出。" : ""} 必须返回纯 JSON 格式。`;
+
+            if (!apiKey) return alert("请输入硅基流动 API Key");
+            if (!text && !previewImg) return alert("请上传图片或粘贴文本");
+
+            localStorage.setItem("sf_api_key", apiKey);
+            const btn = document.getElementById('aiBtn');
+            const loader = document.getElementById('aiLoading');
+            btn.disabled = true; loader.style.display = 'flex';
+
+            const timeHint = isUTC ? "识别到的时间点为UTC，请转为北京时间(UTC+8)。" : "";
+            const prompt = `请提取飞行任务书数据并返回纯 JSON 对象。
+            字段包含: date(YYYY-MM-DD), ac_type(G650ER/CL850), dep, arr, category(国内/亚洲国际/洲际), flight_no, landings_day(int), landings_night(int), total_time(float), block_days(int), night1(float), night2(float), overnight(无/国内有过夜/国际有过夜), crew_meal_dom(int), crew_meal_int(int)。
+            ${timeHint}`;
 
             try {
-                let content = [{ type: "text", text: prompt }];
-                if (text) content.push({ type: "text", text: "备注文本: " + text });
-                if (imageData) content.push({ type: "image_url", image_url: { url: imageData } });
+                let messages = [];
+                let modelName = "deepseek-ai/DeepSeek-V3"; // 默认文本模型
+
+                if (previewImg) {
+                    modelName = "Qwen/Qwen2-VL-72B-Instruct"; // 图片识别使用高性能视觉模型
+                    messages = [{
+                        role: "user",
+                        content: [
+                            { type: "text", text: prompt },
+                            { type: "image_url", image_url: { url: previewImg } }
+                        ]
+                    }];
+                } else {
+                    messages = [
+                        { role: "system", content: prompt },
+                        { role: "user", content: text }
+                    ];
+                }
 
                 const res = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-                    body: JSON.stringify({
-                        model: "Qwen/Qwen2-VL-72B-Instruct",
-                        messages: [{ role: "user", content: content }],
-                        response_format: { type: "json_object" }
-                    })
+                    body: JSON.stringify({ model: modelName, messages: messages, response_format: { type: "json_object" } })
                 });
-                const raw = await res.json();
-                const result = JSON.parse(raw.choices[0].message.content);
-                setFormValues(result);
-                recalcTimes();
+
+                const data = await res.json();
+                const content = data.choices[0].message.content;
+                const r = JSON.parse(content.replace(/```json/g, '').replace(/```/g, ''));
+
+                // 填充表单
+                document.getElementById('f_date').value = r.date || '';
+                document.getElementById('f_ac_type').value = r.ac_type || 'G650ER';
+                document.getElementById('f_dep').value = r.dep || '';
+                document.getElementById('f_arr').value = r.arr || '';
+                document.getElementById('f_cat').value = r.category || '国内';
+                document.getElementById('f_landings_day').value = r.landings_day || 0;
+                document.getElementById('f_landings_night').value = r.landings_night || 0;
+                document.getElementById('f_total_time').value = r.total_time || 0;
+                document.getElementById('f_block_days').value = r.block_days || 0;
+                document.getElementById('f_night1').value = r.night1 || 0;
+                document.getElementById('f_night2').value = r.night2 || 0;
+                document.getElementById('f_overnight').value = r.overnight || '无';
+                document.getElementById('f_meal_dom').value = r.crew_meal_dom || 0;
+                document.getElementById('f_meal_int').value = r.crew_meal_int || 0;
+
                 document.getElementById('editForm').style.display = 'block';
-                clearImage();
-            } catch (e) { alert("识别失败: " + e.message); }
-            finally { btn.innerHTML = "✨ 开始识别"; btn.disabled = false; loader.style.display = "none"; }
+                if(previewImg) clearImage();
+
+            } catch (e) {
+                alert("识别失败: " + e.message);
+            } finally {
+                btn.disabled = false; loader.style.display = 'none';
+            }
         };
 
-        // === 原有所有业务逻辑 (完全保全自图2) ===
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user; document.getElementById('userInfo').textContent = user.displayName;
-                document.getElementById('loginScreen').style.display = 'none'; document.getElementById('app').style.display = 'block';
-                document.getElementById('reportMonth').value = new Date().toISOString().slice(0, 7);
-                document.getElementById('innerApiKey').value = localStorage.getItem('openai_key') || '';
-                onSnapshot(query(collection(db, `users/${user.uid}/logs`), orderBy("date", "desc")), (snap) => {
-                    allRecords = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshAll();
-                });
-                onSnapshot(collection(db, `users/${user.uid}/calendar_status`), (snap) => {
-                    calendarData = {}; snap.docs.forEach(d => calendarData[d.id] = d.data()); refreshAll();
-                });
-            } else { document.getElementById('loginScreen').style.display = 'flex'; }
-        });
+        // --- 数据保存 ---
+        window.saveRecord = async () => {
+            const data = {
+                date: document.getElementById('f_date').value,
+                ac_type: document.getElementById('f_ac_type').value,
+                dep: document.getElementById('f_dep').value,
+                arr: document.getElementById('f_arr').value,
+                category: document.getElementById('f_cat').value,
+                landings_day: parseInt(document.getElementById('f_landings_day').value) || 0,
+                landings_night: parseInt(document.getElementById('f_landings_night').value) || 0,
+                total_time: parseFloat(document.getElementById('f_total_time').value) || 0,
+                block_days: parseInt(document.getElementById('f_block_days').value) || 0,
+                night1: parseFloat(document.getElementById('f_night1').value) || 0,
+                night2: parseFloat(document.getElementById('f_night2').value) || 0,
+                overnight: document.getElementById('f_overnight').value,
+                crew_meal_dom: parseInt(document.getElementById('f_meal_dom').value) || 0,
+                crew_meal_int: parseInt(document.getElementById('f_meal_int').value) || 0,
+            };
+            const id = document.getElementById('edit_doc_id').value;
+            if(id) await updateDoc(doc(db, `users/${currentUser.uid}/logs`, id), data);
+            else await addDoc(collection(db, `users/${currentUser.uid}/logs`), data);
+            document.getElementById('editForm').style.display = 'none';
+        };
 
-        // 此处应包含你图2代码中所有的 renderSalary, renderCalendar, renderCompliance 等函数逻辑
-        // 由于代码长度限制，请确保将你原始代码中这些函数的完整内容保留
-        window.refreshAll = () => { renderCompliance(); renderSalary(); renderReport(); renderCalendar(); renderList(); };
+        window.editRecord = (id) => {
+            const r = allRecords.find(x => x.id === id);
+            document.getElementById('edit_doc_id').value = id;
+            document.getElementById('f_date').value = r.date;
+            document.getElementById('f_ac_type').value = r.ac_type;
+            document.getElementById('f_dep').value = r.dep;
+            document.getElementById('f_arr').value = r.arr;
+            document.getElementById('f_cat').value = r.category;
+            document.getElementById('f_total_time').value = r.total_time;
+            document.getElementById('editForm').style.display = 'block';
+        };
 
-        window.renderCompliance = () => {
-            // 图2中的 Recency 逻辑、Fatigue 逻辑等全量放入此处
-            const data = checkCompliance(allRecords);
+        window.deleteItem = async (id) => {
+            if(confirm("确定删除？")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id));
+        };
+
+        // --- 核心刷新逻辑 (薪资/合规/报表) ---
+        window.refreshAll = () => {
+            const mStr = document.getElementById('reportMonth').value;
+            const data = allRecords.filter(r => r.date.startsWith(mStr));
+            renderCompliance();
+            renderSalary(data);
+            renderCalendar(mStr);
+            renderReport(data);
+            renderList(data);
+        };
+
+        function renderCompliance() {
+            const now = new Date();
+            const start7 = new Date(); start7.setDate(now.getDate() - 6);
+            let fatigue7 = allRecords.reduce((sum, r) => {
+                const d = new Date(r.date);
+                return (d >= start7 && d <= now) ? sum + (r.total_time || 0) : sum;
+            }, 0);
+
             document.getElementById('complianceDashboard').innerHTML = `
                 <div class="comp-panel" style="grid-column: 1/-1">
-                    <div class="comp-head"><span>👨‍班 疲劳监控 (7天)</span></div>
-                    <div class="comp-row"><span class="comp-label">执勤时间</span><span class="comp-val">${data.fatigue.toFixed(1)} / 40h</span></div>
-                    <div class="progress-track"><div class="progress-bar" style="width:${Math.min((data.fatigue/40)*100, 100)}%; background:var(--primary)"></div></div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.8rem;">
+                        <span>👨‍✈️ 7天疲劳监控</span>
+                        <span style="font-weight:bold; color:${fatigue7 > 40 ? '#ef4444' : '#059669'}">${fatigue7.toFixed(1)} / 40h</span>
+                    </div>
+                    <div class="progress-track"><div class="progress-bar" style="width:${Math.min(fatigue7/40*100, 100)}%; background:${fatigue7 > 40 ? '#ef4444' : '#2563eb'}"></div></div>
                 </div>
-                <!-- 更多卡片... -->
             `;
-        };
-
-        function checkCompliance(records) {
-            let stats = { g650: { total: 0 }, cl850: { total: 0 } }; let fatigue7 = 0;
-            // 计算逻辑...
-            return { recency: stats, fatigue: fatigue7 };
         }
 
-        window.renderSalary = () => {
-            // 图2中的 45% 税率计算全量放入此处
-            const mStr = document.getElementById('reportMonth').value;
-            // ... (全量计算逻辑)
-            document.getElementById('disp_total_bank').innerText = "¥" + (FIXED_BASE_NET + 0).toLocaleString();
-        };
+        function renderSalary(data) {
+            const rank = localStorage.getItem('user_rank') || '机长';
+            const cfg = FEE_CONFIG[rank];
+            let gross_var = 0;
+            let rows = `<tr><td>固定工资</td><td>税后定额</td><td class="col-amt">¥${FIXED_BASE_NET.toLocaleString()}</td></tr>`;
 
-        // ... (其他原有函数 recalcTimes, setFormValues, saveRecord, renderList 等)
-        window.recalcTimes = () => { /* 计算空时和总时 */ };
-        function setFormValues(d) {
-            const set = (id, v) => { const el = document.getElementById('f_'+id); if(el) el.value = v || ''; };
-            set('date', d.date); set('dep', d.dep); set('arr', d.arr); set('cat', d.category);
-            set('flight_no', d.flight_no); set('ac_type', d.ac_type); set('block_off', d.time_off);
-            set('takeoff', d.time_takeoff); set('landing', d.time_landing); set('block_on', d.time_on);
-            set('crew', d.crew); set('landings_day', d.landings_day); set('landings_night', d.landings_night);
+            data.forEach(r => {
+                let fee = 0;
+                if(r.category === '亚洲国际') fee = (r.total_time * cfg.asia) + (r.block_days * cfg.asia * 0.6);
+                else if(r.category === '洲际') fee = (r.total_time * cfg.out) + (r.block_days * cfg.out * 0.6);
+                
+                if(r.category === '国内') {
+                    fee += (r.night1 * cfg.n1) + (r.night2 * cfg.n2);
+                }
+                gross_var += fee;
+            });
+
+            // 统一 45% 税率
+            const net_var = gross_var * 0.55; 
+            const allowances = data.reduce((s, r) => {
+                let sub = (r.crew_meal_dom * 60) + (r.crew_meal_int * 180);
+                if(r.overnight === '国内有过夜') sub += cfg.stay_dom;
+                if(r.overnight === '国际有过夜') sub += cfg.stay_int;
+                return s + sub;
+            }, 0);
+
+            if(gross_var > 0) rows += `<tr><td>变动薪酬</td><td>${gross_var.toFixed(0)} * (1-45%)</td><td class="col-amt">¥${net_var.toFixed(2)}</td></tr>`;
+            if(allowances > 0) rows += `<tr><td>免税补贴</td><td>餐补+驻外</td><td class="col-amt">¥${allowances}</td></tr>`;
+
+            document.getElementById('salaryTableBody').innerHTML = rows;
+            document.getElementById('disp_net_var').textContent = `¥${net_var.toFixed(0)}`;
+            document.getElementById('disp_total_bank').textContent = `¥${(FIXED_BASE_NET + net_var + allowances).toLocaleString(undefined, {maximumFractionDigits:0})}`;
         }
-        window.closeForm = () => document.getElementById('editForm').style.display='none';
-        window.loginWithGoogle = () => signInWithPopup(auth, provider);
-        window.doLogout = () => signOut(auth).then(() => location.reload());
-        window.saveSettings = () => { /* 保存设置逻辑 */ };
+
+        function renderCalendar(mStr) {
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+            const [y, m] = mStr.split('-').map(Number);
+            const days = new Date(y, m, 0).getDate();
+            
+            for(let d=1; d<=days; d++) {
+                const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const flights = allRecords.filter(r => r.date === dateStr);
+                const cell = document.createElement('div');
+                cell.className = 'cal-day';
+                cell.innerHTML = `<div style="font-size:0.75rem; color:#94a3b8;">${d}</div>`;
+                flights.forEach(f => {
+                    cell.innerHTML += `<div class="flight-tag ${f.category==='国内'?'tag-dom':'tag-int'}">${f.dep}-${f.arr}</div>`;
+                });
+                grid.appendChild(cell);
+            }
+        }
+
+        function renderReport(data) {
+            let s = { air: 0, block: 0, meal: 0 };
+            data.forEach(r => { s.air += r.total_time; s.block += r.block_days; s.meal += (r.crew_meal_dom + r.crew_meal_int); });
+            document.getElementById('reportTable').innerHTML = `
+                <tr><th>总空时</th><td>${s.air.toFixed(1)}h</td><th>总滑行</th><td>${s.block}天</td><th>总餐份</th><td>${s.meal}</td></tr>
+            `;
+        }
+
+        function renderList(data) {
+            document.getElementById('logList').innerHTML = data.map(r => `
+                <div style="padding:12px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-weight:bold; font-size:0.9rem;">${r.date.slice(5)} ${r.dep} ➔ ${r.arr}</div>
+                        <div style="font-size:0.75rem; color:#64748b;">${r.ac_type} | ${r.total_time}h | ${r.category}</div>
+                    </div>
+                    <div>
+                        <button onclick="editRecord('${r.id}')" style="color:var(--primary); background:none; border:none; margin-right:10px;">✏️</button>
+                        <button onclick="deleteItem('${r.id}')" style="color:red; background:none; border:none;">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.saveSettings = () => {
+            localStorage.setItem('user_rank', document.getElementById('set_rank').value);
+            localStorage.setItem('user_icao', document.getElementById('set_icao').value);
+            document.getElementById('settingsModal').style.display = 'none';
+            refreshAll();
+        };
 
     </script>
 </body>
