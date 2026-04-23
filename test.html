@@ -604,25 +604,26 @@
             btn.disabled = true; 
             loader.style.display = "flex"; 
             
-            let timeInstruction = isUTC ? "识别到的所有时间点均为 UTC 时间，请自动将其转换为北京时间（UTC+8）。" : "时间保持原样。"; 
-            const prompt = `你是一个飞行日志解析助手。请从用户提供的信息中提取飞行记录并返回纯 JSON 对象。
-${timeInstruction} 
+            const prompt = `你是一个专业的飞行日志解析助手。请从图片或文本中提取飞行数据并返回纯 JSON。
+时区处理逻辑：
+- 任务书上的原始时间通常是 UTC。
+- 如果 category 为 "国内"，请务必将时间点增加 8 小时转换为北京时间返回。
+- 如果 category 为 "国际"、"亚洲国际" 或 "港澳台"，请保持 UTC 时间返回。
+
 字段要求：
 - date: YYYY-MM-DD
-- dep/arr: 城市或机场名
-- category: 国内/港澳台/亚洲国际/洲际
+- dep/arr: 机场或城市名
+- category: 根据航线判断（国内/港澳台/亚洲国际/洲际）
+- crew: 提取所有机组姓名，逗号分隔（如：李海鹏, 门翔宇）
+- flight_no: 提取航班号（如：B603V）
 - ac_type: G650ER/CL850
-- landings_day/landings_night: 数字
-- time_off/time_takeoff/time_landing/time_on: HH:mm
-- air_time/total_time: 数字
-- night1/night2: 18:30-24:00和24:00+的夜航小时
-- overnight: 无/国内有过夜/国内无过夜/国际有过夜/国际无过夜
-- overnight_city: 城市名
-- holiday: 0或1 (如果是法定节假日则为1)
-- block_days: 1 (通常为1)
-- crew_meal_dom/crew_meal_int: 机组餐份数
+- time_off/time_takeoff/time_landing/time_on: 24小时制 HH:mm
+- landings_day/landings_night: 必须返回空字符串 ""
+- special_airport/holiday: 必须返回空字符串 ""
+- overnight/overnight_city: 必须返回空字符串 ""
+- air_time/total_time: 自动计算的小时数（数字）
 
-注意：只返回 JSON，不要包含任何解释文字。`; 
+注意：只返回 JSON 对象，严禁包含任何说明文字。`; 
             
             let messages = [{ role: "system", content: prompt }];
             if (base64Image) {
@@ -675,9 +676,11 @@ ${timeInstruction}
         window.resetForm = () => { 
             document.getElementById('edit_doc_id').value=''; 
             document.querySelectorAll('.edit-form input, .edit-form select').forEach(i=>i.value=''); 
-            document.getElementById('f_block_days').value=''; 
-            document.getElementById('f_landings_day').value = '0'; 
-            document.getElementById('f_landings_night').value = '0'; 
+            document.getElementById('f_block_days').value='1'; 
+            document.getElementById('f_landings_day').value = ''; 
+            document.getElementById('f_landings_night').value = ''; 
+            document.getElementById('f_special').value = '';
+            document.getElementById('f_holiday').value = '';
             document.getElementById('f_ac_type').value = 'G650ER'; 
             document.getElementById('hint_air').innerText=''; 
             document.getElementById('hint_total').innerText=''; 
@@ -703,14 +706,20 @@ ${timeInstruction}
         window.setFormValues = (d) => { 
             const set = (k, v) => { const el=document.getElementById('f_'+k); if(el) el.value = v!==undefined?v:''; }; 
             set('date',d.date); set('dep',d.dep); set('arr',d.arr); set('cat',d.category); set('crew',d.crew); 
-            set('flight_no',d.flight_no); set('ac_type',d.ac_type); set('landings_day',d.landings_day); 
-            set('landings_night',d.landings_night); set('block_off',d.time_off||d.block_off); 
+            set('flight_no',d.flight_no); set('ac_type',d.ac_type); 
+            set('landings_day', d.landings_day || ''); 
+            set('landings_night', d.landings_night || ''); 
+            set('block_off',d.time_off||d.block_off); 
             set('takeoff',d.time_takeoff||d.takeoff); set('landing',d.time_landing||d.landing); 
             set('block_on',d.time_on||d.block_on); set('air',d.air_time); set('total_time',d.total_time); 
-            set('night1',d.night1); set('night2',d.night2); set('overnight',d.overnight||'无'); 
-            set('overnight_city',d.overnight_city); set('overnight_days',d.overnight_days); 
-            set('special',d.special_airport); set('holiday',d.holiday); set('block_days',d.block_days); 
-            set('meal_dom',d.crew_meal_dom); set('meal_int',d.crew_meal_int); 
+            set('night1',d.night1); set('night2',d.night2); 
+            set('overnight', d.overnight || ''); 
+            set('overnight_city', d.overnight_city || ''); 
+            set('overnight_days', d.overnight_days || ''); 
+            set('special', d.special_airport || ''); 
+            set('holiday', d.holiday || ''); 
+            set('block_days', d.block_days || '1'); 
+            set('meal_dom', d.crew_meal_dom || '0'); set('meal_int', d.crew_meal_int || '0'); 
         };
 
         window.handleMissionUpload = async (event) => {
