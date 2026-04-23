@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>飞行日志 Pro - CCAR-91 机长合规版</title>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         /* === 基础变量 === */
         :root {
@@ -564,61 +563,97 @@
         window.saveCalendarStatus = async (type) => { if(currentUser && currentModalDate) { const city = document.getElementById('modalCityInput').value.trim(); await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, currentModalDate), type ? { type: type, city: city } : { type: null, city: null }, { merge: true }); closeStatusModal(); } };
         window.recalcTimes = () => { const t_tk_el = document.getElementById('f_takeoff'); if (!t_tk_el) return; const t_tk = t_tk_el.value; const t_ld = document.getElementById('f_landing').value; const t_off = document.getElementById('f_block_off').value; const t_on = document.getElementById('f_block_on').value; let air = calculateDuration(t_tk, t_ld); let total = calculateDuration(t_off, t_on); if(air > 0) document.getElementById('f_air').value = air; if(total > 0) document.getElementById('f_total_time').value = total; document.getElementById('hint_air').innerText = decimalToHM(parseFloat(document.getElementById('f_air').value)); document.getElementById('hint_total').innerText = decimalToHM(parseFloat(document.getElementById('f_total_time').value)); if(t_tk && t_ld) { const n = getNightDuration(t_tk, t_ld); document.getElementById('f_night1').value = n.n1; document.getElementById('f_night2').value = n.n2; } };
 
-        window.processAI = async () => { /* AI Logic */ const text = document.getElementById('ocrInput').value.trim(); const apiKey = document.getElementById('innerApiKey').value.trim(); const isUTC = document.getElementById('isUTC').checked; if (!text || !apiKey) return alert("请输入文本和API Key"); localStorage.setItem("openai_key", apiKey); const btn = document.getElementById('aiBtn'); const loader = document.getElementById('aiLoading'); btn.innerHTML = "⏳ 思考中..."; btn.disabled = true; loader.style.display = "flex"; let timeInstruction = isUTC ? "识别到的所有时间点均为 UTC 时间，请自动将其转换为北京时间（UTC+8）。" : "时间保持原样。"; const prompt = `请分析飞行记录并返回 JSON。${timeInstruction} 规则：ac_type为"G650ER"或"CL850"。识别日间/夜间起落。节假日holiday字段。滑行天数block_days。国内飞行计费hours为0。字段: date, dep, arr, category, crew, flight_no, ac_type, landings_day, landings_night, time_off, time_takeoff, time_landing, time_on, night1, night2, overnight, overnight_city, overnight_days, special_airport, holiday(int), block_days(int), crew_meal_dom, crew_meal_int.`; try { const res = await fetch("https://api.deepseek.com/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` }, body: JSON.stringify({ model: "deepseek-chat", messages: [ {role: "system", content: prompt}, {role: "user", content: text} ], response_format: { type: "json_object" } }) }); const rawData = await res.json(); if (!res.ok) throw new Error(rawData.error.message); const r = JSON.parse(rawData.choices[0].message.content); resetForm(); setFormValues(r); recalcTimes(); showForm(); } catch (e) { alert("❌ 识别出错: " + e.message); } finally { btn.innerHTML = "✨ AI 识别"; btn.disabled = false; loader.style.display = "none"; } };
-        function setFormValues(d) { const set = (k, v) => { const el=document.getElementById('f_'+k); if(el) el.value = v!==undefined?v:''; }; set('date',d.date); set('dep',d.dep); set('arr',d.arr); set('cat',d.category); set('crew',d.crew); set('flight_no',d.flight_no); set('ac_type',d.ac_type); set('landings_day',d.landings_day); set('landings_night',d.landings_night); set('block_off',d.time_off||d.block_off); set('takeoff',d.time_takeoff||d.takeoff); set('landing',d.time_landing||d.landing); set('block_on',d.time_on||d.block_on); set('air',d.air_time); set('total_time',d.total_time); set('night1',d.night1); set('night2',d.night2); set('overnight',d.overnight||'无'); set('overnight_city',d.overnight_city); set('overnight_days',d.overnight_days); set('special',d.special_airport); set('holiday',d.holiday); set('block_days',d.block_days); set('meal_dom',d.crew_meal_dom); set('meal_int',d.crew_meal_int); }
-        function resetForm() { document.getElementById('edit_doc_id').value=''; document.querySelectorAll('.edit-form input, .edit-form select').forEach(i=>i.value=''); document.getElementById('f_block_days').value=''; document.getElementById('f_landings_day').value = '0'; document.getElementById('f_landings_night').value = '0'; document.getElementById('f_ac_type').value = 'G650ER'; document.getElementById('hint_air').innerText=''; document.getElementById('hint_total').innerText=''; }
-        window.closeForm = () => document.getElementById('editForm').style.display='none'; function showForm() { document.getElementById('editForm').style.display='block'; document.getElementById('editForm').scrollIntoView({behavior:"smooth"}); } window.editRecord = (id) => { const rec = allRecords.find(r=>r.id===id); if(rec){ resetForm(); document.getElementById('edit_doc_id').value=id; setFormValues(rec); recalcTimes(); showForm(); } };
-        window.saveRecord = async () => { try { if (!currentUser) throw new Error("请先登录"); const getV = (k) => document.getElementById('f_'+k).value.trim(); const getN = (k) => parseFloat(getV(k))||0; const getI = (k) => parseInt(getV(k))||0; if (!getV('date')) throw new Error("日期为空"); const d = { date: getV('date'), dep: getV('dep'), arr: getV('arr'), category: getV('cat'), crew: getV('crew'), flight_no: getV('flight_no'), ac_type: getV('ac_type'), landings_day: getI('landings_day'), landings_night: getI('landings_night'), block_off: getV('block_off'), takeoff: getV('takeoff'), landing: getV('landing'), block_on: getV('block_on'), air_time: getN('air'), total_time: getN('total_time'), block_days: getN('block_days'), night1: getN('night1'), night2: getN('night2'), overnight: getV('overnight'), overnight_city: getV('overnight_city')||getV('arr'), overnight_days: getN('overnight_days'), special_airport: getN('special'), holiday: getN('holiday'), crew_meal_dom: getN('meal_dom'), crew_meal_int: getN('meal_int'), timestamp: new Date() }; const did = document.getElementById('edit_doc_id').value; if(d.overnight.includes('无过夜') && d.arr.includes('沈阳')) { const prev = new Date(d.date); prev.setDate(prev.getDate()-1); const pStr = prev.toISOString().split('T')[0]; if(!calendarData[pStr]) await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, pStr), { type: "国内有过夜", city: d.dep }, {merge:true}); } if(did) await updateDoc(doc(db, `users/${currentUser.uid}/logs`, did), d); else await addDoc(collection(db, `users/${currentUser.uid}/logs`), d); closeForm(); } catch(e){ alert(e.message); } };
-        window.deleteItem = async (id) => { if(confirm("删除?")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
+        window.processAI = async (base64Image = null) => { 
+            const text = document.getElementById('ocrInput').value.trim(); 
+            const apiKey = document.getElementById('innerApiKey').value.trim(); 
+            const isUTC = document.getElementById('isUTC').checked; 
+            if (!base64Image && !text) return alert("请输入文本或上传图片"); 
+            if (!apiKey) return alert("请输入 API Key");
+            
+            localStorage.setItem("openai_key", apiKey); 
+            const btn = document.getElementById('aiBtn'); 
+            const loader = document.getElementById('aiLoading'); 
+            btn.innerHTML = "⏳ AI 正在解析..."; 
+            btn.disabled = true; 
+            loader.style.display = "flex"; 
+            
+            let timeInstruction = isUTC ? "识别到的所有时间点均为 UTC 时间，请自动将其转换为北京时间（UTC+8）。" : "时间保持原样。"; 
+            const prompt = `请分析飞行记录并返回 JSON。${timeInstruction} 规则：ac_type为"G650ER"或"CL850"。识别日间/夜间起落。节假日holiday字段。滑行天数block_days。国内飞行计费hours为0。字段: date, dep, arr, category, crew, flight_no, ac_type, landings_day, landings_night, time_off, time_takeoff, time_landing, time_on, night1, night2, overnight, overnight_city, overnight_days, special_airport, holiday(int), block_days(int), crew_meal_dom, crew_meal_int.`; 
+            
+            // 构建消息体
+            let messages = [{ role: "system", content: prompt }];
+            if (base64Image) {
+                messages.push({
+                    role: "user",
+                    content: [
+                        { type: "text", text: "请从这张飞行任务书图片中提取数据。" },
+                        { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
+                    ]
+                });
+            } else {
+                messages.push({ role: "user", content: text });
+            }
 
-        // === 本地 OCR 处理逻辑 ===
+            try { 
+                const res = await fetch("https://api.deepseek.com/chat/completions", { 
+                    method: "POST", 
+                    headers: { 
+                        "Content-Type": "application/json", 
+                        "Authorization": `Bearer ${apiKey}` 
+                    }, 
+                    body: JSON.stringify({ 
+                        model: "deepseek-chat", 
+                        messages: messages, 
+                        response_format: { type: "json_object" } 
+                    }) 
+                }); 
+                const rawData = await res.json(); 
+                if (!res.ok) throw new Error(rawData.error ? rawData.error.message : "请求失败"); 
+                const r = JSON.parse(rawData.choices[0].message.content); 
+                resetForm(); setFormValues(r); recalcTimes(); showForm(); 
+            } catch (e) { 
+                alert("❌ AI 识别出错: " + e.message + "\n注：如果提示不支持图片，说明当前 DeepSeek API 尚未开启 Vision 功能。"); 
+            } finally { 
+                btn.innerHTML = "✨ AI 识别"; 
+                btn.disabled = false; 
+                loader.style.display = "none"; 
+            } 
+        };
+
         window.handleMissionUpload = async (event) => {
             const file = event.target.files[0];
             if (!file) return;
             
             const loader = document.getElementById('aiLoading');
-            const textarea = document.getElementById('ocrInput');
-            const btn = document.getElementById('aiBtn');
-            
-            // 显示加载状态
             loader.style.display = "flex";
-            btn.disabled = true;
-            const originalPlaceholder = textarea.placeholder;
-            textarea.value = "";
-            textarea.placeholder = "正在进行本地 OCR 识别，请稍候（首次使用可能需要下载模型数据）...";
             
-            try {
-                // 使用 Tesseract.js 进行识别 (支持中文简体和英文)
-                const { data: { text } } = await Tesseract.recognize(file, 'chi_sim+eng', {
-                    logger: m => {
-                        if(m.status === 'recognizing text') {
-                            textarea.placeholder = `正在识别: ${Math.round(m.progress * 100)}%`;
-                        }
-                    }
-                });
-                
-                if (!text || text.trim().length === 0) {
-                    throw new Error("未能识别出文字，请确保图片清晰且光线充足。");
-                }
-                
-                textarea.value = text;
-                textarea.placeholder = originalPlaceholder;
-                
-                // 识别完成后，自动调用现有的 DeepSeek AI 逻辑进行语义分析
-                setTimeout(() => {
-                    window.processAI();
-                }, 500);
-
-            } catch (e) {
-                alert("OCR 识别出错: " + e.message);
-                textarea.placeholder = originalPlaceholder;
-            } finally {
-                loader.style.display = "none";
-                btn.disabled = false;
-                // 清空 input 以允许重复上传同一张图
-                event.target.value = "";
-            }
+            // 图片前端压缩逻辑 (防止 Base64 过大)
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const max_size = 1200; // 限制最大长边
+                    if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
+                    else { if (height > max_size) { width *= max_size / height; height = max_size; } }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+                    
+                    // 直接调用 AI 识别
+                    window.processAI(base64);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            event.target.value = ""; // 重置 input
         };
+
+        function setFormValues(d) { const set = (k, v) => { const el=document.getElementById('f_'+k); if(el) el.value = v!==undefined?v:''; }; set('date',d.date); set('dep',d.dep); set('arr',d.arr); set('cat',d.category); set('crew',d.crew); set('flight_no',d.flight_no); set('ac_type',d.ac_type); set('landings_day',d.landings_day); set('landings_night',d.landings_night); set('block_off',d.time_off||d.block_off); set('takeoff',d.time_takeoff||d.takeoff); set('landing',d.time_landing||d.landing); set('block_on',d.time_on||d.block_on); set('air',d.air_time); set('total_time',d.total_time); set('night1',d.night1); set('night2',d.night2); set('overnight',d.overnight||'无'); set('overnight_city',d.overnight_city); set('overnight_days',d.overnight_days); set('special',d.special_airport); set('holiday',d.holiday); set('block_days',d.block_days); set('meal_dom',d.crew_meal_dom); set('meal_int',d.crew_meal_int); }
 
         // === 响应式日历 (月视图 + 详情卡) ===
         window.selectDate = (dateStr, flights, statusText, statusClass) => {
