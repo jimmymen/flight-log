@@ -713,7 +713,59 @@ ${timeInstruction}
             set('meal_dom',d.crew_meal_dom); set('meal_int',d.crew_meal_int); 
         };
 
-        // === 响应式日历 (月视图 + 详情卡) ===
+        window.handleMissionUpload = async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const loader = document.getElementById('aiLoading');
+            loader.style.display = "flex";
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width, height = img.height, max_size = 1200;
+                    if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
+                    else { if (height > max_size) { width *= max_size / height; height = max_size; } }
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+                    window.processAI(base64);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            event.target.value = "";
+        };
+
+        window.saveRecord = async () => { 
+            try { 
+                if (!currentUser) throw new Error("请先登录"); 
+                const getV = (k) => document.getElementById('f_'+k).value.trim(); 
+                const getN = (k) => parseFloat(getV(k))||0; 
+                const getI = (k) => parseInt(getV(k))||0; 
+                if (!getV('date')) throw new Error("日期为空"); 
+                const d = { date: getV('date'), dep: getV('dep'), arr: getV('arr'), category: getV('cat'), crew: getV('crew'), flight_no: getV('flight_no'), ac_type: getV('ac_type'), landings_day: getI('landings_day'), landings_night: getI('landings_night'), block_off: getV('block_off'), takeoff: getV('takeoff'), landing: getV('landing'), block_on: getV('block_on'), air_time: getN('air'), total_time: getN('total_time'), block_days: getN('block_days'), night1: getN('night1'), night2: getN('night2'), overnight: getV('overnight'), overnight_city: getV('overnight_city')||getV('arr'), overnight_days: getN('overnight_days'), special_airport: getN('special'), holiday: getN('holiday'), crew_meal_dom: getN('meal_dom'), crew_meal_int: getN('meal_int'), timestamp: new Date() }; 
+                const did = document.getElementById('edit_doc_id').value; 
+                if(did) await updateDoc(doc(db, `users/${currentUser.uid}/logs`, did), d); 
+                else await addDoc(collection(db, `users/${currentUser.uid}/logs`), d); 
+                window.closeForm(); 
+            } catch(e){ alert(e.message); } 
+        };
+
+        window.deleteItem = async (id) => { if(confirm("删除记录?")) await deleteDoc(doc(db, `users/${currentUser.uid}/logs`, id)); };
+
+        window.renderList = () => {
+            const grid = document.getElementById('logList'); if(!grid) return; grid.innerHTML = '';
+            const mStr = document.getElementById('reportMonth').value;
+            const filtered = allRecords.filter(r => r.date.startsWith(mStr));
+            filtered.forEach(r => {
+                const card = document.createElement('div');
+                card.className = 'log-item';
+                card.innerHTML = `<div style="flex:1"><div style="font-weight:bold">${r.date} ${r.dep}-${r.arr}</div><div style="font-size:0.8rem;color:#64748b">${r.ac_type} · ${r.flight_no} · ${r.total_time}h</div></div><div style="display:flex;gap:10px;"><button class="btn" style="padding:4px 8px;font-size:0.8rem;background:#f1f5f9" onclick="editRecord('${r.id}')">编辑</button><button class="btn" style="padding:4px 8px;font-size:0.8rem;background:#fee2e2;color:#ef4444" onclick="deleteItem('${r.id}')">删</button></div>`;
+                grid.appendChild(card);
+            });
+        };
         window.selectDate = (dateStr, flights, statusText, statusClass) => {
             document.querySelectorAll('.cal-day').forEach(el => el.classList.remove('selected-mobile'));
             const cell = document.getElementById(`cell-${dateStr}`);
