@@ -230,6 +230,11 @@
             </div>
             <div class="form-group"><label>职级</label><select id="set_rank" style="width:100%; padding:10px; border-radius:8px; border:1px solid #cbd5e1;"><option value="教员">教员</option><option value="机长" selected>机长</option><option value="副驾驶">副驾驶</option></select></div>
             <div class="form-group" style="margin-top:10px;"><label>英语等级</label><select id="set_icao" style="width:100%; padding:10px; border-radius:8px; border:1px solid #cbd5e1;"><option value="signed" selected>已签署 (ICAO4)</option><option value="unsigned">未签署</option></select></div>
+            <div style="background:#fef3c7; padding:10px; border-radius:8px; margin-top:15px; border:1px solid #fcd34d;">
+                <p style="font-size:0.75rem; color:#92400e; margin-bottom:5px;"><b>🤖 AI 接口设置 (支持硅基流动)</b></p>
+                <div class="form-group"><label>API 接口地址</label><input type="text" id="set_api_url" placeholder="https://api.siliconflow.cn/v1/chat/completions" style="font-size:0.8rem;"></div>
+                <div class="form-group"><label>模型名称 (带 Vision 功能)</label><input type="text" id="set_api_model" placeholder="Pro/Qwen/Qwen2-VL-7B-Instruct" style="font-size:0.8rem;"></div>
+            </div>
             <button class="btn btn-primary" style="width:100%; margin-top:20px; padding:12px;" onclick="saveSettings()">保存配置</button>
         </div>
     </div>
@@ -399,8 +404,24 @@
 
         window.loginWithGoogle = async () => { try { await signInWithPopup(auth, provider); } catch (e) { alert("登录失败: " + e.message); } };
         window.doLogout = async () => { await signOut(auth); window.location.reload(); };
-        window.saveSettings = () => { localStorage.setItem('user_rank', document.getElementById('set_rank').value); localStorage.setItem('user_icao', document.getElementById('set_icao').value); localStorage.setItem('user_cum_income', document.getElementById('set_cum_income').value); localStorage.setItem('user_cum_tax', document.getElementById('set_cum_tax').value); document.getElementById('settingsModal').style.display = 'none'; refreshAll(); };
-        const initSettings = () => { document.getElementById('set_rank').value = localStorage.getItem('user_rank') || '机长'; document.getElementById('set_icao').value = localStorage.getItem('user_icao') || 'signed'; document.getElementById('set_cum_income').value = localStorage.getItem('user_cum_income') || '942692'; document.getElementById('set_cum_tax').value = localStorage.getItem('user_cum_tax') || '244022'; };
+        window.saveSettings = () => { 
+            localStorage.setItem('user_rank', document.getElementById('set_rank').value); 
+            localStorage.setItem('user_icao', document.getElementById('set_icao').value); 
+            localStorage.setItem('user_cum_income', document.getElementById('set_cum_income').value); 
+            localStorage.setItem('user_cum_tax', document.getElementById('set_cum_tax').value); 
+            localStorage.setItem('api_url', document.getElementById('set_api_url').value);
+            localStorage.setItem('api_model', document.getElementById('set_api_model').value);
+            document.getElementById('settingsModal').style.display = 'none'; 
+            refreshAll(); 
+        };
+        const initSettings = () => { 
+            document.getElementById('set_rank').value = localStorage.getItem('user_rank') || '机长'; 
+            document.getElementById('set_icao').value = localStorage.getItem('user_icao') || 'signed'; 
+            document.getElementById('set_cum_income').value = localStorage.getItem('user_cum_income') || '942692'; 
+            document.getElementById('set_cum_tax').value = localStorage.getItem('user_cum_tax') || '244022'; 
+            document.getElementById('set_api_url').value = localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions';
+            document.getElementById('set_api_model').value = localStorage.getItem('api_model') || 'Pro/Qwen/Qwen2-VL-7B-Instruct';
+        };
 
         onAuthStateChanged(auth, (user) => { 
             if (user) { 
@@ -567,6 +588,9 @@
             const text = document.getElementById('ocrInput').value.trim(); 
             const apiKey = document.getElementById('innerApiKey').value.trim(); 
             const isUTC = document.getElementById('isUTC').checked; 
+            const apiUrl = document.getElementById('set_api_url').value || 'https://api.siliconflow.cn/v1/chat/completions';
+            const apiModel = document.getElementById('set_api_model').value || 'Pro/Qwen/Qwen2-VL-7B-Instruct';
+
             if (!base64Image && !text) return alert("请输入文本或上传图片"); 
             if (!apiKey) return alert("请输入 API Key");
             
@@ -578,15 +602,31 @@
             loader.style.display = "flex"; 
             
             let timeInstruction = isUTC ? "识别到的所有时间点均为 UTC 时间，请自动将其转换为北京时间（UTC+8）。" : "时间保持原样。"; 
-            const prompt = `请分析飞行记录并返回 JSON。${timeInstruction} 规则：ac_type为"G650ER"或"CL850"。识别日间/夜间起落。节假日holiday字段。滑行天数block_days。国内飞行计费hours为0。字段: date, dep, arr, category, crew, flight_no, ac_type, landings_day, landings_night, time_off, time_takeoff, time_landing, time_on, night1, night2, overnight, overnight_city, overnight_days, special_airport, holiday(int), block_days(int), crew_meal_dom, crew_meal_int.`; 
+            const prompt = `你是一个飞行日志解析助手。请从用户提供的信息中提取飞行记录并返回纯 JSON 对象。
+${timeInstruction} 
+字段要求：
+- date: YYYY-MM-DD
+- dep/arr: 城市或机场名
+- category: 国内/港澳台/亚洲国际/洲际
+- ac_type: G650ER/CL850
+- landings_day/landings_night: 数字
+- time_off/time_takeoff/time_landing/time_on: HH:mm
+- air_time/total_time: 数字
+- night1/night2: 18:30-24:00和24:00+的夜航小时
+- overnight: 无/国内有过夜/国内无过夜/国际有过夜/国际无过夜
+- overnight_city: 城市名
+- holiday: 0或1 (如果是法定节假日则为1)
+- block_days: 1 (通常为1)
+- crew_meal_dom/crew_meal_int: 机组餐份数
+
+注意：只返回 JSON，不要包含任何解释文字。`; 
             
-            // 构建消息体
             let messages = [{ role: "system", content: prompt }];
             if (base64Image) {
                 messages.push({
                     role: "user",
                     content: [
-                        { type: "text", text: "请从这张飞行任务书图片中提取数据。" },
+                        { type: "text", text: "请从这张飞行任务书图片中提取数据，以 JSON 格式返回。" },
                         { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
                     ]
                 });
@@ -595,24 +635,31 @@
             }
 
             try { 
-                const res = await fetch("https://api.deepseek.com/chat/completions", { 
+                const res = await fetch(apiUrl, { 
                     method: "POST", 
                     headers: { 
                         "Content-Type": "application/json", 
                         "Authorization": `Bearer ${apiKey}` 
                     }, 
                     body: JSON.stringify({ 
-                        model: "deepseek-chat", 
-                        messages: messages, 
-                        response_format: { type: "json_object" } 
+                        model: apiModel, 
+                        messages: messages,
+                        temperature: 0.1
                     }) 
                 }); 
                 const rawData = await res.json(); 
                 if (!res.ok) throw new Error(rawData.error ? rawData.error.message : "请求失败"); 
-                const r = JSON.parse(rawData.choices[0].message.content); 
+                
+                // 尝试解析 JSON (因为部分 VL 模型可能返回带 Markdown 代码块的文字)
+                let content = rawData.choices[0].message.content;
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                if (jsonMatch) content = jsonMatch[0];
+                
+                const r = JSON.parse(content); 
                 resetForm(); setFormValues(r); recalcTimes(); showForm(); 
             } catch (e) { 
-                alert("❌ AI 识别出错: " + e.message + "\n注：如果提示不支持图片，说明当前 DeepSeek API 尚未开启 Vision 功能。"); 
+                alert("❌ AI 识别出错: " + e.message); 
+                console.error(e);
             } finally { 
                 btn.innerHTML = "✨ AI 识别"; 
                 btn.disabled = false; 
