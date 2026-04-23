@@ -674,13 +674,23 @@
                 const jsonMatch = content.match(/\{[\s\S]*\}/);
                 if (jsonMatch) content = jsonMatch[0];
                 
-                const r = JSON.parse(content); 
+                let r;
+                try {
+                    r = JSON.parse(content); 
+                } catch (parseErr) {
+                    throw new Error("AI 返回的 JSON 格式不正确，请尝试重新识别");
+                }
+
                 window.resetForm(); 
                 window.setFormValues(r); 
                 window.recalcTimes(); 
                 window.showForm(); 
             } catch (e) { 
-                alert("❌ AI 识别出错: " + e.message); 
+                let msg = e.message;
+                if (e instanceof TypeError && (msg.includes('fetch') || msg.includes('NetworkError'))) {
+                    msg = "网络请求被拦截或无法连接。请检查：\n1. 联网状态\n2. API 地址是否正确\n3. 是否被浏览器安全策略(CORS)拦截";
+                }
+                alert(`❌ AI 识别出错\n\n详情: ${msg}\n\n接口: ${apiUrl}\n模型: ${apiModel}`); 
                 console.error("AI Error Details:", e);
             } finally { 
                 btn.innerHTML = "✨ AI 识别"; 
@@ -751,13 +761,13 @@
                 img.onload = () => {
                     try {
                         const canvas = document.createElement('canvas');
-                        let width = img.width, height = img.height, max_size = 1200;
+                        let width = img.width, height = img.height, max_size = 1000;
                         if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
                         else { if (height > max_size) { width *= max_size / height; height = max_size; } }
                         canvas.width = width; canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        const base64Data = canvas.toDataURL('image/jpeg', 0.8);
+                        const base64Data = canvas.toDataURL('image/jpeg', 0.7);
                         if (!base64Data || base64Data.length < 100) {
                             throw new Error("图片压缩失败，请重试或更换图片");
                         }
