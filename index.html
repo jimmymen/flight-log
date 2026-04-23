@@ -591,8 +591,8 @@
             const text = document.getElementById('ocrInput').value.trim(); 
             const apiKey = document.getElementById('innerApiKey').value.trim(); 
             const isUTC = document.getElementById('isUTC').checked; 
-            const apiUrl = document.getElementById('set_api_url').value || 'https://api.siliconflow.cn/v1/chat/completions';
-            const apiModel = document.getElementById('set_api_model').value || 'Pro/Qwen/Qwen2-VL-7B-Instruct';
+            const apiUrl = (document.getElementById('set_api_url').value || 'https://api.siliconflow.cn/v1/chat/completions').trim();
+            const apiModel = (document.getElementById('set_api_model').value || 'Pro/Qwen/Qwen2-VL-7B-Instruct').trim();
 
             if (!base64Image && !text) return alert("请输入文本或上传图片"); 
             if (!apiKey) return alert("请输入 API Key");
@@ -648,12 +648,28 @@
                     body: JSON.stringify({ 
                         model: apiModel, 
                         messages: messages,
-                        temperature: 0.1
+                        temperature: 0.1,
+                        stream: false
                     }) 
                 }); 
-                const rawData = await res.json(); 
-                if (!res.ok) throw new Error(rawData.error ? rawData.error.message : "请求失败"); 
                 
+                let rawData;
+                const responseText = await res.text();
+                try {
+                    rawData = JSON.parse(responseText);
+                } catch (e) {
+                    throw new Error(`服务器响应非 JSON 格式 (状态码: ${res.status})`);
+                }
+
+                if (!res.ok) {
+                    const detail = rawData.message || (rawData.error && rawData.error.message) || responseText.substring(0, 50);
+                    throw new Error(`${detail} (状态码: ${res.status})`); 
+                }
+                
+                if (!rawData.choices || !rawData.choices[0]) {
+                    throw new Error("API 返回结果为空，请检查模型名称或余额");
+                }
+
                 let content = rawData.choices[0].message.content;
                 const jsonMatch = content.match(/\{[\s\S]*\}/);
                 if (jsonMatch) content = jsonMatch[0];
@@ -665,7 +681,7 @@
                 window.showForm(); 
             } catch (e) { 
                 alert("❌ AI 识别出错: " + e.message); 
-                console.error(e);
+                console.error("AI Error Details:", e);
             } finally { 
                 btn.innerHTML = "✨ AI 识别"; 
                 btn.disabled = false; 
@@ -725,21 +741,36 @@
         window.handleMissionUpload = async (event) => {
             const file = event.target.files[0];
             if (!file) return;
+            
             const loader = document.getElementById('aiLoading');
             loader.style.display = "flex";
+            
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width, height = img.height, max_size = 1200;
-                    if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
-                    else { if (height > max_size) { width *= max_size / height; height = max_size; } }
-                    canvas.width = width; canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
-                    window.processAI(base64);
+                    try {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width, height = img.height, max_size = 1200;
+                        if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
+                        else { if (height > max_size) { width *= max_size / height; height = max_size; } }
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const base64Data = canvas.toDataURL('image/jpeg', 0.8);
+                        if (!base64Data || base64Data.length < 100) {
+                            throw new Error("图片压缩失败，请重试或更换图片");
+                        }
+                        const base64 = base64Data.split(',')[1];
+                        window.processAI(base64);
+                    } catch (err) {
+                        alert("处理图片失败: " + err.message);
+                        loader.style.display = "none";
+                    }
+                };
+                img.onerror = () => {
+                    alert("无法读取图片文件，请重试");
+                    loader.style.display = "none";
                 };
                 img.src = e.target.result;
             };
