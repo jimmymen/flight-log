@@ -276,7 +276,7 @@
         </div>
 
         <section class="card">
-            <div class="card-header"><h2>🛡️ 合规与资质监控</h2><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:0.75rem; color:#64748b;">数据实时同步</span><button class="btn" style="background:#fff7ed; color:#c2410c; border:1px solid #ffedd5; font-size:0.75rem; padding:4px 10px;" onclick="copyNightFlights()" title="复制国内夜航日期+城市">📋 复制夜航</button></div></div>
+            <div class="card-header"><h2>🛡️ 合规与资质监控</h2><span style="font-size:0.75rem; color:#64748b;">数据实时同步</span></div>
             <div class="card-body"><div class="comp-grid" id="complianceDashboard"><div style="text-align:center;color:#94a3b8;padding:10px;">加载中...</div></div></div>
         </section>
 
@@ -473,7 +473,7 @@
             
             return `
                 <div class="q-box">
-                    <div class="q-box-title">${isNightOnly ? '🌙 最近夜航' : '🛬 最近起落'}</div>
+                    <div class="q-box-title">${isNightOnly ? '🌙 最近夜航' : '🛬 最近起落'}${isNightOnly ? `<button style="background:#fff7ed;color:#c2410c;border:1px solid #ffedd5;font-size:0.6rem;padding:1px 5px;border-radius:3px;cursor:pointer;float:right" onclick="event.stopPropagation();copyNightFlights('${acType}')" title="复制${acType}最近3个夜航">📋</button>`:''}</div>
                     <div class="q-history-list">${listHtml}</div>
                     <div class="q-expiry-tag" style="background:${statusColor}15; border:1px solid ${statusColor}40;">
                         <span class="q-expiry-date" style="color:${statusColor}">${expiryStr}</span>
@@ -976,30 +976,28 @@
                 <div class="m-card"><div class="m-card-title"><span>🌙 夜航与特殊</span></div><div class="m-grid"><div class="m-row" style="grid-column:1/-1"><span class="m-label">国内夜航(计薪)</span><span class="m-val" style="color:#d97706">${s.n1_dom.toFixed(1)}h (前) / ${s.n2_dom.toFixed(1)}h (后)</span></div><div class="m-row"><span class="m-label">跨零点</span><span class="m-val" style="color:#6b21a8">${s.mid_cnt}次</span></div><div class="m-row"><span class="m-label">特殊/节假日</span><span class="m-val">${s.spec} / ${s.hol}</span></div></div></div>`;
         };
 
-        window.copyNightFlights = () => {
+        window.copyNightFlights = (acType) => {
             const nightFlights = allRecords
-                .filter(r => {
-                    const n1 = parseFloat(r.night1) || 0;
-                    const n2 = parseFloat(r.night2) || 0;
-                    return (n1 > 0 || n2 > 0) && r.category === '国内';
-                })
-                .sort((a, b) => a.date.localeCompare(b.date))
+                .filter(r => r.ac_type === acType && (parseInt(r.landings_night) || 0) > 0)
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .slice(0, 3)
+                .reverse()
                 .map(r => {
                     const parts = r.date.split('-');
                     const md = parseInt(parts[1]) + '.' + parseInt(parts[2]);
                     const city = r.overnight_city || r.arr || '';
                     return md + ' ' + city;
                 });
-            if (!nightFlights.length) { alert('本月无国内夜航记录'); return; }
+            if (!nightFlights.length) { alert(acType + ' 无夜航记录'); return; }
             const text = nightFlights.join('  ');
             navigator.clipboard.writeText(text).then(() => {
-                alert('已复制夜航：' + text);
+                alert('已复制 ' + acType + ' 夜航：' + text);
             }).catch(() => {
                 const ta = document.createElement('textarea');
                 ta.value = text; document.body.appendChild(ta);
                 ta.select(); document.execCommand('copy');
                 document.body.removeChild(ta);
-                alert('已复制夜航：' + text);
+                alert('已复制 ' + acType + ' 夜航：' + text);
             });
         };
 
