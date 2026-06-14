@@ -473,7 +473,7 @@
             
             return `
                 <div class="q-box">
-                    <div class="q-box-title">${isNightOnly ? '🌙 最近夜航' : '🛬 最近起落'}</div>
+                    <div class="q-box-title">${isNightOnly ? '🌙 最近夜航' : '🛬 最近起落'}${isNightOnly ? `<button style="background:#fff7ed;color:#c2410c;border:1px solid #ffedd5;font-size:0.6rem;padding:1px 5px;border-radius:3px;cursor:pointer;float:right" onclick="event.stopPropagation();copyNightFlights('${acType}')" title="复制${acType}最近3个夜航">📋</button>`:''}</div>
                     <div class="q-history-list">${listHtml}</div>
                     <div class="q-expiry-tag" style="background:${statusColor}15; border:1px solid ${statusColor}40;">
                         <span class="q-expiry-date" style="color:${statusColor}">${expiryStr}</span>
@@ -974,6 +974,31 @@
                 <div class="m-card"><div class="m-card-title"><span>🛫 飞行统计</span><span>(空时/滑行)</span></div><div class="m-grid"><div class="m-row"><span class="m-label">国内</span><span class="m-val">${s.d_a.toFixed(1)}h / ${s.d_b}天</span></div><div class="m-row"><span class="m-label">港澳台</span><span class="m-val">${s.h_a.toFixed(1)}h / ${s.h_b}天</span></div><div class="m-row"><span class="m-label">亚洲</span><span class="m-val">${s.a_a.toFixed(1)}h / ${s.a_b}天</span></div><div class="m-row"><span class="m-label">洲际</span><span class="m-val">${s.i_a.toFixed(1)}h / ${s.i_b}天</span></div></div></div>
                 <div class="m-card"><div class="m-card-title"><span>💰 补贴统计</span></div><div class="m-grid"><div class="m-row"><span class="m-label">国内驻外</span><span class="m-val">${s.cal_dom_stay}天 / ${s.cal_dom_no}次</span></div><div class="m-row"><span class="m-label">国际驻外</span><span class="m-val">${s.cal_int_stay}天 / ${s.cal_int_no}次</span></div><div class="m-row"><span class="m-label">机组餐</span><span class="m-val">国${s.meal_d} / 外${s.meal_i}</span></div></div></div>
                 <div class="m-card"><div class="m-card-title"><span>🌙 夜航与特殊</span></div><div class="m-grid"><div class="m-row" style="grid-column:1/-1"><span class="m-label">国内夜航(计薪)</span><span class="m-val" style="color:#d97706">${s.n1_dom.toFixed(1)}h (前) / ${s.n2_dom.toFixed(1)}h (后)</span></div><div class="m-row"><span class="m-label">跨零点</span><span class="m-val" style="color:#6b21a8">${s.mid_cnt}次</span></div><div class="m-row"><span class="m-label">特殊/节假日</span><span class="m-val">${s.spec} / ${s.hol}</span></div></div></div>`;
+        };
+
+        window.copyNightFlights = (acType) => {
+            const nightFlights = allRecords
+                .filter(r => r.ac_type === acType && (parseInt(r.landings_night) || 0) > 0)
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .slice(0, 3)
+                .reverse()
+                .map(r => {
+                    const parts = r.date.split('-');
+                    const md = parseInt(parts[1]) + '.' + parseInt(parts[2]);
+                    const city = r.overnight_city || r.arr || '';
+                    return md + ' ' + city;
+                });
+            if (!nightFlights.length) { alert(acType + ' 无夜航记录'); return; }
+            const text = nightFlights.join('  ');
+            navigator.clipboard.writeText(text).then(() => {
+                alert('已复制 ' + acType + ' 夜航：' + text);
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = text; document.body.appendChild(ta);
+                ta.select(); document.execCommand('copy');
+                document.body.removeChild(ta);
+                alert('已复制 ' + acType + ' 夜航：' + text);
+            });
         };
 
         window.renderList = () => {
