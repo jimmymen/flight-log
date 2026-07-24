@@ -839,9 +839,13 @@
                 if (!getV('date')) throw new Error("日期为空"); 
                 const d = { date: getV('date'), dep: getV('dep'), arr: getV('arr'), category: getV('cat'), crew: getV('crew'), flight_no: getV('flight_no'), ac_type: getV('ac_type'), landings_day: getI('landings_day'), landings_night: getI('landings_night'), block_off: getV('block_off'), takeoff: getV('takeoff'), landing: getV('landing'), block_on: getV('block_on'), air_time: getN('air'), total_time: getN('total_time'), block_days: getN('block_days'), night1: getN('night1'), night2: getN('night2'), overnight: getV('overnight'), overnight_city: getV('overnight_city')||getV('arr'), overnight_days: getN('overnight_days'), special_airport: getN('special'), holiday: getN('holiday'), crew_meal_dom: getN('meal_dom'), crew_meal_int: getN('meal_int'), timestamp: new Date() }; 
                 const did = document.getElementById('edit_doc_id').value; 
-                if(did) await updateDoc(doc(db, `users/${currentUser.uid}/logs`, did), d); 
-                else await addDoc(collection(db, `users/${currentUser.uid}/logs`), d); 
+                if(did) { await updateDoc(doc(db, `users/${currentUser.uid}/logs`, did), d); d.id = did; } 
+                else { const ref = await addDoc(collection(db, `users/${currentUser.uid}/logs`), d); d.id = ref.id; }
+                // 立即更新本地数据并刷新UI，不等onSnapshot回调
+                const idx = allRecords.findIndex(r => r.id === d.id);
+                if (idx >= 0) allRecords[idx] = d; else allRecords.unshift(d);
                 window.closeForm(); 
+                refreshAll();
             } catch(e){ alert(e.message); } 
         };
 
