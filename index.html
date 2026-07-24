@@ -587,6 +587,46 @@
         window.saveCalendarStatus = async (type) => { if(currentUser && currentModalDate) { const city = document.getElementById('modalCityInput').value.trim(); await setDoc(doc(db, `users/${currentUser.uid}/calendar_status`, currentModalDate), type ? { type: type, city: city } : { type: null, city: null }, { merge: true }); closeStatusModal(); } };
         window.recalcTimes = () => { const t_tk_el = document.getElementById('f_takeoff'); if (!t_tk_el) return; const t_tk = t_tk_el.value; const t_ld = document.getElementById('f_landing').value; const t_off = document.getElementById('f_block_off').value; const t_on = document.getElementById('f_block_on').value; let air = calculateDuration(t_tk, t_ld); let total = calculateDuration(t_off, t_on); if(air > 0) document.getElementById('f_air').value = air; if(total > 0) document.getElementById('f_total_time').value = total; document.getElementById('hint_air').innerText = decimalToHM(parseFloat(document.getElementById('f_air').value)); document.getElementById('hint_total').innerText = decimalToHM(parseFloat(document.getElementById('f_total_time').value)); if(t_tk && t_ld) { const n = getNightDuration(t_tk, t_ld); document.getElementById('f_night1').value = n.n1; document.getElementById('f_night2').value = n.n2; } };
 
+        // === 时间标准化：12h→24h + UTC→北京时间 ===
+        window.normalizeTime = (timeStr, isUTC, category) => {
+            if (!timeStr || typeof timeStr !== 'string') return timeStr;
+            let t = timeStr.trim();
+            // 1. 12小时制 → 24小时制
+            // 处理 "2:30 PM" / "02:30 PM" / "下午2:30" / "2:30下午" 等格式
+            let hour = 0, min = 0, isPM = false, isAM = false;
+            // 匹配 "上午/下午" 中文标记
+            const cnAM = /上午|早上|凌晨/i;
+            const cnPM = /下午|晚上|傍晚/i;
+            // 检测各种格式
+            let match;
+            if ((match = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)/i))) {
+                hour = parseInt(match[1]); min = parseInt(match[2]);
+                isPM = /PM/i.test(match[3]); isAM = /AM/i.test(match[3]);
+                t = ''; // 重建
+            } else if (cnAM.test(t) || cnPM.test(t)) {
+                isPM = cnPM.test(t); isAM = cnAM.test(t);
+                t = t.replace(/上午|下午|早上|晚上|凌晨|傍晚/g, '').trim();
+            } else if ((match = t.match(/(\d{1,2}):(\d{2})/))) {
+                hour = parseInt(match[1]); min = parseInt(match[2]);
+                t = ''; // 已解析
+            }
+            if (t && !match) {
+                // 再次尝试匹配纯数字时间
+                match = t.match(/(\d{1,2}):(\d{2})/);
+                if (match) { hour = parseInt(match[1]); min = parseInt(match[2]); }
+            }
+            // 应用AM/PM
+            if (isPM && hour < 12) hour += 12;
+            if (isAM && hour === 12) hour = 0;
+            // 2. UTC → 北京时间（仅国内航线）
+            if (isUTC && category === '国内') {
+                hour += 8;
+                if (hour >= 24) hour -= 24; // 跨天回绕，记在当天
+            }
+            // 3. 格式化输出
+            return String(hour).padStart(2, '0') + ':' + String(min).padStart(2, '0');
+        };
+
         window.processAI = async (base64Image = null) => { 
             const text = document.getElementById('ocrInput').value.trim(); 
             const apiKey = document.getElementById('innerApiKey').value.trim(); 
@@ -605,10 +645,8 @@
             loader.style.display = "flex"; 
             
             const prompt = `你是一个专业的飞行日志解析助手。请从图片或文本中提取飞行数据并返回纯 JSON。
-时区处理逻辑：
-- 任务书上的原始时间通常是 UTC。
-- 如果 category 为 "国内"，请务必将时间点增加 8 小时转换为北京时间返回。
-- 如果 category 为 "国际"、"亚洲国际" 或 "港澳台"，请保持 UTC 时间返回。
+时区处理规则：
+- 返回任务书上的原始时间，不要做任何时区转换（系统会自动处理）。
 
 字段要求：
 - date: YYYY-MM-DD
@@ -617,7 +655,7 @@
 - crew: 提取所有机组姓名，逗号分隔（如：李海鹏, 门翔宇）
 - flight_no: 提取航班号（如：B603V）
 - ac_type: G650ER/CL850
-- time_off/time_takeoff/time_landing/time_on: 24小时制 HH:mm
+- time_off/time_takeoff/time_landing/time_on: 任务书上的原始时间，保持原格式（系统自动转24小时制+时区）
 - landings_day/landings_night: 必须返回空字符串 ""
 - special_airport/holiday: 必须返回空字符串 ""
 - overnight/overnight_city: 必须返回空字符串 ""
@@ -731,13 +769,17 @@
         
         window.setFormValues = (d) => { 
             const set = (k, v) => { const el=document.getElementById('f_'+k); if(el) el.value = v!==undefined?v:''; }; 
-            set('date',d.date); set('dep',d.dep); set('arr',d.arr); set('cat',d.category); set('crew',d.crew); 
+            const isUTC = document.getElementById('isUTC').checked;
+            const cat = d.category || '';
+            set('date',d.date); set('dep',d.dep); set('arr',d.arr); set('cat',cat); set('crew',d.crew); 
             set('flight_no',d.flight_no); set('ac_type',d.ac_type); 
             set('landings_day', d.landings_day || ''); 
             set('landings_night', d.landings_night || ''); 
-            set('block_off',d.time_off||d.block_off); 
-            set('takeoff',d.time_takeoff||d.takeoff); set('landing',d.time_landing||d.landing); 
-            set('block_on',d.time_on||d.block_on); set('air',d.air_time); set('total_time',d.total_time); 
+            set('block_off', normalizeTime(d.time_off||d.block_off, isUTC, cat)); 
+            set('takeoff', normalizeTime(d.time_takeoff||d.takeoff, isUTC, cat)); 
+            set('landing', normalizeTime(d.time_landing||d.landing, isUTC, cat)); 
+            set('block_on', normalizeTime(d.time_on||d.block_on, isUTC, cat)); 
+            set('air',d.air_time); set('total_time',d.total_time); 
             set('night1',d.night1); set('night2',d.night2); 
             set('overnight', d.overnight || ''); 
             set('overnight_city', d.overnight_city || ''); 
