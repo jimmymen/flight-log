@@ -569,8 +569,12 @@ const initSettings = () => {
     document.getElementById('set_icao').value = userSettings.icao || localStorage.getItem('user_icao') || 'signed';
     document.getElementById('set_cum_income').value = userSettings.cum_income || localStorage.getItem('user_cum_income') || '942692';
     document.getElementById('set_cum_tax').value = userSettings.cum_tax || localStorage.getItem('user_cum_tax') || '244022';
-    document.getElementById('set_api_url').value = userSettings.api_url || localStorage.getItem('api_url') || 'https://ai.akile.ai/v1/chat/completions';
-    document.getElementById('set_api_model').value = userSettings.api_model || localStorage.getItem('api_model') || 'gpt-5.6-luna';
+    var apiUrl = userSettings.api_url || localStorage.getItem('api_url') || '';
+    if (!apiUrl || apiUrl.includes('siliconflow')) apiUrl = 'https://ai.akile.ai/v1/chat/completions';
+    document.getElementById('set_api_url').value = apiUrl;
+    var apiModel = userSettings.api_model || localStorage.getItem('api_model') || '';
+    if (!apiModel || apiModel.includes('Qwen')) apiModel = 'gpt-5.6-luna';
+    document.getElementById('set_api_model').value = apiModel;
     if (localStorage.getItem('openai_key')) document.getElementById('innerApiKey').value = localStorage.getItem('openai_key');
 };
 
