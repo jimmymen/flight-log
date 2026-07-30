@@ -211,6 +211,7 @@
         <div style="background:#fef3c7;padding:10px;border-radius:8px;margin-top:15px;border:1px solid #fcd34d">
             <p style="font-size:0.75rem;color:#92400e;margin-bottom:5px;font-weight:bold">🤖 AI 接口设置</p>
             <div class="form-group"><label>API 接口地址</label><input type="text" id="set_api_url" placeholder="https://api.siliconflow.cn/v1/chat/completions"></div>
+            <div class="form-group" style="margin-top:10px"><label>CORS 代理 (解决跨域)</label><input type="text" id="set_cors_proxy" placeholder="https://proxy.cors.sh/"></div>
             <div class="form-group"><label>模型名称</label><select id="set_api_model"><option value="gpt-5.6-luna">gpt-5.6-luna (图文·最便宜)</option><option value="gpt-5.4-mini">gpt-5.4-mini (图文·便宜)</option><option value="gpt-5.6-terra">gpt-5.6-terra (图文)</option><option value="gpt-5.6-sol">gpt-5.6-sol (图文·最强)</option><option value="gpt-5.5">gpt-5.5 (图文)</option><option value="gpt-5.4">gpt-5.4 (图文)</option><option value="codex-auto-review">codex-auto-review (图文)</option><option value="gpt-5.3-codex-spark">gpt-5.3-codex-spark (纯文本)</option></select></div>
         </div>
         <button class="btn btn-primary" style="width:100%;margin-top:20px;padding:12px" onclick="saveSettings()">保存配置</button>
@@ -484,7 +485,8 @@ async function pushToGist() {
             cum_income: localStorage.getItem('user_cum_income') || '942692',
             cum_tax: localStorage.getItem('user_cum_tax') || '244022',
             api_url: localStorage.getItem('api_url') || 'https://ai.akile.ai/v1/chat/completions',
-            api_model: localStorage.getItem('api_model') || 'gpt-5.6-luna'
+            api_model: localStorage.getItem('api_model') || 'gpt-5.6-luna',
+            cors_proxy: localStorage.getItem('cors_proxy') || 'https://proxy.cors.sh/'
         }
     };
     const dot = document.getElementById('syncDot');
@@ -575,6 +577,7 @@ const initSettings = () => {
     var apiModel = userSettings.api_model || localStorage.getItem('api_model') || '';
     if (!apiModel || apiModel.includes('Qwen')) apiModel = 'gpt-5.6-luna';
     document.getElementById('set_api_model').value = apiModel;
+    document.getElementById('set_cors_proxy').value = userSettings.cors_proxy || localStorage.getItem('cors_proxy') || 'https://proxy.cors.sh/';
     if (localStorage.getItem('openai_key')) document.getElementById('innerApiKey').value = localStorage.getItem('openai_key');
 };
 
@@ -585,13 +588,15 @@ window.saveSettings = () => {
     localStorage.setItem('user_cum_tax', document.getElementById('set_cum_tax').value);
     localStorage.setItem('api_url', document.getElementById('set_api_url').value);
     localStorage.setItem('api_model', document.getElementById('set_api_model').value);
+    localStorage.setItem('cors_proxy', document.getElementById('set_cors_proxy').value);
     const userSettings = {
         rank: document.getElementById('set_rank').value,
         icao: document.getElementById('set_icao').value,
         cum_income: document.getElementById('set_cum_income').value,
         cum_tax: document.getElementById('set_cum_tax').value,
         api_url: document.getElementById('set_api_url').value,
-        api_model: document.getElementById('set_api_model').value
+        api_model: document.getElementById('set_api_model').value,
+        cors_proxy: document.getElementById('set_cors_proxy').value
     };
     localStorage.setItem('fl_settings_' + currentUser, JSON.stringify(userSettings));
     document.getElementById('settingsModal').style.display = 'none';
@@ -768,6 +773,8 @@ window.processAI = async (base64Image = null) => {
     const isUTC = document.getElementById('isUTC').checked;
     const apiUrl = (document.getElementById('set_api_url').value || 'https://ai.akile.ai/v1/chat/completions').trim();
     const apiModel = (document.getElementById('set_api_model').value || 'gpt-5.6-luna').trim();
+    const corsProxy = (document.getElementById('set_cors_proxy').value || 'https://proxy.cors.sh/').trim();
+    const fetchUrl = corsProxy ? corsProxy.replace(/\/+$/, '') + '/' + apiUrl : apiUrl;
     if(!base64Image&&!text) return alert("请输入文本或上传图片");
     if(!apiKey) return alert("请输入API Key");
     localStorage.setItem("openai_key",apiKey);
@@ -803,7 +810,7 @@ window.processAI = async (base64Image = null) => {
     }
 
     try {
-        const res=await fetch(apiUrl,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},body:JSON.stringify({model:apiModel,messages,temperature:0.1,stream:false})});
+        const res=await fetch(fetchUrl,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},body:JSON.stringify({model:apiModel,messages,temperature:0.1,stream:false})});
         const rawData=JSON.parse(await res.text());
         if(!res.ok) throw new Error((rawData.message||rawData.error?.message||'请求失败')+' (状态码:'+res.status+')');
         if(!rawData.choices||!rawData.choices[0]) throw new Error("API 返回结果为空");
