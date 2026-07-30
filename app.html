@@ -172,7 +172,7 @@
 <div id="loginScreen" class="login-wrap">
     <div class="login-card">
         <h1 style="font-size: 3rem;">✈️</h1>
-        <h2 style="color:#1e40af;margin-bottom:24px">飞行日志 Pro<br><span style="font-size:0.85rem;color:#64748b;font-weight:normal">CCAR-91 独立版</span></h2>
+        <h2 style="color:#1e40af;margin-bottom:24px">飞行日志 Pro<br><span style="font-size:0.85rem;color:#64748b;font-weight:normal">CCAR-91 独立版 v2.1</span></h2>
         <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
         <input type="password" id="loginPwd" placeholder="密码" autocomplete="current-password">
         <button class="btn btn-primary" style="width:100%;padding:14px;margin-top:8px" onclick="doLogin()">登录</button>
@@ -239,7 +239,7 @@
 <div id="app" class="container" style="display:none">
     <div class="top-bar">
         <div>
-            <h1 style="font-size:1.3rem">控制台</h1>
+            <h1 style="font-size:1.3rem">控制台 <span style="font-size:0.7rem;color:rgba(255,255,255,0.5)">v2.1</span></h1>
             <div class="user-pill"><span id="userInfo"></span><span class="sync-indicator" style="margin-left:8px"><span class="sync-dot" id="syncDot"></span> <span id="syncStatus">已同步</span></span></div>
         </div>
         <div>
@@ -424,6 +424,8 @@ window.doLogin = async () => {
         currentUser = user;
         currentPwdHash = pwHash;
         userAccount = entry;
+        localStorage.setItem('fl_current_user', user);
+        localStorage.setItem('fl_pwd_hash', pwHash);
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('app').style.display = 'flex';
         document.getElementById('userInfo').textContent = user + (entry.type === 'admin' ? ' (管理员)' : '');
@@ -471,6 +473,38 @@ window.doLogout = () => {
 (function(){
     const saved = localStorage.getItem('fl_current_user');
     if (saved) document.getElementById('loginUser').value = saved;
+})();
+
+// Auto-login if credentials saved
+(async function autoLogin(){
+    const user = localStorage.getItem('fl_current_user');
+    const pwdHash = localStorage.getItem('fl_pwd_hash');
+    if (!user || !pwdHash) return;
+    try {
+        const gist = await fetchGist();
+        const acFile = gist.files['accounts.json'];
+        if (!acFile) return;
+        const accounts = JSON.parse(acFile.content);
+        const entry = accounts.users[user];
+        if (!entry || entry.password !== pwdHash) return;
+        currentUser = user;
+        currentPwdHash = pwdHash;
+        userAccount = entry;
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        document.getElementById('userInfo').textContent = user + (entry.type === 'admin' ? ' (管理员)' : '');
+        if (entry.type === 'admin') document.getElementById('adminBtn').style.display = 'inline-block';
+        let dataFile = gist.files['data_' + user + '.json'];
+        if (dataFile) {
+            const ud = JSON.parse(dataFile.content);
+            allRecords = ud.records || [];
+            calendarData = ud.calendar || {};
+            if (ud.settings) localStorage.setItem('fl_settings_' + user, JSON.stringify(ud.settings));
+        }
+        initSettings();
+        document.getElementById('reportMonth').value = new Date().toISOString().slice(0,7);
+        refreshAll();
+    } catch(e) {}
 })();
 
 // ====== DATA SYNC ======
