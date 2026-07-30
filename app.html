@@ -496,8 +496,8 @@ async function pushToGist() {
             icao: localStorage.getItem('user_icao') || 'signed',
             cum_income: localStorage.getItem('user_cum_income') || '942692',
             cum_tax: localStorage.getItem('user_cum_tax') || '244022',
-            api_url: localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions',
-            api_model: localStorage.getItem('api_model') || 'Pro/Qwen/Qwen2-VL-7B-Instruct'
+            api_url: localStorage.getItem('api_url') || 'https://ai.akile.ai/v1/chat/completions',
+            api_model: localStorage.getItem('api_model') || 'gpt-5.3-codex-spark'
         }
     };
     const dot = document.getElementById('syncDot');
@@ -582,8 +582,8 @@ const initSettings = () => {
     document.getElementById('set_icao').value = userSettings.icao || localStorage.getItem('user_icao') || 'signed';
     document.getElementById('set_cum_income').value = userSettings.cum_income || localStorage.getItem('user_cum_income') || '942692';
     document.getElementById('set_cum_tax').value = userSettings.cum_tax || localStorage.getItem('user_cum_tax') || '244022';
-    document.getElementById('set_api_url').value = userSettings.api_url || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions';
-    document.getElementById('set_api_model').value = userSettings.api_model || localStorage.getItem('api_model') || 'Pro/Qwen/Qwen2-VL-7B-Instruct';
+    document.getElementById('set_api_url').value = userSettings.api_url || localStorage.getItem('api_url') || 'https://ai.akile.ai/v1/chat/completions';
+    document.getElementById('set_api_model').value = userSettings.api_model || localStorage.getItem('api_model') || 'gpt-5.3-codex-spark';
     if (localStorage.getItem('openai_key')) document.getElementById('innerApiKey').value = localStorage.getItem('openai_key');
 };
 
@@ -775,8 +775,8 @@ window.processAI = async (base64Image = null) => {
     const text = document.getElementById('ocrInput').value.trim();
     const apiKey = document.getElementById('innerApiKey').value.trim();
     const isUTC = document.getElementById('isUTC').checked;
-    const apiUrl = (document.getElementById('set_api_url').value || 'https://api.siliconflow.cn/v1/chat/completions').trim();
-    const apiModel = (document.getElementById('set_api_model').value || 'Pro/Qwen/Qwen2-VL-7B-Instruct').trim();
+    const apiUrl = (document.getElementById('set_api_url').value || 'https://ai.akile.ai/v1/chat/completions').trim();
+    const apiModel = (document.getElementById('set_api_model').value || 'gpt-5.3-codex-spark').trim();
     if(!base64Image&&!text) return alert("请输入文本或上传图片");
     if(!apiKey) return alert("请输入API Key");
     localStorage.setItem("openai_key",apiKey);
