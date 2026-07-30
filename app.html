@@ -212,7 +212,7 @@
         <div style="background:#fef3c7;padding:10px;border-radius:8px;margin-top:15px;border:1px solid #fcd34d">
             <p style="font-size:0.75rem;color:#92400e;margin-bottom:5px;font-weight:bold">🤖 AI 接口设置</p>
             <div class="form-group"><label>API 接口地址</label><input type="text" id="set_api_url" placeholder="https://api.siliconflow.cn/v1/chat/completions"></div>
-            <div class="form-group"><label>模型名称 (Vision)</label><input type="text" id="set_api_model" placeholder="Pro/Qwen/Qwen2-VL-7B-Instruct"></div>
+            <div class="form-group"><label>模型名称</label><select id="set_api_model"><option value="gpt-5.6-luna">gpt-5.6-luna (最便宜)</option><option value="gpt-5.6-terra">gpt-5.6-terra</option><option value="gpt-5.6-sol">gpt-5.6-sol</option><option value="gpt-5.5">gpt-5.5</option><option value="gpt-5.4">gpt-5.4</option><option value="gpt-5.4-mini">gpt-5.4-mini</option><option value="gpt-5.3-codex-spark">gpt-5.3-codex-spark</option><option value="codex-auto-review">codex-auto-review</option></select></div>
         </div>
         <button class="btn btn-primary" style="width:100%;margin-top:20px;padding:12px" onclick="saveSettings()">保存配置</button>
     </div>
@@ -497,7 +497,7 @@ async function pushToGist() {
             cum_income: localStorage.getItem('user_cum_income') || '942692',
             cum_tax: localStorage.getItem('user_cum_tax') || '244022',
             api_url: localStorage.getItem('api_url') || 'https://ai.akile.ai/v1/chat/completions',
-            api_model: localStorage.getItem('api_model') || 'gpt-5.3-codex-spark'
+            api_model: localStorage.getItem('api_model') || 'gpt-5.6-luna'
         }
     };
     const dot = document.getElementById('syncDot');
@@ -583,7 +583,7 @@ const initSettings = () => {
     document.getElementById('set_cum_income').value = userSettings.cum_income || localStorage.getItem('user_cum_income') || '942692';
     document.getElementById('set_cum_tax').value = userSettings.cum_tax || localStorage.getItem('user_cum_tax') || '244022';
     document.getElementById('set_api_url').value = userSettings.api_url || localStorage.getItem('api_url') || 'https://ai.akile.ai/v1/chat/completions';
-    document.getElementById('set_api_model').value = userSettings.api_model || localStorage.getItem('api_model') || 'gpt-5.3-codex-spark';
+    document.getElementById('set_api_model').value = userSettings.api_model || localStorage.getItem('api_model') || 'gpt-5.6-luna';
     if (localStorage.getItem('openai_key')) document.getElementById('innerApiKey').value = localStorage.getItem('openai_key');
 };
 
@@ -776,7 +776,7 @@ window.processAI = async (base64Image = null) => {
     const apiKey = document.getElementById('innerApiKey').value.trim();
     const isUTC = document.getElementById('isUTC').checked;
     const apiUrl = (document.getElementById('set_api_url').value || 'https://ai.akile.ai/v1/chat/completions').trim();
-    const apiModel = (document.getElementById('set_api_model').value || 'gpt-5.3-codex-spark').trim();
+    const apiModel = (document.getElementById('set_api_model').value || 'gpt-5.6-luna').trim();
     if(!base64Image&&!text) return alert("请输入文本或上传图片");
     if(!apiKey) return alert("请输入API Key");
     localStorage.setItem("openai_key",apiKey);
