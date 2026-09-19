@@ -271,6 +271,7 @@
             <div><h1 style="font-size: 1.3rem;">控制台</h1><div id="userInfo" class="user-pill">未登录</div></div>
             <div>
                 <button class="btn" style="background:rgba(255,255,255,0.2); color:white; margin-right:5px;" onclick="document.getElementById('settingsModal').style.display='block'">⚙️ 设置</button>
+                <button class="btn" style="background:rgba(255,255,255,0.2); color:white; margin-right:5px;" onclick="exportData()">📤 导出数据</button>
                 <button class="btn" style="background:rgba(255,255,255,0.2); color:white;" onclick="doLogout()">退出</button>
             </div>
         </div>
@@ -407,6 +408,24 @@
 
         window.loginWithGoogle = async () => { try { await signInWithPopup(auth, provider); } catch (e) { alert("登录失败: " + e.message); } };
         window.doLogout = async () => { await signOut(auth); window.location.reload(); };
+        window.exportData = () => {
+            const clean = allRecords.map(r => {
+                const o = Object.assign({}, r);
+                if (o.timestamp && typeof o.timestamp === 'object' && o.timestamp.seconds != null) {
+                    o.timestamp = new Date(o.timestamp.seconds * 1000).toISOString();
+                }
+                delete o.id;
+                return o;
+            });
+            const payload = { records: clean, calendar: calendarData, exportedAt: new Date().toISOString() };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'flightlog-export-' + new Date().toISOString().slice(0,10) + '.json';
+            document.body.appendChild(a); a.click(); a.remove();
+            URL.revokeObjectURL(url);
+            alert('已导出 ' + clean.length + ' 条记录');
+        };
         window.saveSettings = () => { 
             localStorage.setItem('user_rank', document.getElementById('set_rank').value); 
             localStorage.setItem('user_icao', document.getElementById('set_icao').value); 

@@ -212,6 +212,14 @@
             <p style="font-size:0.75rem;color:#92400e;margin-bottom:5px;font-weight:bold">🤖 AI 模型设置</p>
             <div class="form-group"><label>模型名称</label><select id="set_api_model"><option value="deepseek-flash">deepseek-flash (快·便宜·图文)</option><option value="deepseek-v4-pro">deepseek-v4-pro (强·图文)</option></select></div>
         </div>
+        <div style="background:#eff6ff;padding:10px;border-radius:8px;margin-top:15px;border:1px solid #bfdbfe">
+            <p style="font-size:0.75rem;color:#1e40af;margin-bottom:5px;font-weight:bold">📦 数据备份 / 迁移</p>
+            <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importData(event)">
+            <div style="display:flex;gap:8px">
+                <button class="btn" style="flex:1;background:#dbeafe;color:#1e40af;padding:8px" onclick="exportData()">📤 导出</button>
+                <button class="btn" style="flex:1;background:#dcfce7;color:#166534;padding:8px" onclick="document.getElementById('importFile').click()">📥 导入</button>
+            </div>
+        </div>
         <button class="btn btn-primary" style="width:100%;margin-top:20px;padding:12px" onclick="saveSettings()">保存配置</button>
     </div>
 </div>
@@ -458,6 +466,46 @@ window.doLogout = () => {
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPwd').value = '';
     localStorage.removeItem('fl_current_user');
+};
+
+// ====== IMPORT / EXPORT ======
+window.exportData = () => {
+    const payload = { records: allRecords, calendar: calendarData, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'flightlog-export-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    alert('已导出 ' + allRecords.length + ' 条记录');
+};
+window.importData = (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            const recs = data.records || [];
+            const cal = data.calendar || {};
+            const key = r => [r.date, r.dep, r.arr, r.flight_no, r.ac_type].join('|');
+            const existing = new Set(allRecords.map(key));
+            let added = 0;
+            recs.forEach(r => {
+                const o = Object.assign({}, r);
+                delete o.id;
+                const k = key(o);
+                if (!existing.has(k)) { allRecords.push(o); existing.add(k); added++; }
+            });
+            allRecords.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+            Object.keys(cal).forEach(k => { if (!calendarData[k]) calendarData[k] = cal[k]; });
+            debouncedSync();
+            refreshAll();
+            alert('导入完成：新增 ' + added + ' 条（文件共 ' + recs.length + ' 条）');
+        } catch(err) { alert('导入失败: ' + err.message); }
+        event.target.value = '';
+    };
+    reader.readAsText(file);
 };
 
 // Auto-fill saved username
