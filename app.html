@@ -160,6 +160,10 @@
         .sim-form .form-group { margin:0; min-width:0; }
         .sim-form input { width:100%; min-width:0; }
         .sim-form .btn { white-space:nowrap; }
+        .help-form { display:grid; grid-template-columns: 1.1fr 1fr 1fr auto; gap:8px; align-items:end; margin-bottom:12px; }
+        .help-form .form-group { margin:0; min-width:0; }
+        .help-form input { width:100%; min-width:0; }
+        .help-form .btn { white-space:nowrap; }
         .sim-item-text { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; color:#1e293b; }
         .tz-hint { font-size:0.62rem; color:#64748b; text-align:center; margin-top:3px; line-height:1.3; word-break:break-word; }
         .edit-form { padding-bottom: 88px; }
@@ -203,6 +207,9 @@
             .top-bar { padding: 12px 16px; }
             .sim-form { grid-template-columns: 1fr 1fr; }
             .sim-form .btn { grid-column: 1 / -1; }
+            .help-form { grid-template-columns: 1fr 1fr; }
+            .help-form .form-group:first-child { grid-column: 1 / -1; }
+            .help-form .btn { grid-column: 1 / -1; }
         }
     </style>
 </head>
@@ -407,6 +414,20 @@
     </section>
 
     <section class="card">
+        <div class="card-header"><h2>🤝 帮飞</h2><span style="font-size:0.75rem;color:#64748b;background:#f1f5f9;padding:2px 8px;border-radius:4px">小时费计税 · 补助免税</span></div>
+        <div class="card-body">
+            <div class="help-form">
+                <div class="form-group" style="margin:0"><label>日期</label><input type="date" id="helpDate"></div>
+                <div class="form-group" style="margin:0"><label>小时费(元)</label><input type="number" step="0.01" min="0" id="helpFee" placeholder="如 2000"></div>
+                <div class="form-group" style="margin:0"><label>住宿补助(元)</label><input type="number" step="0.01" min="0" id="helpAllow" placeholder="如 500"></div>
+                <button class="btn btn-primary" onclick="addHelp()">＋ 添加</button>
+            </div>
+            <div id="helpList"></div>
+            <div id="helpSummary" style="text-align:right;font-size:0.85rem;color:#334155;margin-top:8px;font-weight:bold;word-break:break-word"></div>
+        </div>
+    </section>
+
+    <section class="card">
         <div class="card-header"><h2>📋 记录明细</h2></div>
         <div class="card-body"><div id="logList" class="log-list"></div></div>
     </section>
@@ -429,6 +450,7 @@ let currentUser = null;
 let currentPwdHash = null;
 let allRecords = [];
 let simRecords = [];
+let helpRecords = [];
 let calendarData = {};
 let currentModalDate = '';
 let syncTimer = null;
@@ -497,6 +519,7 @@ window.doLogin = async () => {
             allRecords = ud.records || [];
             calendarData = ud.calendar || {};
             simRecords = ud.sims || [];
+            helpRecords = ud.helps || [];
             if (ud.settings) {
                 localStorage.setItem('fl_settings_' + user, JSON.stringify(ud.settings));
                 mergeTzFromSettings(ud.settings);
@@ -505,6 +528,7 @@ window.doLogin = async () => {
             allRecords = [];
             calendarData = {};
             simRecords = [];
+            helpRecords = [];
         }
 
         initSettings();
@@ -532,7 +556,7 @@ window.doLogout = () => {
 
 // ====== IMPORT / EXPORT ======
 window.exportData = () => {
-    const payload = { records: allRecords, sims: simRecords, calendar: calendarData, exportedAt: new Date().toISOString() };
+    const payload = { records: allRecords, sims: simRecords, helps: helpRecords, calendar: calendarData, exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -566,6 +590,11 @@ window.importData = (event) => {
             const simExist = new Set(simRecords.map(simKey));
             sims.forEach(s => { const k=simKey(s); if(!simExist.has(k)){ simRecords.push({date:s.date,hours:parseFloat(s.hours)||0}); simExist.add(k); } });
             simRecords.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+            const helps = data.helps || [];
+            const helpKey = h => h.date + '|' + h.fee + '|' + h.allow;
+            const helpExist = new Set(helpRecords.map(helpKey));
+            helps.forEach(h => { const k=helpKey(h); if(!helpExist.has(k)){ helpRecords.push({date:h.date, fee:parseFloat(h.fee)||0, allow:parseFloat(h.allow)||0}); helpExist.add(k); } });
+            helpRecords.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
             debouncedSync();
             refreshAll();
             alert('导入完成：新增 ' + added + ' 条（文件共 ' + recs.length + ' 条）');
@@ -619,11 +648,13 @@ applyTheme();
         const gist = await fetchGist();
         let dataFile = gist.files['data_' + user + '.json'];
         simRecords = [];
+        helpRecords = [];
         if (dataFile) {
             const ud = JSON.parse(dataFile.content);
             allRecords = ud.records || [];
             calendarData = ud.calendar || {};
             simRecords = ud.sims || [];
+            helpRecords = ud.helps || [];
             if (ud.settings) { localStorage.setItem('fl_settings_' + user, JSON.stringify(ud.settings)); mergeTzFromSettings(ud.settings); }
         }
         initSettings();
@@ -638,6 +669,7 @@ async function pushToGist() {
     const sd = {
         records: allRecords,
         sims: simRecords,
+        helps: helpRecords,
         calendar: calendarData,
         settings: {
             rank: localStorage.getItem('user_rank') || '机长',
@@ -1196,8 +1228,12 @@ window.renderSalary = () => {
     const simHoursMonth = simRecords.filter(s=>String(s.date).startsWith(mStr)).reduce((a,s)=>a+(parseFloat(s.hours)||0),0);
     if(simHoursMonth>0){const amt=simHoursMonth*SIM_RATE;gross_var+=amt;rows+=`<tr><td class="col-name">模拟机小时费</td><td class="col-proc"><span class="calc-tag">${simHoursMonth.toFixed(1)}h</span>× ${SIM_RATE}</td><td class="col-amt">${fmt(amt)}</td></tr>`;}
 
-    const allowances=(s.meal_dom_cnt*60)+(s.meal_int_cnt*180)+(s.dom_stay*cfg.dom_stay)+(s.dom_no*cfg.dom_no)+(s.int_stay*cfg.int_stay)+(s.int_no*cfg.int_no);
-    if(allowances>0){let details=[];if(s.meal_dom_cnt>0)details.push(`国餐${s.meal_dom_cnt}×60`);if(s.meal_int_cnt>0)details.push(`外餐${s.meal_int_cnt}×180`);if(s.dom_stay>0)details.push(`国驻${s.dom_stay}×${cfg.dom_stay}`);if(s.dom_no>0)details.push(`国无${s.dom_no}×${cfg.dom_no}`);if(s.int_stay>0)details.push(`外驻${s.int_stay}×${cfg.int_stay}`);if(s.int_no>0)details.push(`外无${s.int_no}×${cfg.int_no}`);rows+=`<tr><td class="col-name" style="color:#16a34a">免税补助</td><td class="col-proc" style="font-size:0.75rem">${details.join(', ')}</td><td class="col-amt" style="color:#16a34a">+${fmt(allowances)}</td></tr>`;}
+    const helpFee = helpRecords.filter(h=>String(h.date).startsWith(mStr)).reduce((a,h)=>a+(parseFloat(h.fee)||0),0);
+    const helpAllow = helpRecords.filter(h=>String(h.date).startsWith(mStr)).reduce((a,h)=>a+(parseFloat(h.allow)||0),0);
+    if(helpFee>0){gross_var+=helpFee;rows+=`<tr><td class="col-name">帮飞小时费</td><td class="col-proc">计入应税收入</td><td class="col-amt">${fmt(helpFee)}</td></tr>`;}
+
+    const allowances=(s.meal_dom_cnt*60)+(s.meal_int_cnt*180)+(s.dom_stay*cfg.dom_stay)+(s.dom_no*cfg.dom_no)+(s.int_stay*cfg.int_stay)+(s.int_no*cfg.int_no)+(helpAllow||0);
+    if(allowances>0){let details=[];if(helpAllow>0)details.push(`帮飞住宿补助${fmt(helpAllow)}`);if(s.meal_dom_cnt>0)details.push(`国餐${s.meal_dom_cnt}×60`);if(s.meal_int_cnt>0)details.push(`外餐${s.meal_int_cnt}×180`);if(s.dom_stay>0)details.push(`国驻${s.dom_stay}×${cfg.dom_stay}`);if(s.dom_no>0)details.push(`国无${s.dom_no}×${cfg.dom_no}`);if(s.int_stay>0)details.push(`外驻${s.int_stay}×${cfg.int_stay}`);if(s.int_no>0)details.push(`外无${s.int_no}×${cfg.int_no}`);rows+=`<tr><td class="col-name" style="color:#16a34a">免税补助</td><td class="col-proc" style="font-size:0.75rem">${details.join(', ')}</td><td class="col-amt" style="color:#16a34a">+${fmt(allowances)}</td></tr>`;}
 
     const month_taxable_base=FIXED_BASE_GROSS-SOCIAL_RATE-5000;const month_taxable_var=gross_var;
     const total_new_income=prevCumIncome+month_taxable_base+month_taxable_var;const total_tax_needed=calculateTax(total_new_income);
@@ -1245,6 +1281,43 @@ window.renderSim = () => {
     const totalH=rows.reduce((a,x)=>a+(parseFloat(x.s.hours)||0),0);
     const sum=document.getElementById('simSummary');
     if(sum) sum.textContent = `本月模拟机 ${totalH.toFixed(1)} 小时 · 小时费 ¥${(totalH*SIM_RATE).toLocaleString()}`;
+};
+
+// ====== HELP FLY (帮飞) ======
+window.addHelp = () => {
+    const date=document.getElementById('helpDate').value;
+    const fee=parseFloat(document.getElementById('helpFee').value)||0;
+    const allow=parseFloat(document.getElementById('helpAllow').value)||0;
+    if(!date) return alert('请选择日期');
+    if(fee<=0 && allow<=0) return alert('请填写金额');
+    helpRecords.push({ date: date, fee: fee, allow: allow });
+    helpRecords.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    document.getElementById('helpFee').value='';
+    document.getElementById('helpAllow').value='';
+    debouncedSync();
+    renderHelp();
+    renderSalary();
+};
+window.deleteHelp = (idx) => {
+    if(!confirm('删除这条帮飞记录？')) return;
+    helpRecords.splice(idx,1);
+    debouncedSync();
+    renderHelp();
+    renderSalary();
+};
+window.renderHelp = () => {
+    const el=document.getElementById('helpList'); if(!el) return;
+    const dateEl=document.getElementById('helpDate');
+    if(dateEl && !dateEl.value) dateEl.value=new Date().toISOString().slice(0,10);
+    const mStr=document.getElementById('reportMonth').value;
+    const rows=helpRecords.map((h,i)=>({h:h,i:i})).filter(x=>String(x.h.date).startsWith(mStr));
+    const fmtN=(n)=>'¥'+(n||0).toLocaleString();
+    if(!rows.length){ el.innerHTML='<div style="text-align:center;color:#94a3b8;padding:10px;font-size:0.85rem">本月无帮飞记录</div>'; }
+    else { el.innerHTML=rows.map(x=>`<div class="log-item" style="padding:10px 12px;margin-bottom:8px"><div class="sim-item-text">${x.h.date} <span style="color:#64748b;font-weight:normal;font-size:0.85rem">· 小时费 ${fmtN(parseFloat(x.h.fee)||0)} · 住宿补助 ${fmtN(parseFloat(x.h.allow)||0)}</span></div><button class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem;flex:none" onclick="deleteHelp(${x.i})">🗑️</button></div>`).join(''); }
+    const tf=rows.reduce((a,x)=>a+(parseFloat(x.h.fee)||0),0);
+    const ta=rows.reduce((a,x)=>a+(parseFloat(x.h.allow)||0),0);
+    const sum=document.getElementById('helpSummary');
+    if(sum) sum.textContent=`本月帮飞：小时费 ${fmtN(tf)} · 住宿补助 ${fmtN(ta)}`;
 };
 
 // ====== RECORD LIST ======
@@ -1362,7 +1435,7 @@ window.renderReport = () => {
 // ====== REFRESH ALL ======
 window.refreshAll = () => {
     if(!currentUser) return;
-    try { renderList(); renderSim(); renderReport(); renderCalendar(); renderSalary(); renderCompliance(); } catch(e) { console.error(e); }
+    try { renderList(); renderSim(); renderHelp(); renderReport(); renderCalendar(); renderSalary(); renderCompliance(); } catch(e) { console.error(e); }
 };
 </script>
 </body>
