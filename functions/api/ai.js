@@ -1,4 +1,4 @@
-const DEFAULT_AI_URL = 'https://ai.akile.ai/v1/chat/completions';
+const DEFAULT_AI_URL = 'https://api.deepseek.com/chat/completions';
 
 function json(obj, status = 200) {
     return new Response(JSON.stringify(obj), {
@@ -30,7 +30,7 @@ export async function onRequestPost({ request, env }) {
             'Authorization': `Bearer ${env.AI_KEY}`,
         },
         body: JSON.stringify({
-            model: model || env.AI_MODEL || 'gpt-5.6-luna',
+            model: model || env.AI_MODEL || 'deepseek-v4-flash-vision-exp',
             messages,
             temperature: typeof temperature === 'number' ? temperature : 0.1,
             stream: false,
