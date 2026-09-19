@@ -376,7 +376,7 @@ let userAccount = null;
 
 // ====== GIST API ======
 async function fetchGist() {
-    const r = await fetch(GIST_API);
+    const r = await fetch(GIST_API, { headers: { 'x-auth': localStorage.getItem('fl_pwd_hash') || '' } });
     if (!r.ok) throw new Error('Gist 读取失败: ' + r.status);
     return await r.json();
 }
@@ -384,7 +384,7 @@ async function fetchGist() {
 async function updateGist(files) {
     const r = await fetch(GIST_API, {
         method: 'PATCH',
-        headers: {'Content-Type':'application/json'},
+        headers: {'Content-Type':'application/json','x-auth': localStorage.getItem('fl_pwd_hash') || ''},
         body: JSON.stringify({files})
     });
     if (!r.ok) throw new Error('Gist 写入失败: ' + r.status);
@@ -409,28 +409,28 @@ window.doLogin = async () => {
     document.querySelector('#loginScreen .btn').disabled = true;
 
     try {
-        const gist = await fetchGist();
-        const acFile = gist.files['accounts.json'];
-        if (!acFile) throw new Error('账户文件不存在');
-        const accounts = JSON.parse(acFile.content);
-        const entry = accounts.users[user];
-        if (!entry) throw new Error('用户名或密码错误');
-
         const pwHash = await hashPassword(pwd);
-        if (pwHash !== entry.password) throw new Error('用户名或密码错误');
+        const lr = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, pwdHash })
+        });
+        const lj = await lr.json();
+        if (!lr.ok || !lj.ok) throw new Error('用户名或密码错误');
 
         // Login OK
         currentUser = user;
         currentPwdHash = pwHash;
-        userAccount = entry;
+        userAccount = { type: lj.type, base_salary_net: lj.base_salary_net, base_salary_gross: lj.base_salary_gross };
         localStorage.setItem('fl_current_user', user);
         localStorage.setItem('fl_pwd_hash', pwHash);
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('app').style.display = 'flex';
-        document.getElementById('userInfo').textContent = user + (entry.type === 'admin' ? ' (管理员)' : '');
-        if (entry.type === 'admin') document.getElementById('adminBtn').style.display = 'inline-block';
+        document.getElementById('userInfo').textContent = user + (lj.type === 'admin' ? ' (管理员)' : '');
+        if (lj.type === 'admin') document.getElementById('adminBtn').style.display = 'inline-block';
 
         // Load user data
+        const gist = await fetchGist();
         let dataFile = gist.files[`data_${user}.json`];
         if (dataFile) {
             const ud = JSON.parse(dataFile.content);
@@ -444,7 +444,6 @@ window.doLogin = async () => {
             calendarData = {};
         }
 
-        localStorage.setItem('fl_current_user', user);
         initSettings();
         document.getElementById('reportMonth').value = new Date().toISOString().slice(0,7);
         refreshAll();
@@ -520,19 +519,21 @@ window.importData = (event) => {
     const pwdHash = localStorage.getItem('fl_pwd_hash');
     if (!user || !pwdHash) return;
     try {
-        const gist = await fetchGist();
-        const acFile = gist.files['accounts.json'];
-        if (!acFile) return;
-        const accounts = JSON.parse(acFile.content);
-        const entry = accounts.users[user];
-        if (!entry || entry.password !== pwdHash) return;
+        const lr = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, pwdHash })
+        });
+        const lj = await lr.json();
+        if (!lr.ok || !lj.ok) return;
         currentUser = user;
         currentPwdHash = pwdHash;
-        userAccount = entry;
+        userAccount = { type: lj.type, base_salary_net: lj.base_salary_net, base_salary_gross: lj.base_salary_gross };
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('app').style.display = 'flex';
-        document.getElementById('userInfo').textContent = user + (entry.type === 'admin' ? ' (管理员)' : '');
-        if (entry.type === 'admin') document.getElementById('adminBtn').style.display = 'inline-block';
+        document.getElementById('userInfo').textContent = user + (lj.type === 'admin' ? ' (管理员)' : '');
+        if (lj.type === 'admin') document.getElementById('adminBtn').style.display = 'inline-block';
+        const gist = await fetchGist();
         let dataFile = gist.files['data_' + user + '.json'];
         if (dataFile) {
             const ud = JSON.parse(dataFile.content);
@@ -866,7 +867,7 @@ window.processAI = async (base64Image = null) => {
     }
 
     try {
-        const res=await fetch(AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:apiModel,messages,temperature:0.1,stream:false})});
+        const res=await fetch(AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","x-auth":localStorage.getItem('fl_pwd_hash')||""},body:JSON.stringify({model:apiModel,messages,temperature:0.1,stream:false})});
         const rawData=JSON.parse(await res.text());
         if(!res.ok) throw new Error((rawData.message||rawData.error?.message||'请求失败')+' (状态码:'+res.status+')');
         if(!rawData.choices||!rawData.choices[0]) throw new Error("API 返回结果为空");

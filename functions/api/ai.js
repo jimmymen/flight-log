@@ -1,4 +1,5 @@
 const DEFAULT_AI_URL = 'https://api.deepseek.com/chat/completions';
+const GH = 'https://api.github.com';
 
 function json(obj, status = 200) {
     return new Response(JSON.stringify(obj), {
@@ -7,7 +8,38 @@ function json(obj, status = 200) {
     });
 }
 
+async function isAuthorized(env, auth) {
+    if (!auth || !env.GH_TOKEN || !env.GIST_ID) return false;
+    const r = await fetch(`${GH}/gists/${env.GIST_ID}`, {
+        headers: {
+            'Authorization': `token ${env.GH_TOKEN}`,
+            'User-Agent': 'flight-log',
+            'Accept': 'application/vnd.github+json',
+        },
+    });
+    if (!r.ok) return false;
+    const g = await r.json();
+    const f = g.files && g.files['accounts.json'];
+    if (!f || !f.content) return false;
+    let ac;
+    try {
+        ac = JSON.parse(f.content);
+    } catch (e) {
+        return false;
+    }
+    const users = ac.users || {};
+    for (const name of Object.keys(users)) {
+        const entry = users[name];
+        if (entry && entry.password && entry.password === auth) return true;
+    }
+    return false;
+}
+
 export async function onRequestPost({ request, env }) {
+    if (!(await isAuthorized(env, request.headers.get('x-auth') || ''))) {
+        return json({ error: 'unauthorized' }, 401);
+    }
+
     let payload;
     try {
         payload = await request.json();
