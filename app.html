@@ -413,7 +413,7 @@ window.doLogin = async () => {
         const lr = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user, pwdHash })
+            body: JSON.stringify({ username: user, pwdHash: pwHash })
         });
         const lj = await lr.json();
         if (!lr.ok || !lj.ok) throw new Error('用户名或密码错误');
