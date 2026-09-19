@@ -156,6 +156,11 @@
         .time-cell { min-width:0; }
         .time-cell-label { font-size:0.7rem; text-align:center; display:block; }
         .time-cell input { width:100%; min-width:0; padding:10px; border:1px solid var(--border); border-radius:8px; outline:none; font-size:0.9rem; text-align:center; font-family:monospace; background:#fff; }
+        .sim-form { display:grid; grid-template-columns: 1.5fr 1fr auto; gap:8px; align-items:end; margin-bottom:12px; }
+        .sim-form .form-group { margin:0; min-width:0; }
+        .sim-form input { width:100%; min-width:0; }
+        .sim-form .btn { white-space:nowrap; }
+        .sim-item-text { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; color:#1e293b; }
         .tz-hint { font-size:0.62rem; color:#64748b; text-align:center; margin-top:3px; line-height:1.3; word-break:break-word; }
         .edit-form { padding-bottom: 88px; }
         .form-actions { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; width: 100%; max-width: 1160px; background: #fff; border-top: 1px solid var(--border); padding: 10px 15px; display: flex; gap: 10px; justify-content: flex-end; z-index: 1500; box-shadow: 0 -2px 12px rgba(0,0,0,0.10); }
@@ -196,6 +201,8 @@
             .form-actions { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
             .form-actions .btn-primary { max-width: none; }
             .top-bar { padding: 12px 16px; }
+            .sim-form { grid-template-columns: 1fr 1fr; }
+            .sim-form .btn { grid-column: 1 / -1; }
         }
     </style>
 </head>
@@ -389,13 +396,13 @@
     <section class="card">
         <div class="card-header"><h2>🛩️ 模拟机</h2><span style="font-size:0.75rem;color:#64748b;background:#f1f5f9;padding:2px 8px;border-radius:4px">400 元/小时</span></div>
         <div class="card-body">
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
-                <div class="form-group" style="flex:1;min-width:140px;margin:0"><label>日期</label><input type="date" id="simDate"></div>
-                <div class="form-group" style="flex:1;min-width:90px;margin:0"><label>小时</label><input type="number" step="0.1" min="0" id="simHours" placeholder="如 4"></div>
-                <button class="btn btn-primary" style="padding:10px 16px" onclick="addSim()">＋ 添加</button>
+            <div class="sim-form">
+                <div class="form-group" style="margin:0"><label>日期</label><input type="date" id="simDate"></div>
+                <div class="form-group" style="margin:0"><label>小时</label><input type="number" step="0.1" min="0" id="simHours" placeholder="如 4"></div>
+                <button class="btn btn-primary" onclick="addSim()">＋ 添加</button>
             </div>
             <div id="simList"></div>
-            <div id="simSummary" style="text-align:right;font-size:0.85rem;color:#334155;margin-top:8px;font-weight:bold"></div>
+            <div id="simSummary" style="text-align:right;font-size:0.85rem;color:#334155;margin-top:8px;font-weight:bold;word-break:break-word"></div>
         </div>
     </section>
 
@@ -1233,7 +1240,7 @@ window.renderSim = () => {
     const rows=simRecords.map((s,i)=>({s:s,i:i})).filter(x=>String(x.s.date).startsWith(mStr));
     if(!rows.length){ el.innerHTML='<div style="text-align:center;color:#94a3b8;padding:10px;font-size:0.85rem">本月无模拟机记录</div>'; }
     else {
-        el.innerHTML=rows.map(x=>`<div class="log-item" style="padding:10px 12px;margin-bottom:8px"><div style="font-weight:700;color:#1e293b">${x.s.date} <span style="color:#64748b;font-weight:normal;font-size:0.85rem">· ${(parseFloat(x.s.hours)||0)}h · ¥${((parseFloat(x.s.hours)||0)*SIM_RATE).toLocaleString()}</span></div><button class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem" onclick="deleteSim(${x.i})">🗑️</button></div>`).join('');
+        el.innerHTML=rows.map(x=>`<div class="log-item" style="padding:10px 12px;margin-bottom:8px"><div class="sim-item-text">${x.s.date} <span style="color:#64748b;font-weight:normal;font-size:0.85rem">· ${(parseFloat(x.s.hours)||0)}h · ¥${((parseFloat(x.s.hours)||0)*SIM_RATE).toLocaleString()}</span></div><button class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem;flex:none" onclick="deleteSim(${x.i})">🗑️</button></div>`).join('');
     }
     const totalH=rows.reduce((a,x)=>a+(parseFloat(x.s.hours)||0),0);
     const sum=document.getElementById('simSummary');
