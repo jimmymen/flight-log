@@ -10,7 +10,7 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); padding: 15px; min-height: 100vh; }
         .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 60px; }
         .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid var(--border); overflow: hidden; }
-        .card-header { padding: 15px 20px; background: #fff; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .card-header { padding: 15px 20px; background: #fff; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
         .card-header h2 { font-size: 1.1rem; font-weight: 700; color: #0f172a; }
         .card-body { padding: 20px; }
         .top-bar { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: 16px 24px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(37,99,235,0.3); margin-bottom: 10px; }
@@ -112,7 +112,7 @@
         .time-hint { font-size: 0.75rem; color: var(--primary); font-weight: bold; float: right; }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000; backdrop-filter: blur(2px); }
         .modal-content { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 25px; animation: slideUp 0.3s ease; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
-        .settings-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 2000; width: 320px; max-height:90vh; overflow-y:auto; }
+        .settings-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 2000; width: min(320px, 92vw); max-height:90vh; overflow-y:auto; }
         .modal-title { font-size: 1.1rem; font-weight: bold; text-align: center; }
         .modal-section-title { font-size: 0.8rem; color: #64748b; font-weight: bold; margin-top: 10px; margin-bottom: 5px; }
         .city-input { width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; font-size: 1rem; text-align: center; outline: none; }
@@ -149,7 +149,16 @@
         .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok-green); }
         .sync-dot.syncing { background: #f59e0b; animation: pulse 1s infinite; }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .form-group input, .form-group select { min-width: 0; }
+        .top-bar { flex-wrap: wrap; gap: 8px; }
+        .top-bar > div:last-child { display: flex; flex-wrap: wrap; gap: 6px; }
+        .time-grid-box { background:#f8fafc; padding:10px; border-radius:8px; border:1px dashed #e2e8f0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+        .time-cell { min-width:0; }
+        .time-cell-label { font-size:0.7rem; text-align:center; display:block; }
+        .time-cell input { width:100%; min-width:0; padding:10px; border:1px solid var(--border); border-radius:8px; outline:none; font-size:0.9rem; text-align:center; font-family:monospace; background:#fff; }
+        .tz-hint { font-size:0.62rem; color:#64748b; text-align:center; margin-top:3px; line-height:1.3; word-break:break-word; }
         @media (max-width: 768px) {
+            body { padding: 10px; }
             .cal-day { min-height: 50px; flex-direction: column; justify-content: flex-start; align-items: center; padding: 4px; border-radius: 8px;}
             .cal-num { margin-bottom: 2px; font-size: 0.9rem; color: #64748b; font-weight: normal; }
             .cal-day.today .cal-num { background: var(--primary); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.75rem; }
@@ -163,6 +172,12 @@
             .col-name { width: 30%; font-size: 0.8rem; }
             .col-proc { font-size: 0.7rem; }
             .col-amt { font-size: 0.85rem; }
+            .form-full.time-grid-box { grid-template-columns: repeat(2, minmax(0,1fr)); }
+            .tz-hint { font-size: 0.68rem; }
+            .settings-modal { padding: 18px; }
+            .card-body { padding: 15px; }
+            .salary-summary-box { gap: 6px; padding: 10px; }
+            .ss-val { font-size: 0.95rem; }
         }
     </style>
 </head>
@@ -182,7 +197,7 @@
 
 <!-- ADMIN MODAL -->
 <div id="adminModal" class="modal-overlay" onclick="if(event.target===this) document.getElementById('adminModal').style.display='none'">
-    <div class="settings-modal" style="width:380px" onclick="event.stopPropagation()">
+    <div class="settings-modal" style="width:min(380px,92vw)" onclick="event.stopPropagation()">
         <h3 style="margin-bottom:12px;text-align:center">👥 用户管理</h3>
         <div id="adminUserList" style="max-height:200px;overflow-y:auto;margin-bottom:12px;font-size:0.85rem"></div>
         <div style="border-top:1px dashed #e2e8f0;padding-top:12px">
@@ -319,11 +334,11 @@
                     <div class="form-group"><label>航班号</label><input type="text" id="f_flight_no"></div>
                     <div class="form-group"><label>日间起落</label><input type="number" id="f_landings_day" value="0"></div>
                     <div class="form-group"><label>夜间起落</label><input type="number" id="f_landings_night" value="0"></div>
-                    <div class="form-full" style="background:#f8fafc;padding:10px;border-radius:8px;border:1px dashed #e2e8f0;display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-                        <div><label style="font-size:0.7rem;text-align:center;display:block">撤轮</label><input type="text" id="f_block_off" inputmode="numeric" maxlength="5" placeholder="HH:mm" oninput="onTimeInput(this)" onchange="recalcTimes()"><div id="hint_block_off" style="font-size:0.62rem;color:#64748b;text-align:center;margin-top:3px;line-height:1.3"></div></div>
-                        <div><label style="font-size:0.7rem;text-align:center;display:block">起飞</label><input type="text" id="f_takeoff" inputmode="numeric" maxlength="5" placeholder="HH:mm" oninput="onTimeInput(this)" onchange="recalcTimes()"><div id="hint_takeoff" style="font-size:0.62rem;color:#64748b;text-align:center;margin-top:3px;line-height:1.3"></div></div>
-                        <div><label style="font-size:0.7rem;text-align:center;display:block">落地</label><input type="text" id="f_landing" inputmode="numeric" maxlength="5" placeholder="HH:mm" oninput="onTimeInput(this)" onchange="recalcTimes()"><div id="hint_landing" style="font-size:0.62rem;color:#64748b;text-align:center;margin-top:3px;line-height:1.3"></div></div>
-                        <div><label style="font-size:0.7rem;text-align:center;display:block">挡轮</label><input type="text" id="f_block_on" inputmode="numeric" maxlength="5" placeholder="HH:mm" oninput="onTimeInput(this)" onchange="recalcTimes()"><div id="hint_block_on" style="font-size:0.62rem;color:#64748b;text-align:center;margin-top:3px;line-height:1.3"></div></div>
+                    <div class="form-full time-grid-box">
+                        <div class="time-cell"><label class="time-cell-label">撤轮</label><input type="text" id="f_block_off" inputmode="numeric" maxlength="5" placeholder="HH:mm" oninput="onTimeInput(this)" onchange="recalcTimes()"><div class="tz-hint" id="hint_block_off"></div></div>
+                        <div class="time-cell"><label class="time-cell-label">起飞</label><input type="text" id="f_takeoff" inputmode="numeric" maxlength="5" placeholder="HH:mm" oninput="onTimeInput(this)" onchange="recalcTimes()"><div class="tz-hint" id="hint_takeoff"></div></div>
+                        <div class="time-cell"><label class="time-cell-label">落地</label><input type="text" id="f_landing" inputmode="numeric" maxlength="5" placeholder="HH:mm" oninput="onTimeInput(this)" onchange="recalcTimes()"><div class="tz-hint" id="hint_landing"></div></div>
+                        <div class="time-cell"><label class="time-cell-label">挡轮</label><input type="text" id="f_block_on" inputmode="numeric" maxlength="5" placeholder="HH:mm" oninput="onTimeInput(this)" onchange="recalcTimes()"><div class="tz-hint" id="hint_block_on"></div></div>
                     </div>
                     <div class="form-group"><label>空时 <span id="hint_air" class="time-hint"></span></label><input type="number" step="0.01" id="f_air" oninput="recalcTimes()"></div>
                     <div class="form-group"><label>总时 <span id="hint_total" class="time-hint"></span></label><input type="number" step="0.01" id="f_total_time" oninput="recalcTimes()"></div>
