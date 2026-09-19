@@ -939,6 +939,11 @@ window.saveRecord = () => {
     const tRe=/^([01]\d|2[0-3]):[0-5]\d$/;
     const tNames={block_off:'撤轮',takeoff:'起飞',landing:'落地',block_on:'挡轮'};
     for(const k in tNames){ const v=getV(k); if(v && !tRe.test(v)) return showFormError(tNames[k]+' 时间格式应为 24 小时制 HH:mm'); }
+    if(getV('cat')==='国内'){
+        const _dtz=resolveTz(getV('dep')), _atz=resolveTz(getV('arr'));
+        const _foreign=[_dtz,_atz].some(t=>t && t!=='Asia/Shanghai');
+        if(_foreign && !confirm('起飞地/落地地含境外机场（'+getV('dep')+'→'+getV('arr')+'），但航线属性选的是"国内"。\n\n跨中国国境的航线（飞出去/飞回来都算）属于国际航班，不计夜航补助。确定仍按"国内"保存吗？')) return;
+    }
     const d = {
         date:getV('date'),dep:getV('dep'),arr:getV('arr'),category:getV('cat'),crew:getV('crew'),
         flight_no:getV('flight_no'),ac_type:getV('ac_type'),landings_day:getI('landings_day'),
@@ -1003,12 +1008,18 @@ window.processAI = async (base64Image = null) => {
 时区处理逻辑：
 - 任务书上的原始时间通常是 UTC。
 - 如果 category 为 "国内"，请务必将时间点增加 8 小时转换为北京时间返回。
-- 如果 category 为 "国际"、"亚洲国际" 或 "港澳台"，请保持 UTC 时间返回。
+- 其他 category 请保持 UTC 时间返回。
+
+航线分类规则（category，非常重要，务必严格遵守）：
+- "国内"：起飞机场和落地机场都在中国大陆境内（两地都在中国）。
+- 只要起飞机场、落地机场中任意一个在中国大陆境外（含港澳台），就绝对不算"国内"。
+- 从中国飞往国外（如 沈阳→曼谷）和从国外飞回中国（如 曼谷→沈阳）都算国际航班，禁止判为"国内"。
+- 细分：港澳台=港澳台；亚洲范围内的国际航线=亚洲国际；亚洲以外=洲际。
 
 字段要求：
 - date: YYYY-MM-DD
 - dep/arr: 机场或城市名
-- category: 根据航线判断（国内/港澳台/亚洲国际/洲际）
+- category: 按上述规则判断（国内/港澳台/亚洲国际/洲际）
 - crew: 提取所有机组姓名，逗号分隔（如：李海鹏, 门翔宇）
 - flight_no: 提取航班号（如：B603V）
 - ac_type: G650ER/CL850
