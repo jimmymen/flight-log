@@ -438,6 +438,7 @@ window.doLogin = async () => {
             calendarData = ud.calendar || {};
             if (ud.settings) {
                 localStorage.setItem('fl_settings_' + user, JSON.stringify(ud.settings));
+                mergeTzFromSettings(ud.settings);
             }
         } else {
             allRecords = [];
@@ -539,7 +540,7 @@ window.importData = (event) => {
             const ud = JSON.parse(dataFile.content);
             allRecords = ud.records || [];
             calendarData = ud.calendar || {};
-            if (ud.settings) localStorage.setItem('fl_settings_' + user, JSON.stringify(ud.settings));
+            if (ud.settings) { localStorage.setItem('fl_settings_' + user, JSON.stringify(ud.settings)); mergeTzFromSettings(ud.settings); }
         }
         initSettings();
         document.getElementById('reportMonth').value = new Date().toISOString().slice(0,7);
@@ -558,7 +559,8 @@ async function pushToGist() {
             icao: localStorage.getItem('user_icao') || 'signed',
             cum_income: localStorage.getItem('user_cum_income') || '942692',
             cum_tax: localStorage.getItem('user_cum_tax') || '244022',
-            api_model: localStorage.getItem('api_model') || 'deepseek-flash'
+            api_model: localStorage.getItem('api_model') || 'deepseek-flash',
+            tz_custom: getCustomTz()
         }
     };
     const dot = document.getElementById('syncDot');
@@ -708,7 +710,8 @@ const AIRPORT_TZ = {
     '悉尼':'Australia/Sydney','墨尔本':'Australia/Melbourne','布里斯班':'Australia/Brisbane','珀斯':'Australia/Perth','奥克兰':'Pacific/Auckland','开罗':'Africa/Cairo','约翰内斯堡':'Africa/Johannesburg','内罗毕':'Africa/Nairobi','开普敦':'Africa/Johannesburg'
 };
 function getCustomTz(){ try { return JSON.parse(localStorage.getItem('tz_custom')||'{}'); } catch(e){ return {}; } }
-function setCustomTz(name,tz){ const c=getCustomTz(); c[name]=tz; localStorage.setItem('tz_custom',JSON.stringify(c)); }
+function setCustomTz(name,tz){ const c=getCustomTz(); c[name]=tz; localStorage.setItem('tz_custom',JSON.stringify(c)); debouncedSync(); }
+function mergeTzFromSettings(settings){ if(!settings||!settings.tz_custom) return; const cur=getCustomTz(); Object.assign(cur,settings.tz_custom); localStorage.setItem('tz_custom',JSON.stringify(cur)); }
 function resolveTz(name){
     if(!name) return null;
     const n=String(name).trim();
