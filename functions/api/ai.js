@@ -30,7 +30,7 @@ export async function onRequestPost({ request, env }) {
             'Authorization': `Bearer ${env.AI_KEY}`,
         },
         body: JSON.stringify({
-            model: model || env.AI_MODEL || 'deepseek-v4-flash-vision-exp',
+            model: model || env.AI_MODEL || 'deepseek-flash',
             messages,
             temperature: typeof temperature === 'number' ? temperature : 0.1,
             stream: false,

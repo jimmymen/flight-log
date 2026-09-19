@@ -210,7 +210,7 @@
         <div class="form-group" style="margin-top:10px"><label>英语等级</label><select id="set_icao"><option value="signed" selected>已签署 (ICAO4)</option><option value="unsigned">未签署</option></select></div>
         <div style="background:#fef3c7;padding:10px;border-radius:8px;margin-top:15px;border:1px solid #fcd34d">
             <p style="font-size:0.75rem;color:#92400e;margin-bottom:5px;font-weight:bold">🤖 AI 模型设置</p>
-            <div class="form-group"><label>模型名称</label><select id="set_api_model"><option value="deepseek-v4-flash-vision-exp">deepseek-v4-flash-vision-exp (图文·实验)</option><option value="deepseek-flash">deepseek-flash (纯文本·快)</option><option value="deepseek-v4-pro">deepseek-v4-pro (纯文本·强)</option></select></div>
+            <div class="form-group"><label>模型名称</label><select id="set_api_model"><option value="deepseek-flash">deepseek-flash (快·便宜·图文)</option><option value="deepseek-v4-pro">deepseek-v4-pro (强·图文)</option></select></div>
         </div>
         <button class="btn btn-primary" style="width:100%;margin-top:20px;padding:12px" onclick="saveSettings()">保存配置</button>
     </div>
@@ -509,7 +509,7 @@ async function pushToGist() {
             icao: localStorage.getItem('user_icao') || 'signed',
             cum_income: localStorage.getItem('user_cum_income') || '942692',
             cum_tax: localStorage.getItem('user_cum_tax') || '244022',
-            api_model: localStorage.getItem('api_model') || 'deepseek-v4-flash-vision-exp'
+            api_model: localStorage.getItem('api_model') || 'deepseek-flash'
         }
     };
     const dot = document.getElementById('syncDot');
@@ -595,7 +595,7 @@ const initSettings = () => {
     document.getElementById('set_cum_income').value = userSettings.cum_income || localStorage.getItem('user_cum_income') || '942692';
     document.getElementById('set_cum_tax').value = userSettings.cum_tax || localStorage.getItem('user_cum_tax') || '244022';
     var apiModel = userSettings.api_model || localStorage.getItem('api_model') || '';
-    if (!apiModel || apiModel.includes('Qwen') || apiModel.includes('gpt-')) apiModel = 'deepseek-v4-flash-vision-exp';
+    if (!apiModel || apiModel.includes('Qwen') || apiModel.includes('gpt-')) apiModel = 'deepseek-flash';
     document.getElementById('set_api_model').value = apiModel;
 };
 
@@ -784,7 +784,7 @@ window.handleMissionUpload = async (event) => {
 window.processAI = async (base64Image = null) => {
     const text = document.getElementById('ocrInput').value.trim();
     const isUTC = document.getElementById('isUTC').checked;
-    const apiModel = (document.getElementById('set_api_model').value || 'deepseek-v4-flash-vision-exp').trim();
+    const apiModel = (document.getElementById('set_api_model').value || 'deepseek-flash').trim();
     if(!base64Image&&!text) return alert("请输入文本或上传图片");
     const btn=document.getElementById('aiBtn');const loader=document.getElementById('aiLoading');
     btn.innerHTML="⏳ AI 正在解析...";btn.disabled=true;loader.style.display="flex";
