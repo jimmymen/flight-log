@@ -157,6 +157,20 @@
         .time-cell-label { font-size:0.7rem; text-align:center; display:block; }
         .time-cell input { width:100%; min-width:0; padding:10px; border:1px solid var(--border); border-radius:8px; outline:none; font-size:0.9rem; text-align:center; font-family:monospace; background:#fff; }
         .tz-hint { font-size:0.62rem; color:#64748b; text-align:center; margin-top:3px; line-height:1.3; word-break:break-word; }
+        .edit-form { padding-bottom: 88px; }
+        .form-actions { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; width: 100%; max-width: 1160px; background: #fff; border-top: 1px solid var(--border); padding: 10px 15px; display: flex; gap: 10px; justify-content: flex-end; z-index: 1500; box-shadow: 0 -2px 12px rgba(0,0,0,0.10); }
+        .form-actions .btn { padding: 12px 20px; }
+        .form-actions .btn-primary { flex: 1; max-width: 260px; }
+        .form-error { display: none; color: #b91c1c; background: #fee2e2; border: 1px solid #fecaca; padding: 8px 10px; border-radius: 8px; margin-bottom: 12px; font-size: 0.85rem; }
+        .top-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; position: relative; }
+        .more-menu { display: none; position: absolute; right: 0; top: 115%; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); padding: 6px; min-width: 160px; z-index: 3000; }
+        .more-menu.open { display: block; }
+        .more-menu button { display: block; width: 100%; text-align: left; background: transparent; border: none; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #334155; white-space: nowrap; }
+        .more-menu button:hover { background: #f1f5f9; }
+        .ai-box textarea { min-height: 90px; max-height: 320px; height: auto; overflow-y: auto; }
+        html.dark { background: #0f172a; }
+        html.dark body { filter: invert(1) hue-rotate(180deg); background: #0f172a; }
+        html.dark body img, html.dark body canvas, html.dark body video { filter: invert(1) hue-rotate(180deg); }
         @media (max-width: 768px) {
             body { padding: 10px; }
             .cal-day { min-height: 50px; flex-direction: column; justify-content: flex-start; align-items: center; padding: 4px; border-radius: 8px;}
@@ -178,6 +192,10 @@
             .card-body { padding: 15px; }
             .salary-summary-box { gap: 6px; padding: 10px; }
             .ss-val { font-size: 0.95rem; }
+            .cal-day { min-height: 64px; }
+            .form-actions { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+            .form-actions .btn-primary { max-width: none; }
+            .top-bar { padding: 12px 16px; }
         }
     </style>
 </head>
@@ -263,10 +281,14 @@
             <h1 style="font-size:1.3rem">控制台 <span style="font-size:0.7rem;color:rgba(255,255,255,0.5)">v2.3</span></h1>
             <div class="user-pill"><span id="userInfo"></span><span class="sync-indicator" style="margin-left:8px"><span class="sync-dot" id="syncDot"></span> <span id="syncStatus">已同步</span></span></div>
         </div>
-        <div>
-            <button class="btn" style="background:rgba(255,255,255,0.2);color:white;margin-right:5px" onclick="document.getElementById('settingsModal').style.display='flex'">⚙️ 设置</button>
-            <button class="btn" id="adminBtn" style="background:rgba(255,255,255,0.2);color:white;margin-right:5px;display:none" onclick="showAdmin()">👥 用户管理</button>
+        <div class="top-actions">
+            <button class="btn" style="background:rgba(255,255,255,0.2);color:white" onclick="document.getElementById('settingsModal').style.display='flex'">⚙️ 设置</button>
             <button class="btn" style="background:rgba(255,255,255,0.2);color:white" onclick="doLogout()">退出</button>
+            <button class="btn" style="background:rgba(255,255,255,0.2);color:white" onclick="toggleMoreMenu(event)">⋯</button>
+            <div class="more-menu" id="moreMenu">
+                <button id="adminBtn" style="display:none" onclick="showAdmin();closeMoreMenu()">👥 用户管理</button>
+                <button onclick="toggleTheme();closeMoreMenu()"><span id="themeLabel">🌙 深色模式</span></button>
+            </div>
         </div>
     </div>
 
@@ -320,11 +342,12 @@
             <div class="ai-box">
                 <div id="aiLoading" class="loading-overlay"><div class="spinner"></div></div>
                 <div class="ai-options"><label style="cursor:pointer;display:flex;align-items:center"><input type="checkbox" id="isUTC" checked style="margin-right:4px"> 原数据为 UTC 时间 (自动转北京时间)</label></div>
-                <textarea id="ocrInput" placeholder="在此粘贴文本...&#10;例：11.9 G650ER 沈阳-曼谷 3起落 国际有过夜 滑行2天"></textarea>
+                <textarea id="ocrInput" oninput="autoGrow(this)" placeholder="在此粘贴文本...&#10;例：11.9 G650ER 沈阳-曼谷 3起落 国际有过夜 滑行2天"></textarea>
             </div>
             <div id="editForm" class="edit-form" style="display:none">
-                <div class="form-tag" id="formModeTag">新增</div><input type="hidden" id="edit_idx">
-                <div class="form-grid">
+                        <div class="form-tag" id="formModeTag">新增</div><input type="hidden" id="edit_idx">
+                        <div class="form-error" id="formError"></div>
+                        <div class="form-grid">
                     <div class="form-group"><label>日期</label><input type="date" id="f_date" onchange="recalcTimes()"></div>
                     <div class="form-group"><label>机型</label><select id="f_ac_type" style="font-weight:bold;color:var(--primary)"><option value="G650ER">G650ER</option><option value="CL850">CL850</option></select></div>
                     <div class="form-group"><label>起飞地</label><input type="text" id="f_dep" onchange="onAirportChange()"></div>
@@ -355,7 +378,7 @@
                     <div class="form-group"><label>节假日天数</label><input type="number" id="f_holiday"></div>
                     <div class="form-group"><label>特殊机场</label><input type="number" id="f_special" value="0"></div>
                 </div>
-                <div style="margin-top:15px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #f1f5f9;padding-top:15px">
+                <div class="form-actions">
                     <button class="btn btn-ghost" onclick="closeForm()">取消</button>
                     <button class="btn btn-primary" onclick="saveRecord()">💾 保存记录</button>
                 </div>
@@ -442,7 +465,7 @@ window.doLogin = async () => {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('app').style.display = 'flex';
         document.getElementById('userInfo').textContent = user + (lj.type === 'admin' ? ' (管理员)' : '');
-        if (lj.type === 'admin') document.getElementById('adminBtn').style.display = 'inline-block';
+        if (lj.type === 'admin') document.getElementById('adminBtn').style.display = 'block';
 
         // Load user data
         const gist = await fetchGist();
@@ -523,6 +546,21 @@ window.importData = (event) => {
     reader.readAsText(file);
 };
 
+// ====== UI HELPERS ======
+function applyTheme(){
+    const dark = localStorage.getItem('fl_theme')==='dark';
+    document.documentElement.classList.toggle('dark', dark);
+    const lbl=document.getElementById('themeLabel');
+    if(lbl) lbl.textContent = dark ? '☀️ 浅色模式' : '🌙 深色模式';
+}
+window.toggleTheme = () => { const dark=localStorage.getItem('fl_theme')==='dark'; localStorage.setItem('fl_theme', dark?'light':'dark'); applyTheme(); };
+window.toggleMoreMenu = (e) => { if(e) e.stopPropagation(); const m=document.getElementById('moreMenu'); if(m) m.classList.toggle('open'); };
+window.closeMoreMenu = () => { const m=document.getElementById('moreMenu'); if(m) m.classList.remove('open'); };
+document.addEventListener('click', (e)=>{ const m=document.getElementById('moreMenu'); if(m && m.classList.contains('open') && !(e.target.closest && e.target.closest('.top-actions'))) m.classList.remove('open'); });
+window.autoGrow = (el) => { if(!el) return; el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,320)+'px'; };
+window.showFormError = (msg) => { const e=document.getElementById('formError'); if(!e) return; if(msg){ e.textContent=msg; e.style.display='block'; } else { e.style.display='none'; e.textContent=''; } };
+applyTheme();
+
 // Auto-fill saved username
 (function(){
     const saved = localStorage.getItem('fl_current_user');
@@ -548,7 +586,7 @@ window.importData = (event) => {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('app').style.display = 'flex';
         document.getElementById('userInfo').textContent = user + (lj.type === 'admin' ? ' (管理员)' : '');
-        if (lj.type === 'admin') document.getElementById('adminBtn').style.display = 'inline-block';
+        if (lj.type === 'admin') document.getElementById('adminBtn').style.display = 'block';
         const gist = await fetchGist();
         let dataFile = gist.files['data_' + user + '.json'];
         if (dataFile) {
@@ -897,7 +935,10 @@ window.saveRecord = () => {
     const getV=(k)=>document.getElementById('f_'+k).value.trim();
     const getN=(k)=>parseFloat(getV(k))||0;
     const getI=(k)=>parseInt(getV(k))||0;
-    if(!getV('date')) return alert('日期为空');
+    if(!getV('date')) return showFormError('请填写日期');
+    const tRe=/^([01]\d|2[0-3]):[0-5]\d$/;
+    const tNames={block_off:'撤轮',takeoff:'起飞',landing:'落地',block_on:'挡轮'};
+    for(const k in tNames){ const v=getV(k); if(v && !tRe.test(v)) return showFormError(tNames[k]+' 时间格式应为 24 小时制 HH:mm'); }
     const d = {
         date:getV('date'),dep:getV('dep'),arr:getV('arr'),category:getV('cat'),crew:getV('crew'),
         flight_no:getV('flight_no'),ac_type:getV('ac_type'),landings_day:getI('landings_day'),
@@ -1138,7 +1179,14 @@ window.renderList = () => {
         let nightTotal=(parseFloat(r.night1)||0)+(parseFloat(r.night2)||0);
         let nightBadge=(nightTotal>0)?(r.category==='国内'?`<span class="night-badge-money">🌙 计薪: ${nightTotal.toFixed(1)}h</span>`:`<span class="night-badge-gray">🌙 已含: ${nightTotal.toFixed(1)}h</span>`):'';
         let midBadge=(r.category==='国内'&&r.takeoff&&r.landing&&r.landing<r.takeoff)?`<span class="midnight-tag">🌙 跨零点</span>`:'';
-        return `<div class="log-item"><div class="log-info"><div class="log-header"><div style="font-weight:700;color:#1e293b;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.8rem">${r.date.substring(5)}</span> ${r.dep} <span style="color:#cbd5e1">➜</span> ${r.arr} ${r.ac_type?`<span class="ac-badge">${r.ac_type}</span>`:''}</div>${ms.length?`<span class="meal-badge">🍱 ${ms.join('+')}</span>`:''}</div><div style="font-size:0.8rem;color:#64748b;margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="color:var(--primary);font-weight:bold">${r.total_time}h</span> · ${r.category} ${r.flight_no?`· ${r.flight_no}`:''} ${landingBadge} ${nightBadge} ${midBadge}</div></div><div class="log-actions" style="display:flex;gap:5px;margin-left:5px"><button class="btn btn-edit" onclick="editRecord(${globalIdx})">✏️</button><button class="btn btn-danger" onclick="deleteItem(${globalIdx})">🗑️</button></div></div>`;
+        const utcD=storedToUtcDelta(r.category);
+        const utcTk=addMin(r.takeoff,utcD), utcLd=addMin(r.landing,utcD);
+        const arrTz=resolveTz(r.arr); const arrOff=arrTz?tzOffsetMin(arrTz,r.date,r.landing):catOffsetMin(r.category);
+        const arrLd=addMin(r.landing, utcD + (arrOff===null?catOffsetMin(r.category):arrOff));
+        let timeLine='';
+        if(utcTk&&utcLd) timeLine=`<span style="font-family:monospace">UTC ${utcTk}\u2192${utcLd}</span>`;
+        if(arrLd&&r.arr) timeLine+=(timeLine?' \u00b7 ':'')+`${r.arr} <span style="font-family:monospace">${arrLd}</span>`;
+        return `<div class="log-item"><div class="log-info"><div class="log-header"><div style="font-weight:700;color:#1e293b;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;color:#64748b;background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.8rem">${r.date.substring(5)}</span> ${r.dep} <span style="color:#cbd5e1">➜</span> ${r.arr} ${r.ac_type?`<span class="ac-badge">${r.ac_type}</span>`:''}</div>${ms.length?`<span class="meal-badge">🍱 ${ms.join('+')}</span>`:''}</div><div style="font-size:0.8rem;color:#64748b;margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="color:var(--primary);font-weight:bold">${r.total_time}h</span> · ${r.category} ${r.flight_no?`· ${r.flight_no}`:''} ${landingBadge} ${nightBadge} ${midBadge} ${timeLine}</div></div><div class="log-actions" style="display:flex;gap:5px;margin-left:5px"><button class="btn btn-edit" onclick="editRecord(${globalIdx})">✏️</button><button class="btn btn-danger" onclick="deleteItem(${globalIdx})">🗑️</button></div></div>`;
     }).join('');
 };
 
