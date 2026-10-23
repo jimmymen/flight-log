@@ -811,10 +811,14 @@ async function doMigrate(){
         writes[VAULT_FILE] = JSON.stringify(vault, null, 1);
         await ghPatch(writes);
 
-        // 抹掉旧仓库里的明文文件（gist 历史仍需管理员手动删除整个 gist）
-        await ghPatch({'accounts.json': null}, LEGACY_GIST_ID);
-        for (const name of Object.keys(ac.users || {})) {
-            await ghPatch({['data_' + name + '.json']: null}, LEGACY_GIST_ID);
+        // 抹掉旧仓库里的明文文件。gist 不允许一个文件都不剩，所以同时写一个占位文件。
+        const cleanup = {'README.txt': 'migrated - plaintext removed'};
+        cleanup['accounts.json'] = null;
+        for (const name of Object.keys(ac.users || {})) cleanup['data_' + name + '.json'] = null;
+        try {
+            await ghPatch(cleanup, LEGACY_GIST_ID);
+        } catch(err) {
+            console.warn('清理旧仓库失败（不影响加密数据）:', err);
         }
         alert('迁移完成！请用刚设置的密码登录。');
         location.reload();
