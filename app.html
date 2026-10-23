@@ -226,10 +226,32 @@
 <div id="loginScreen" class="login-wrap">
     <div class="login-card">
         <h1 style="font-size: 3rem;">✈️</h1>
-        <h2 style="color:#1e40af;margin-bottom:24px">飞行日志 Pro<br><span style="font-size:0.85rem;color:#64748b;font-weight:normal">CCAR-91 独立版 v2.3</span></h2>
-        <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
-        <input type="password" id="loginPwd" placeholder="密码" autocomplete="current-password">
-        <button class="btn btn-primary" style="width:100%;padding:14px;margin-top:8px" onclick="doLogin()">登录</button>
+        <h2 style="color:#1e40af;margin-bottom:16px">飞行日志 Pro<br><span style="font-size:0.8rem;color:#16a34a;font-weight:normal">CCAR-91 独立版 v3.0 · 🔒 端到端加密</span></h2>
+
+        <div id="paneToken" style="display:none">
+            <p style="font-size:0.78rem;color:#64748b;text-align:left;line-height:1.6;margin-bottom:10px">
+                需要一个 <b>仅勾选 Gists 权限</b> 的 GitHub token。<br>只保存在这台设备，不会写进代码。
+            </p>
+            <input type="password" id="flTokenInput" placeholder="github_pat_… 或 ghp_…" autocomplete="off">
+            <button class="btn btn-primary" style="width:100%;padding:14px;margin-top:8px" onclick="submitFlToken()">保存并继续</button>
+        </div>
+
+        <div id="paneLogin">
+            <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
+            <input type="password" id="loginPwd" placeholder="密码" autocomplete="current-password">
+            <button class="btn btn-primary" style="width:100%;padding:14px;margin-top:8px" onclick="doLogin()">解锁</button>
+            <button style="background:none;border:none;color:#64748b;font-size:0.72rem;margin-top:10px;text-decoration:underline;cursor:pointer" onclick="changeFlToken()">更换 token</button>
+        </div>
+
+        <div id="paneMigrate" style="display:none;text-align:left">
+            <p style="font-size:0.78rem;color:#64748b;line-height:1.6;margin-bottom:12px">
+                检测到 <b>明文</b> 数据。为每个用户设置新密码，数据会被加密后迁移。<br>
+                跳过某个用户 = 不迁移他的数据。
+            </p>
+            <div id="migrateUsers" style="max-height:240px;overflow-y:auto"></div>
+            <button class="btn btn-primary" style="width:100%;padding:14px;margin-top:8px" onclick="doMigrate()">开始加密迁移</button>
+        </div>
+
         <div class="login-error" id="loginError"></div>
     </div>
 </div>
@@ -265,6 +287,7 @@
         <div style="background:#fef3c7;padding:10px;border-radius:8px;margin-top:15px;border:1px solid #fcd34d">
             <p style="font-size:0.75rem;color:#92400e;margin-bottom:5px;font-weight:bold">🤖 AI 模型设置</p>
             <div class="form-group"><label>模型名称</label><select id="set_api_model"><option value="deepseek-flash">deepseek-flash (快·便宜·图文)</option><option value="deepseek-v4-pro">deepseek-v4-pro (强·图文)</option></select></div>
+            <div class="form-group"><label>API Key（只存本机，不写进代码）</label><input type="password" id="set_ai_key" placeholder="sk-..."></div>
         </div>
         <div style="background:#eff6ff;padding:10px;border-radius:8px;margin-top:15px;border:1px solid #bfdbfe">
             <p style="font-size:0.75rem;color:#1e40af;margin-bottom:5px;font-weight:bold">📦 数据备份 / 迁移</p>
@@ -442,8 +465,12 @@
 </div>
 
 <script>
-const GIST_API = '/api/gist';
-const AI_ENDPOINT = '/api/ai';
+const GH_API = 'https://api.github.com';
+const GIST_ID = 'a84a7988d2e5d00f1cde2a2ac5ba8d62';
+const LEGACY_GIST_ID = '4890fed076fb1d7db45898e4fc9f02bd';
+const VAULT_FILE = 'vault.json';
+const ITER = 310000;
+const DEFAULT_AI_URL = 'https://api.deepseek.com/chat/completions';
 
 const HOLIDAY_RATE = 7262;
 const SIM_RATE = 400;
@@ -463,29 +490,100 @@ let calendarData = {};
 let currentModalDate = '';
 let syncTimer = null;
 let userAccount = null;
+let vaultKey = null;
 
-// ====== GIST API ======
+// ====== 加密存储层 ======
+function flToken() { return localStorage.getItem('fl_token') || ''; }
+const FL_TE = new TextEncoder(), FL_TD = new TextDecoder();
+function flB64(buf){ const b=new Uint8Array(buf); let o=''; for(let i=0;i<b.length;i++) o+=String.fromCharCode(b[i]); return btoa(o); }
+function flUnb64(str){ const a=atob(str); const b=new Uint8Array(a.length); for(let i=0;i<a.length;i++) b[i]=a.charCodeAt(i); return b; }
+function flHex(buf){ return Array.from(new Uint8Array(buf)).map(x=>x.toString(16).padStart(2,'0')).join(''); }
+async function flUid(name){ const d=await crypto.subtle.digest('SHA-256', FL_TE.encode(name.trim().toLowerCase())); return flHex(d).slice(0,24); }
+async function flDerive(pw, salt, iter){
+    const base = await crypto.subtle.importKey('raw', FL_TE.encode(pw), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({name:'PBKDF2', salt:salt, iterations: iter||ITER, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, true, ['encrypt','decrypt']);
+}
+async function flSeal(key, obj){
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv:iv}, key, FL_TE.encode(JSON.stringify(obj)));
+    return {iv: flB64(iv), ct: flB64(ct)};
+}
+async function flUnseal(key, blob){
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv: flUnb64(blob.iv)}, key, flUnb64(blob.ct));
+    return JSON.parse(FL_TD.decode(pt));
+}
+async function ghGet(gistId){
+    const r = await fetch(`${GH_API}/gists/${gistId}`, {headers:{Authorization:'token '+flToken()}, cache:'no-store'});
+    if (r.status === 401) throw new Error('token 已失效');
+    if (r.status === 404) throw new Error('数据仓库不存在');
+    if (!r.ok) throw new Error('读取失败 HTTP ' + r.status);
+    return r.json();
+}
+async function ghPatch(files, gistId){
+    const body = {files:{}};
+    for (const [k,v] of Object.entries(files)) body.files[k] = (v===null) ? null : {content:v};
+    const r = await fetch(`${GH_API}/gists/${gistId || GIST_ID}`, {
+        method:'PATCH',
+        headers:{Authorization:'token '+flToken(), 'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error('写入失败 HTTP ' + r.status);
+    return r.json();
+}
+async function flReadVault(){
+    const g = await ghGet(GIST_ID);
+    return g.files[VAULT_FILE] ? JSON.parse(g.files[VAULT_FILE].content) : null;
+}
+async function aiFetch(payload){
+    const url = localStorage.getItem('fl_ai_url') || DEFAULT_AI_URL;
+    const key = localStorage.getItem('fl_ai_key') || '';
+    if (!key) throw new Error('请先在「设置 → AI 模型设置」里填入 API Key');
+    return await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+key},
+        body: JSON.stringify(payload)
+    });
+}
+
+// 对外接口：返回一个"已解密"的 gist 形状，上层业务代码完全不用改
 async function fetchGist() {
-    const r = await fetch(GIST_API, { headers: { 'x-auth': localStorage.getItem('fl_pwd_hash') || '' } });
-    if (!r.ok) throw new Error('Gist 读取失败: ' + r.status);
-    return await r.json();
+    const g = await ghGet(GIST_ID);
+    const out = {files:{}};
+    const vault = g.files[VAULT_FILE] ? JSON.parse(g.files[VAULT_FILE].content) : {users:{}};
+    const users = {};
+    for (const rec of Object.values(vault.users||{})) {
+        if (rec && rec.name) users[rec.name] = {type: rec.type || 'user'};
+    }
+    out.files['accounts.json'] = {content: JSON.stringify({users})};
+    if (currentUser && vaultKey) {
+        try {
+            const id = await flUid(currentUser);
+            const f = g.files['e_' + id + '.json'];
+            if (f) {
+                const payload = await flUnseal(vaultKey, JSON.parse(f.content));
+                out.files['data_' + currentUser + '.json'] = {content: JSON.stringify(payload.data)};
+            }
+        } catch(e) { console.warn('解密失败:', e); }
+    }
+    return out;
 }
 
 async function updateGist(files) {
-    const r = await fetch(GIST_API, {
-        method: 'PATCH',
-        headers: {'Content-Type':'application/json','x-auth': localStorage.getItem('fl_pwd_hash') || ''},
-        body: JSON.stringify({files})
-    });
-    if (!r.ok) throw new Error('Gist 写入失败: ' + r.status);
-    return await r.json();
-}
-
-// ====== CRYPTO ======
-async function hashPassword(pw) {
-    const enc = new TextEncoder();
-    const buf = await crypto.subtle.digest('SHA-256', enc.encode(pw));
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    const out = {};
+    for (const [name, val] of Object.entries(files)) {
+        const content = (val && typeof val === 'object' && 'content' in val) ? val.content : val;
+        if (name === 'accounts.json') continue;
+        const m = /^data_(.+)\.json$/.exec(name);
+        if (m) {
+            if (!vaultKey) throw new Error('未解锁');
+            const id = await flUid(m[1]);
+            out['e_' + id + '.json'] = JSON.stringify(await flSeal(vaultKey, {user: m[1], data: JSON.parse(content)}));
+        } else {
+            out[name] = content;
+        }
+    }
+    if (!Object.keys(out).length) return {ok:true};
+    return await ghPatch(out);
 }
 
 // ====== AUTH ======
@@ -495,49 +593,47 @@ window.doLogin = async () => {
     const errEl = document.getElementById('loginError');
     if (!user || !pwd) { errEl.style.display='block'; errEl.textContent='请输入用户名和密码'; return; }
     errEl.style.display='none';
-    document.querySelector('#loginScreen .btn').textContent = '登录中...';
+    document.querySelector('#loginScreen .btn').textContent = '解锁中...';
     document.querySelector('#loginScreen .btn').disabled = true;
 
     try {
-        const pwHash = await hashPassword(pwd);
-        const lr = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user, pwdHash: pwHash })
-        });
-        const lj = await lr.json();
-        if (!lr.ok || !lj.ok) throw new Error('用户名或密码错误');
+        const vault = await flReadVault();
+        if (!vault) throw new Error('数据仓库未初始化');
+        const id = await flUid(user);
+        const rec = (vault.users||{})[id];
+        if (!rec) throw new Error('用户名或密码错误');
 
-        // Login OK
+        const key = await flDerive(pwd, flUnb64(rec.salt), rec.iter);
+        const g = await ghGet(GIST_ID);
+        const f = g.files['e_' + id + '.json'];
+        if (!f) throw new Error('未找到该用户的数据');
+
+        let payload;
+        try { payload = await flUnseal(key, JSON.parse(f.content)); }
+        catch(e) { throw new Error('用户名或密码错误'); }
+
+        vaultKey = key;
         currentUser = user;
-        currentPwdHash = pwHash;
-        userAccount = { type: lj.type, base_salary_net: lj.base_salary_net, base_salary_gross: lj.base_salary_gross };
+        currentPwdHash = null;
+        userAccount = { type: payload.type || rec.type || 'user',
+                        base_salary_net: payload.base_salary_net,
+                        base_salary_gross: payload.base_salary_gross };
+
+        sessionStorage.setItem('fl_key', flB64(await crypto.subtle.exportKey('raw', key)));
+        sessionStorage.setItem('fl_user', user);
         localStorage.setItem('fl_current_user', user);
-        localStorage.setItem('fl_pwd_hash', pwHash);
+
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('app').style.display = 'flex';
-        document.getElementById('userInfo').textContent = user + (lj.type === 'admin' ? ' (管理员)' : '');
-        if (lj.type === 'admin') document.getElementById('adminBtn').style.display = 'block';
+        document.getElementById('userInfo').textContent = user + (userAccount.type === 'admin' ? ' (管理员)' : '');
+        document.getElementById('adminBtn').style.display = (userAccount.type === 'admin') ? 'block' : 'none';
 
-        // Load user data
-        const gist = await fetchGist();
-        let dataFile = gist.files[`data_${user}.json`];
-        if (dataFile) {
-            const ud = JSON.parse(dataFile.content);
-            allRecords = ud.records || [];
-            calendarData = ud.calendar || {};
-            simRecords = ud.sims || [];
-            helpRecords = ud.helps || [];
-            if (ud.settings) {
-                localStorage.setItem('fl_settings_' + user, JSON.stringify(ud.settings));
-                mergeTzFromSettings(ud.settings);
-            }
-        } else {
-            allRecords = [];
-            calendarData = {};
-            simRecords = [];
-            helpRecords = [];
-        }
+        const ud = payload.data || {};
+        allRecords = ud.records || [];
+        calendarData = ud.calendar || {};
+        simRecords = ud.sims || [];
+        helpRecords = ud.helps || [];
+        if (ud.settings) { localStorage.setItem('fl_settings_' + user, JSON.stringify(ud.settings)); mergeTzFromSettings(ud.settings); }
 
         initSettings();
         document.getElementById('reportMonth').value = new Date().toISOString().slice(0,7);
@@ -560,6 +656,12 @@ window.doLogout = () => {
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPwd').value = '';
     localStorage.removeItem('fl_current_user');
+    showFlPane('login');
+    const le = document.getElementById('loginError');
+    if (le) { le.style.display = 'none'; le.textContent = ''; }
+    sessionStorage.removeItem('fl_key');
+    sessionStorage.removeItem('fl_user');
+    vaultKey = null;
 };
 
 // ====== IMPORT / EXPORT ======
@@ -633,43 +735,161 @@ applyTheme();
     if (saved) document.getElementById('loginUser').value = saved;
 })();
 
-// Auto-login if credentials saved
-(async function autoLogin(){
-    const user = localStorage.getItem('fl_current_user');
-    const pwdHash = localStorage.getItem('fl_pwd_hash');
-    if (!user || !pwdHash) return;
+// ====== 启动：决定显示哪个面板 ======
+const FL_PANES = { token:'paneToken', login:'paneLogin', migrate:'paneMigrate' };
+function showFlPane(p){
+    for (const k in FL_PANES) {
+        const el = document.getElementById(FL_PANES[k]);
+        if (el) el.style.display = (k === p ? 'block' : 'none');
+    }
+}
+function submitFlToken(){
+    const t = document.getElementById('flTokenInput').value.trim();
+    if (!t) return;
+    localStorage.setItem('fl_token', t);
+    document.getElementById('flTokenInput').value = '';
+    flBoot();
+}
+function changeFlToken(){
+    localStorage.removeItem('fl_token');
+    sessionStorage.removeItem('fl_key');
+    sessionStorage.removeItem('fl_user');
+    showFlPane('token');
+}
+
+let migrateLegacy = null;
+async function buildMigrateForm(legacy){
+    migrateLegacy = legacy;
+    const ac = JSON.parse(legacy.files['accounts.json'].content);
+    let html = '';
+    for (const [name, entry] of Object.entries(ac.users || {})) {
+        const hasData = !!legacy.files['data_' + name + '.json'];
+        html += `<div style="margin-bottom:10px;padding:10px;background:#f8fafc;border-radius:8px">
+            <div style="font-size:0.8rem;font-weight:bold;margin-bottom:6px">${name}
+                <span style="font-weight:normal;color:#64748b">${entry.type==='admin'?'管理员':'用户'} · ${hasData?'有数据':'无数据'}</span>
+            </div>
+            <input type="password" data-mig-user="${name}" placeholder="为该用户设置新密码（≥8 位）">
+        </div>`;
+    }
+    document.getElementById('migrateUsers').innerHTML = html;
+}
+
+async function doMigrate(){
+    const plan = [];
+    for (const el of document.querySelectorAll('[data-mig-user]')) {
+        const name = el.getAttribute('data-mig-user');
+        const pwd = el.value;
+        if (!pwd) continue;
+        if (pwd.length < 8) return alert(name + ' 的密码至少 8 位');
+        if (pwd === name || pwd === name + '123') return alert(name + ' 的密码不能是用户名');
+        plan.push({name: name, pwd: pwd});
+    }
+    if (!plan.length) return alert('至少为一个用户设置密码');
+    const btn = document.querySelector('#paneMigrate .btn');
+    btn.disabled = true; btn.textContent = '加密中...';
     try {
-        const lr = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user, pwdHash })
-        });
-        const lj = await lr.json();
-        if (!lr.ok || !lj.ok) return;
-        currentUser = user;
-        currentPwdHash = pwdHash;
-        userAccount = { type: lj.type, base_salary_net: lj.base_salary_net, base_salary_gross: lj.base_salary_gross };
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('app').style.display = 'flex';
-        document.getElementById('userInfo').textContent = user + (lj.type === 'admin' ? ' (管理员)' : '');
-        if (lj.type === 'admin') document.getElementById('adminBtn').style.display = 'block';
-        const gist = await fetchGist();
-        let dataFile = gist.files['data_' + user + '.json'];
-        simRecords = [];
-        helpRecords = [];
-        if (dataFile) {
-            const ud = JSON.parse(dataFile.content);
-            allRecords = ud.records || [];
-            calendarData = ud.calendar || {};
-            simRecords = ud.sims || [];
-            helpRecords = ud.helps || [];
-            if (ud.settings) { localStorage.setItem('fl_settings_' + user, JSON.stringify(ud.settings)); mergeTzFromSettings(ud.settings); }
+        const ac = JSON.parse(migrateLegacy.files['accounts.json'].content);
+        const vault = {v:3, iter:ITER, users:{}};
+        const writes = {};
+        for (const {name, pwd} of plan) {
+            const entry = ac.users[name] || {};
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const key = await flDerive(pwd, salt);
+            const id = await flUid(name);
+            const dataFile = migrateLegacy.files['data_' + name + '.json'];
+            const data = dataFile ? JSON.parse(dataFile.content) : {records:[],sims:[],helps:[],calendar:{},settings:{}};
+            const blob = await flSeal(key, {
+                user: name.trim().toLowerCase(),
+                type: entry.type || 'user',
+                base_salary_net: entry.base_salary_net,
+                base_salary_gross: entry.base_salary_gross,
+                data: data
+            });
+            writes['e_' + id + '.json'] = JSON.stringify(blob);
+            vault.users[id] = {name: name.trim(), type: entry.type || 'user', salt: flB64(salt), iter: ITER, created: new Date().toISOString()};
         }
-        initSettings();
-        document.getElementById('reportMonth').value = new Date().toISOString().slice(0,7);
-        refreshAll();
-    } catch(e) {}
-})();
+        writes[VAULT_FILE] = JSON.stringify(vault, null, 1);
+        await ghPatch(writes);
+
+        // 抹掉旧仓库里的明文文件（gist 历史仍需管理员手动删除整个 gist）
+        await ghPatch({'accounts.json': null}, LEGACY_GIST_ID);
+        for (const name of Object.keys(ac.users || {})) {
+            await ghPatch({['data_' + name + '.json']: null}, LEGACY_GIST_ID);
+        }
+        alert('迁移完成！请用刚设置的密码登录。');
+        location.reload();
+    } catch(e) {
+        btn.disabled = false; btn.textContent = '开始加密迁移';
+        alert('迁移失败：' + e.message);
+    }
+}
+
+window.flBoot = async function flBoot(){
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+
+    if (!flToken()) { showFlPane('token'); return; }
+
+    let g;
+    try { g = await ghGet(GIST_ID); }
+    catch(e) {
+        showFlPane('token');
+        document.getElementById('loginError').style.display = 'block';
+        document.getElementById('loginError').textContent = '读取失败：' + e.message;
+        return;
+    }
+
+    if (!g.files[VAULT_FILE]) {
+        let legacy = null;
+        try { legacy = await ghGet(LEGACY_GIST_ID); } catch(e) {}
+        if (legacy && legacy.files['accounts.json']) {
+            await buildMigrateForm(legacy);
+            showFlPane('migrate');
+        } else {
+            showFlPane('token');
+            document.getElementById('loginError').style.display = 'block';
+            document.getElementById('loginError').textContent = '没有找到可迁移的数据';
+        }
+        return;
+    }
+
+    // 同一标签页刷新：用会话密钥自动解锁
+    const raw = sessionStorage.getItem('fl_key');
+    const user = sessionStorage.getItem('fl_user');
+    if (raw && user) {
+        try {
+            const key = await crypto.subtle.importKey('raw', flUnb64(raw), {name:'AES-GCM'}, true, ['encrypt','decrypt']);
+            const id = await flUid(user);
+            const f = g.files['e_' + id + '.json'];
+            if (f) {
+                const payload = await flUnseal(key, JSON.parse(f.content));
+                vaultKey = key; currentUser = user;
+                userAccount = {type: payload.type || 'user', base_salary_net: payload.base_salary_net, base_salary_gross: payload.base_salary_gross};
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('app').style.display = 'flex';
+                document.getElementById('userInfo').textContent = user + (userAccount.type === 'admin' ? ' (管理员)' : '');
+                document.getElementById('adminBtn').style.display = (userAccount.type === 'admin') ? 'block' : 'none';
+                const ud = payload.data || {};
+                allRecords = ud.records || []; calendarData = ud.calendar || {};
+                simRecords = ud.sims || []; helpRecords = ud.helps || [];
+                if (ud.settings) { localStorage.setItem('fl_settings_' + user, JSON.stringify(ud.settings)); mergeTzFromSettings(ud.settings); }
+                initSettings();
+                document.getElementById('reportMonth').value = new Date().toISOString().slice(0,7);
+                refreshAll();
+                return;
+            }
+        } catch(e) {
+            sessionStorage.removeItem('fl_key');
+            sessionStorage.removeItem('fl_user');
+        }
+    }
+
+    showFlPane('login');
+    const last = localStorage.getItem('fl_current_user');
+    if (last) document.getElementById('loginUser').value = last;
+};
+
+window.flBoot();
 
 // ====== DATA SYNC ======
 async function pushToGist() {
@@ -734,31 +954,40 @@ window.adminAddUser = async () => {
     const sn = parseInt(document.getElementById('adminNewSalaryNet').value) || 96080;
     const sg = parseInt(document.getElementById('adminNewSalaryGross').value) || 101740;
     if (!name || !pwd) return alert('用户名和密码不能为空');
+    if (pwd.length < 8) return alert('密码至少 8 位');
     try {
-        const gist = await fetchGist();
-        const ac = JSON.parse(gist.files['accounts.json'].content);
-        if (ac.users[name]) return alert('用户已存在');
-        ac.users[name] = {
-            password: await hashPassword(pwd),
-            type: type,
-            base_salary_net: sn,
-            base_salary_gross: sg
-        };
-        await updateGist({'accounts.json':{content:JSON.stringify(ac,null,2)}});
+        const vault = (await flReadVault()) || {v:3, iter:ITER, users:{}};
+        const id = await flUid(name);
+        if (vault.users[id]) return alert('用户已存在');
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const key = await flDerive(pwd, salt);
+        const blob = await flSeal(key, {
+            user: name.trim().toLowerCase(), type: type,
+            base_salary_net: sn, base_salary_gross: sg,
+            data: {records:[], sims:[], helps:[], calendar:{}, settings:{}}
+        });
+        vault.users[id] = {name: name.trim(), type: type, salt: flB64(salt), iter: ITER, created: new Date().toISOString()};
+        const writes = {};
+        writes['e_' + id + '.json'] = JSON.stringify(blob);
+        writes[VAULT_FILE] = JSON.stringify(vault, null, 1);
+        await ghPatch(writes);
         document.getElementById('adminNewUser').value = '';
         document.getElementById('adminNewPwd').value = '';
-        alert('用户 ' + name + ' 已添加');
+        alert('用户 ' + name + ' 已添加。请把初始密码直接告诉对方——管理员无法查看他人的数据。');
         await refreshAdminList();
     } catch(e) { alert(e.message); }
 };
 
 window.adminDeleteUser = async (name) => {
-    if (!confirm('确定删除用户 ' + name + '？')) return;
+    if (!confirm('确定删除用户 ' + name + '？其数据将一并删除，无法恢复。')) return;
     try {
-        const gist = await fetchGist();
-        const ac = JSON.parse(gist.files['accounts.json'].content);
-        delete ac.users[name];
-        await updateGist({'accounts.json':{content:JSON.stringify(ac,null,2)}});
+        const vault = (await flReadVault()) || {users:{}};
+        const id = await flUid(name);
+        delete vault.users[id];
+        const writes = {};
+        writes['e_' + id + '.json'] = null;
+        writes[VAULT_FILE] = JSON.stringify(vault, null, 1);
+        await ghPatch(writes);
         await refreshAdminList();
     } catch(e) { alert(e.message); }
 };
@@ -771,6 +1000,8 @@ const initSettings = () => {
     document.getElementById('set_cum_income').value = userSettings.cum_income || localStorage.getItem('user_cum_income') || '942692';
     document.getElementById('set_cum_tax').value = userSettings.cum_tax || localStorage.getItem('user_cum_tax') || '244022';
     var apiModel = userSettings.api_model || localStorage.getItem('api_model') || '';
+    const aiKeyEl = document.getElementById('set_ai_key');
+    if (aiKeyEl) aiKeyEl.value = localStorage.getItem('fl_ai_key') || '';
     if (!apiModel || apiModel.includes('Qwen') || apiModel.includes('gpt-')) apiModel = 'deepseek-flash';
     document.getElementById('set_api_model').value = apiModel;
 };
@@ -781,6 +1012,7 @@ window.saveSettings = () => {
     localStorage.setItem('user_cum_income', document.getElementById('set_cum_income').value);
     localStorage.setItem('user_cum_tax', document.getElementById('set_cum_tax').value);
     localStorage.setItem('api_model', document.getElementById('set_api_model').value);
+    localStorage.setItem('fl_ai_key', (document.getElementById('set_ai_key').value || '').trim());
     const userSettings = {
         rank: document.getElementById('set_rank').value,
         icao: document.getElementById('set_icao').value,
@@ -881,7 +1113,7 @@ async function ensureTzFor(id){
         const pwd=localStorage.getItem('fl_pwd_hash')||'';
         const mdlEl=document.getElementById('set_api_model');
         const body={model:(mdlEl&&mdlEl.value)||'deepseek-flash',messages:[{role:'system',content:'You are an airport timezone assistant. The user gives an airport or city name. Reply with ONLY its IANA timezone name, e.g. Asia/Shanghai or Europe/Paris. No other text.'},{role:'user',content:name}],temperature:0};
-        const r=await fetch(AI_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','x-auth':pwd},body:JSON.stringify(body)});
+        const r=await aiFetch(body);
         if(!r.ok) return;
         const j=await r.json();
         let tz=((j.choices&&j.choices[0]&&j.choices[0].message.content)||'').trim();
@@ -1111,7 +1343,7 @@ window.processAI = async (base64Image = null) => {
     }
 
     try {
-        const res=await fetch(AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","x-auth":localStorage.getItem('fl_pwd_hash')||""},body:JSON.stringify({model:apiModel,messages,temperature:0.1,stream:false})});
+        const res=await aiFetch({model:apiModel,messages,temperature:0.1,stream:false});
         const rawData=JSON.parse(await res.text());
         if(!res.ok) throw new Error((rawData.message||rawData.error?.message||'请求失败')+' (状态码:'+res.status+')');
         if(!rawData.choices||!rawData.choices[0]) throw new Error("API 返回结果为空");
