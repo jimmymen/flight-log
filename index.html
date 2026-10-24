@@ -175,6 +175,11 @@
         .form-actions .btn { padding: 12px 20px; }
         .form-actions .btn-primary { flex: 1; max-width: 260px; }
         .form-error { display: none; color: #b91c1c; background: #fee2e2; border: 1px solid #fecaca; padding: 8px 10px; border-radius: 8px; margin-bottom: 12px; font-size: 0.85rem; }
+        .sp-badge { display: inline-block; background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; border-radius: 4px; padding: 1px 6px; font-size: 0.7rem; font-weight: 700; margin-left: 4px; }
+        .sp-list { font-size: 0.7rem; color: #94a3b8; margin-top: 3px; line-height: 1.4; }
+        .sp-note { font-size: 0.72rem; color: #b45309; font-weight: 700; margin-top: 2px; line-height: 1.4; }
+        .sp-toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 88px; background: #b45309; color: #fff; padding: 11px 18px; border-radius: 10px; font-size: 0.85rem; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.28); z-index: 9999; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90%; text-align: center; }
+        .sp-toast.show { opacity: 1; }
         .top-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; position: relative; }
         .more-menu { display: none; position: absolute; right: 0; top: 115%; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); padding: 6px; min-width: 160px; z-index: 3000; }
         .more-menu.open { display: block; }
@@ -420,7 +425,7 @@
                     <div class="form-group"><label>日期</label><input type="date" id="f_date" onchange="recalcTimes()"></div>
                     <div class="form-group"><label>机型</label><select id="f_ac_type" style="font-weight:bold;color:var(--primary)"><option value="G650ER">G650ER</option><option value="CL850">CL850</option></select></div>
                     <div class="form-group"><label>起飞地</label><input type="text" id="f_dep" onchange="onAirportChange()"></div>
-                    <div class="form-group"><label>落地地</label><input type="text" id="f_arr" onchange="onAirportChange()"></div>
+                    <div class="form-group"><label>落地地</label><input type="text" id="f_arr" oninput="applySpecialAirport()" onchange="onAirportChange()"></div>
                     <div class="form-group"><label>航线属性</label><select id="f_cat" onchange="recalcTimes()"><option value="国内">国内</option><option value="港澳台">港澳台</option><option value="亚洲国际">亚洲国际</option><option value="洲际">洲际</option></select></div>
                     <div class="form-group"><label>机组成员</label><input type="text" id="f_crew"></div>
                     <div class="form-group"><label>航班号</label><input type="text" id="f_flight_no"></div>
@@ -445,7 +450,12 @@
                         <div class="form-group"><label style="color:#c2410c">国际餐 (180)</label><input type="number" id="f_meal_int" value="0"></div>
                     </div>
                     <div class="form-group"><label>节假日天数</label><input type="number" id="f_holiday"></div>
-                    <div class="form-group"><label>特殊机场</label><input type="number" id="f_special" value="0"></div>
+                    <div class="form-group">
+                        <label>特殊机场 <span class="sp-badge" id="specialBadge" style="display:none"></span></label>
+                        <input type="number" id="f_special" value="0" readonly style="background:#f8fafc;color:#475569" title="按落地机场自动判定，不可手动修改">
+                        <div class="sp-list">清单：大连 ZYTL · 丽江 ZPLJ · 武夷山 ZSWY</div>
+                        <div class="sp-note" id="hint_special"></div>
+                    </div>
                 </div>
                 <div class="form-actions">
                     <button class="btn btn-ghost" onclick="closeForm()">取消</button>
@@ -498,6 +508,24 @@ const DEFAULT_AI_URL = 'https://api.deepseek.com/chat/completions';
 
 const HOLIDAY_RATE = 7262;
 const SIM_RATE = 400;
+
+// ====== 特殊机场 ======
+// 计费规则：落地机场命中清单即计 1 次；起飞机场不算，谁落的也不算。
+// 新增特殊机场只需在下面加一行（城市名 + ICAO 码，两者任一匹配即可）。
+const SPECIAL_AIRPORTS = [
+    { name: '大连',  icao: 'ZYTL' },
+    { name: '丽江',  icao: 'ZPLJ' },
+    { name: '武夷山', icao: 'ZSWY' }
+];
+function getSpecialAirport(input) {
+    const s = String(input || '').toUpperCase();
+    if (!s) return null;
+    return SPECIAL_AIRPORTS.find(a => s.indexOf(a.name) >= 0 || s.indexOf(a.icao) >= 0) || null;
+}
+function specialCountOf(record) {
+    if (record && record.arr) return getSpecialAirport(record.arr) ? 1 : 0;
+    return parseFloat(record && record.special_airport) || 0;
+}
 const FEE_CONFIG = {
     "教员": {dom:0,hk:{s:720,u:518},asia:{s:720,u:540},out:{s:810,u:540},n1:80,n2:200,dom_no:200,dom_stay:500,int_no:400,int_stay:900,spec:1000},
     "机长": {dom:0,hk:{s:640,u:460},asia:{s:640,u:480},out:{s:720,u:480},n1:80,n2:200,dom_no:200,dom_stay:500,int_no:400,int_stay:900,spec:1000},
@@ -1263,7 +1291,35 @@ async function ensureTzFor(id){
         }
     }catch(e){}
 }
-window.onAirportChange = async () => { await ensureTzFor('f_dep'); await ensureTzFor('f_arr'); recalcTimes(); };
+let _spToastTimer = null, _spLastKey = '';
+window.popSpecialToast = (msg) => {
+    let t = document.getElementById('spToast');
+    if (!t) { t = document.createElement('div'); t.id = 'spToast'; t.className = 'sp-toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(_spToastTimer);
+    _spToastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+};
+// 录入时按"落地地"自动判定特殊机场（1/0），命中即提示
+window.applySpecialAirport = (notify) => {
+    const el = id => document.getElementById(id);
+    const arrEl = el('f_arr'), spEl = el('f_special');
+    if (!arrEl || !spEl) return;
+    const arr = arrEl.value.trim();
+    const hit = getSpecialAirport(arr);
+    spEl.value = hit ? '1' : '0';
+    const badge = el('specialBadge'), hint = el('hint_special');
+    if (hit) {
+        if (badge) { badge.textContent = hit.name + ' · 1 次'; badge.style.display = 'inline-block'; }
+        if (hint) { hint.textContent = hit.name + '（' + hit.icao + '）是特殊机场，落地计 1 次'; }
+        if (notify !== false && arr !== _spLastKey) popSpecialToast('🛫 特殊机场：' + hit.name + ' → 1 次');
+    } else {
+        if (badge) { badge.style.display = 'none'; badge.textContent = ''; }
+        if (hint) { hint.textContent = arr ? '落地地不在特殊机场清单，计 0 次' : ''; }
+    }
+    _spLastKey = arr;
+};
+window.onAirportChange = async () => { await ensureTzFor('f_dep'); await ensureTzFor('f_arr'); applySpecialAirport(); recalcTimes(); };
 function calculateTax(amount) { return amount * 0.45; }
 
 // ====== CALENDAR STATUS ======
@@ -1347,6 +1403,8 @@ window.resetForm = () => {
     document.getElementById('f_ac_type').value='G650ER';
     document.getElementById('hint_air').innerText='';
     document.getElementById('hint_total').innerText='';
+    _spLastKey='';
+    applySpecialAirport(false);
 };
 window.closeForm = () => { document.getElementById('editForm').style.display='none'; };
 window.showForm = () => {
@@ -1366,6 +1424,7 @@ window.setFormValues = (d) => {
     set('overnight_days',d.overnight_days||'');set('special',d.special_airport||'');
     set('holiday',d.holiday||'');set('block_days',d.block_days||'1');
     set('meal_dom',d.crew_meal_dom||'0');set('meal_int',d.crew_meal_int||'0');
+    applySpecialAirport(false);
 };
 
 // ====== RECORDS CRUD ======
@@ -1393,7 +1452,7 @@ window.saveRecord = () => {
         landing:getV('landing'),block_on:getV('block_on'),air_time:getN('air'),total_time:getN('total_time'),
         block_days:getN('block_days'),night1:getN('night1'),night2:getN('night2'),
         overnight:getV('overnight'),overnight_city:getV('overnight_city')||getV('arr'),
-        overnight_days:getN('overnight_days'),special_airport:getN('special'),holiday:getN('holiday'),
+        overnight_days:getN('overnight_days'),special_airport:(getSpecialAirport(getV('arr'))?1:0),holiday:getN('holiday'),
         crew_meal_dom:getN('meal_dom'),crew_meal_int:getN('meal_int'),timestamp:new Date().toISOString()
     };
     const idx = document.getElementById('edit_idx').value;
@@ -1467,7 +1526,8 @@ window.processAI = async (base64Image = null) => {
 - ac_type: G650ER/CL850
 - time_off/time_takeoff/time_landing/time_on: 24小时制 HH:mm
 - landings_day/landings_night: 必须返回空字符串 ""
-- special_airport/holiday: 必须返回空字符串 ""
+- special_airport: 留空（按落地机场自动判定，禁止填写）
+- holiday: 必须返回空字符串 ""
 - overnight/overnight_city: 必须返回空字符串 ""
 - air_time/total_time: 自动计算的小时数（数字）
 
@@ -1577,10 +1637,11 @@ window.renderSalary = () => {
     let block={dom:0,hk:0,asia:0,out:0};let midnight_bonus_cnt=0;
 
     data.forEach(r=>{
+        if(!r.category){ console.warn('分类为空，已跳过计费：', r); return; }
         const air=parseFloat(r.air_time)||0;const bDays=parseFloat(r.block_days)||0;
         if(r.category==='国内'){s.dom_air+=air;block.dom+=bDays;if(r.takeoff&&r.landing&&r.landing<r.takeoff)midnight_bonus_cnt++;s.n1+=parseFloat(r.night1)||0;s.n2+=parseFloat(r.night2)||0;}
-        else if(r.category==='港澳台'){s.hk_air+=air;block.hk+=bDays;}else if(r.category==='亚洲国际'){s.asia_air+=air;block.asia+=bDays;}else{s.out_air+=air;block.out+=bDays;}
-        s.spec_cnt+=parseFloat(r.special_airport)||0;s.holiday_days+=parseFloat(r.holiday)||0;s.meal_dom_cnt+=parseFloat(r.crew_meal_dom)||0;s.meal_int_cnt+=parseFloat(r.crew_meal_int)||0;
+        else if(r.category==='港澳台'){s.hk_air+=air;block.hk+=bDays;}else if(r.category==='亚洲国际'){s.asia_air+=air;block.asia+=bDays;}else if(r.category==='洲际'){s.out_air+=air;block.out+=bDays;}
+        s.spec_cnt+=specialCountOf(r);s.holiday_days+=parseFloat(r.holiday)||0;s.meal_dom_cnt+=parseFloat(r.crew_meal_dom)||0;s.meal_int_cnt+=parseFloat(r.crew_meal_int)||0;
     });
 
     let autoStatus={};allRecords.forEach(r=>{if(r.overnight&&!r.overnight.includes('无')&&(parseFloat(r.overnight_days)||0)>0){const d=new Date(r.date);for(let i=1;i<=r.overnight_days;i++){const p=new Date(d);p.setDate(d.getDate()-i);autoStatus[p.toISOString().split('T')[0]]=r.overnight.includes('国际')?'国际有过夜':'国内有过夜';}}});
@@ -1798,7 +1859,7 @@ window.renderReport = () => {
     const mStr=document.getElementById('reportMonth').value;
     const data=allRecords.filter(r=>r.date.startsWith(mStr));
     let s={d_a:0,d_b:0,h_a:0,h_b:0,a_a:0,a_b:0,i_a:0,i_b:0,n1_dom:0,n2_dom:0,n1_int:0,n2_int:0,spec:0,hol:0,meal_d:0,meal_i:0,cal_dom_stay:0,cal_dom_no:0,cal_int_stay:0,cal_int_no:0,mid_cnt:0};
-    data.forEach(r=>{const air=parseFloat(r.air_time)||0;const blk=parseFloat(r.block_days)||0;const n1=parseFloat(r.night1)||0;const n2=parseFloat(r.night2)||0;if(r.category==='国内'){s.d_a+=air;s.d_b+=blk;s.n1_dom+=n1;s.n2_dom+=n2;if(r.takeoff&&r.landing&&r.landing<r.takeoff)s.mid_cnt++;}else if(r.category==='港澳台'){s.h_a+=air;s.h_b+=blk;s.n1_int+=n1;s.n2_int+=n2;}else if(r.category==='亚洲国际'){s.a_a+=air;s.a_b+=blk;s.n1_int+=n1;s.n2_int+=n2;}else{s.i_a+=air;s.i_b+=blk;s.n1_int+=n1;s.n2_int+=n2;}s.spec+=parseFloat(r.special_airport)||0;s.hol+=parseFloat(r.holiday)||0;s.meal_d+=parseFloat(r.crew_meal_dom)||0;s.meal_i+=parseFloat(r.crew_meal_int)||0;});
+    data.forEach(r=>{if(!r.category)return;const air=parseFloat(r.air_time)||0;const blk=parseFloat(r.block_days)||0;const n1=parseFloat(r.night1)||0;const n2=parseFloat(r.night2)||0;if(r.category==='国内'){s.d_a+=air;s.d_b+=blk;s.n1_dom+=n1;s.n2_dom+=n2;if(r.takeoff&&r.landing&&r.landing<r.takeoff)s.mid_cnt++;}else if(r.category==='港澳台'){s.h_a+=air;s.h_b+=blk;s.n1_int+=n1;s.n2_int+=n2;}else if(r.category==='亚洲国际'){s.a_a+=air;s.a_b+=blk;s.n1_int+=n1;s.n2_int+=n2;}else if(r.category==='洲际'){s.i_a+=air;s.i_b+=blk;s.n1_int+=n1;s.n2_int+=n2;}s.spec+=specialCountOf(r);s.hol+=parseFloat(r.holiday)||0;s.meal_d+=parseFloat(r.crew_meal_dom)||0;s.meal_i+=parseFloat(r.crew_meal_int)||0;});
     const [y,m]=mStr.split('-').map(Number);const daysInMonth=new Date(y,m,0).getDate();
     let autoStatus={};allRecords.forEach(r=>{if(r.overnight&&!r.overnight.includes('无')&&(parseFloat(r.overnight_days)||0)>0){const d=new Date(r.date);for(let i=1;i<=r.overnight_days;i++){const p=new Date(d);p.setDate(d.getDate()-i);autoStatus[p.toISOString().split('T')[0]]=r.overnight.includes('国际')?'国际有过夜':'国内有过夜';}}});
     for(let d=1;d<=daysInMonth;d++){const dStr=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;let type=null;let raw=calendarData[dStr]||{};if(raw.type)type=raw.type;else{const flights=allRecords.filter(r=>r.date===dStr);const hasReturn=flights.find(f=>f.overnight&&f.overnight.includes('无过夜'));if(hasReturn)type=hasReturn.overnight.includes('国际')?'国际无过夜':'国内无过夜';else type=autoStatus[dStr]||'沈阳';}if(type==='国内有过夜')s.cal_dom_stay++;else if(type==='国内无过夜')s.cal_dom_no++;else if(type==='国际有过夜')s.cal_int_stay++;else if(type==='国际无过夜')s.cal_int_no++;}
